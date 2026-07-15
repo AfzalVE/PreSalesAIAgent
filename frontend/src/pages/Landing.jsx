@@ -441,25 +441,27 @@ export default function Landing() {
 
           {/* Hero Visual Area */}
           <div className="relative mt-12 lg:mt-0 hero-graphic-shadow">
-            <div className="ai-border glass-card p-8 relative z-10 overflow-hidden">
+            <div className="glass-card p-8 relative z-10 overflow-hidden rounded-3xl border border-primary-container/70 bg-white/85 shadow-xl">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center">
-                    <span className="material-symbols-outlined text-navy-accent text-3xl">
-                      psychology
-                    </span>
+                  <div className="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center shadow-sm">
+                    <img
+                      src="/ve.png"
+                      alt="Pre Sales Platform"
+                      className="h-8 w-auto object-contain"
+                    />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-headline-md text-lg text-navy-accent">
-                      AI Solution Architect
+                    <h3 className="font-headline-md text-xl font-semibold text-navy-accent">
+                      Pre Sales Dashboard
                     </h3>
-                    <p className="text-[10px] text-primary font-label-caps tracking-widest font-bold">
-                      CORE ENGINE ACTIVE
+                    <p className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-primary">
+                      AI ENGINE ACTIVE
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-primary/40 animate-pulse"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary-container animate-pulse"></div>
                   <div
                     className="w-2.5 h-2.5 rounded-full bg-primary/70 animate-pulse"
                     style={{ animationDelay: "0.2s" }}
@@ -471,19 +473,19 @@ export default function Landing() {
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="bg-surface-container-low p-5 rounded-2xl max-w-[85%] border border-outline-variant/30 text-left">
+                <div className="bg-white p-5 rounded-2xl max-w-[85%] border border-outline-variant/30 text-left">
                   <p className="text-sm font-body-md text-navy-accent/80 leading-relaxed italic">
                     "Generate a detailed technical proposal for a
                     high-availability Fintech app with cross-chain crypto
                     support."
                   </p>
                 </div>
-                <div className="bg-primary/5 p-5 rounded-2xl self-end ml-auto max-w-[90%] border border-primary/20 shadow-sm text-left">
+                <div className="bg-primary-container/35 p-5 rounded-2xl self-end ml-auto max-w-[90%] border border-primary-container shadow-sm text-left">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-primary text-sm">
+                    <span className="material-symbols-outlined text-navy-accent text-sm">
                       settings_suggest
                     </span>
-                    <span className="text-[10px] font-label-caps text-primary font-bold">
+                    <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-navy-accent">
                       ARCHITECTING SOLUTION
                     </span>
                   </div>
@@ -498,8 +500,8 @@ export default function Landing() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-8">
-                <div className="bg-white p-5 rounded-2xl border border-outline-variant/20 shadow-sm text-left">
-                  <p className="text-[10px] uppercase font-label-caps text-on-surface-variant font-bold mb-1">
+                <div className="bg-white p-5 rounded-2xl border border-primary-container/60 shadow-sm text-left">
+                  <p className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-1">
                     Accuracy Score
                   </p>
                   <div className="flex items-baseline gap-1">
@@ -511,8 +513,8 @@ export default function Landing() {
                     </span>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-outline-variant/20 shadow-sm text-left">
-                  <p className="text-[10px] uppercase font-label-caps text-on-surface-variant font-bold mb-1">
+                <div className="bg-white p-5 rounded-2xl border border-primary-container/60 shadow-sm text-left">
+                  <p className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-1">
                     Processing Time
                   </p>
                   <p className="text-3xl font-bold text-navy-accent">0.4s</p>
@@ -521,9 +523,9 @@ export default function Landing() {
             </div>
 
             {/* Floating Data Elements */}
-            <div className="absolute -top-8 -right-8 glass-card p-5 rounded-2xl shadow-2xl z-20 animate-bounce duration-[4000ms] border-white/80">
+            <div className="absolute -top-8 -right-8 glass-card p-5 rounded-2xl shadow-2xl z-20 animate-bounce duration-[4000ms] border-primary-container/80 bg-white">
               <span
-                className="material-symbols-outlined text-primary text-4xl"
+                className="material-symbols-outlined text-navy-accent text-4xl"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
                 cloud_done
@@ -1201,7 +1203,7 @@ export default function Landing() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register"
+              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register" || view === "otp"
                   ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
                   : "max-w-md rounded-3xl p-8 text-left"
                 }`}
@@ -1443,7 +1445,7 @@ export default function Landing() {
 
                       <button
                         type="submit"
-                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-[#00d4a4] font-button-text text-sm font-semibold uppercase text-[#0a0a0a] transition-all duration-200 hover:bg-[#00b48a] active:translate-y-px"
+                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                       >
                         Sign Up
                       </button>
@@ -1455,28 +1457,33 @@ export default function Landing() {
                 {view === "otp" && (
                   <motion.div
                     key="otp"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    className="pt-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="font-sans"
                   >
-                    <div className="flex items-center space-x-2 mb-4">
+                    <div className="mb-8 text-center">
                       <button
                         onClick={() => { setError(""); setView(otpPurpose === "forgot" ? "forgot" : otpPurpose === "register" ? "register" : "login"); }}
-                        className="p-1.5 rounded-lg hover:bg-neutral-50 text-neutral-500 transition-colors"
+                        className="absolute left-5 top-5 rounded-full border border-[#e5e5e5] bg-white p-2 text-[#5a5a5c] transition-colors hover:bg-[#f7f7f7] hover:text-[#0a0a0a]"
                       >
                         <ArrowLeft size={14} />
                       </button>
-                      <h3 className="text-lg font-bold text-neutral-900 tracking-tight">Security Verification</h3>
+                      <h3 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">
+                        Security Verification
+                      </h3>
+                      <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
+                        We've simulated sending a security code. Enter test code{" "}
+                        <strong className="font-semibold text-[#0a0a0a]">1234</strong>{" "}
+                        to verify your account.
+                      </p>
                     </div>
 
-                    <p className="text-xs text-neutral-500 font-medium leading-relaxed mb-4">
-                      We've simulated sending a security code. Enter test code <strong className="text-neutral-800 font-bold font-mono">1234</strong> to verify your account.
-                    </p>
-
-                    <form onSubmit={handleOtpVerify} className="space-y-4">
+                    <form onSubmit={handleOtpVerify} className="space-y-5">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-2 text-center">4-Digit Security Code</label>
+                        <label className="mb-2 block text-center font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          4-Digit Security Code
+                        </label>
                         <input
                           type="text"
                           maxLength={4}
@@ -1484,19 +1491,19 @@ export default function Landing() {
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}
                           placeholder="••••"
-                          className="w-full text-center text-xl font-bold tracking-widest bg-neutral-50 border border-neutral-200 rounded-xl py-3 outline-none focus:bg-white focus:border-primary transition-all duration-200 text-neutral-800 font-mono"
+                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 text-center font-body-md text-xl font-semibold tracking-[0.35em] text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                         />
                       </div>
 
-                      <div className="flex justify-between items-center text-xs pt-1">
-                        <span className="text-neutral-400 font-semibold">Didn't receive code?</span>
+                      <div className="flex items-center justify-between pt-1 font-body-md text-sm">
+                        <span className="font-medium text-[#5a5a5c]">Didn't receive code?</span>
                         {otpResendTimer > 0 ? (
-                          <span className="text-neutral-400 font-bold">Resend in {otpResendTimer}s</span>
+                          <span className="font-semibold text-[#888888]">Resend in {otpResendTimer}s</span>
                         ) : (
                           <button
                             type="button"
                             onClick={startOtpResendTimer}
-                            className="text-primary font-bold hover:underline"
+                            className="font-semibold text-[#006b5d] hover:underline"
                           >
                             Resend OTP
                           </button>
@@ -1504,25 +1511,25 @@ export default function Landing() {
                       </div>
 
                       {otpStatus === "verifying" && (
-                        <div className="flex items-center justify-center space-x-2 text-xs text-primary font-semibold py-2">
+                        <div className="flex items-center justify-center space-x-2 py-2 font-body-md text-sm font-medium text-[#006b5d]">
                           <RefreshCw size={14} className="animate-spin" />
                           <span>Verifying securely...</span>
                         </div>
                       )}
 
                       {otpStatus === "success" && (
-                        <div className="flex items-center justify-center space-x-2 text-xs text-green-600 font-bold py-2">
+                        <div className="flex items-center justify-center space-x-2 py-2 font-body-md text-sm font-semibold text-[#00b48a]">
                           <Check size={14} strokeWidth={3} />
                           <span>Security verification successful!</span>
                         </div>
                       )}
 
-                      {error && <p className="text-[10px] font-bold text-red-500 text-center">{error}</p>}
+                      {error && <p className="text-center font-body-md text-sm font-semibold text-[#d45656]">{error}</p>}
 
                       <button
                         type="submit"
                         disabled={otpStatus === "verifying" || otpStatus === "success"}
-                        className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold flex items-center justify-center transition-all duration-200 shadow-md cursor-pointer disabled:opacity-50 font-sans"
+                        className="flex h-11 w-full cursor-pointer items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px disabled:cursor-not-allowed disabled:bg-[#e5e5e5] disabled:text-[#a8a8aa]"
                       >
                         Verify Code
                       </button>
