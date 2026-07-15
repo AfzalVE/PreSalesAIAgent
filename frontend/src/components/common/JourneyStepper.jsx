@@ -46,9 +46,9 @@ export default function JourneyStepper() {
                 <motion.div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border transition-all duration-300 ${
                     isCompleted
-                      ? 'bg-brand-500 border-brand-500 text-white'
+                      ? 'bg-primary border-primary text-white'
                       : isActive
-                      ? 'bg-white border-brand-500 text-brand-600 shadow-sm shadow-brand-100'
+                      ? 'bg-white border-primary text-primary shadow-sm shadow-primary/10'
                       : 'bg-white border-neutral-200 text-neutral-400'
                   }`}
                   animate={isActive ? { scale: [1, 1.05, 1] } : { scale: 1 }}
@@ -58,7 +58,7 @@ export default function JourneyStepper() {
                 </motion.div>
               </div>
               <span className={`text-xs font-semibold hidden md:inline tracking-tight transition-colors duration-200 ${
-                isActive ? 'text-brand-600' : isCompleted ? 'text-neutral-600' : 'text-neutral-400'
+                isActive ? 'text-primary' : isCompleted ? 'text-neutral-600' : 'text-neutral-400'
               }`}>
                 {step.label}
               </span>
@@ -68,7 +68,7 @@ export default function JourneyStepper() {
             {idx < STEPS.length - 1 && (
               <div className="w-4 sm:w-8 h-[2px] bg-neutral-200 rounded overflow-hidden">
                 <motion.div 
-                  className="h-full bg-brand-500"
+                  className="h-full bg-primary"
                   initial={{ width: 0 }}
                   animate={{ width: isCompleted ? "100%" : "0%" }}
                   transition={{ duration: 0.4 }}

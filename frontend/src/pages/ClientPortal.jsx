@@ -135,31 +135,48 @@ export default function ClientPortal() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
+    <div className="relative min-h-[calc(100vh-73px)] overflow-hidden py-12 px-4 bg-surface">
       <FloatingBackground />
+      <div className="pointer-events-none absolute inset-0 -z-[9] min-h-full overflow-hidden">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,107,93,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,107,93,0.06)_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] opacity-70" />
+        <div className="absolute left-[-8rem] top-[-5rem] h-[34rem] w-[34rem] animate-float-slow rounded-full bg-primary-container/60 blur-[85px]" />
+        <div className="absolute right-[-7rem] top-[12%] h-[36rem] w-[36rem] animate-float-medium rounded-full bg-primary/25 blur-[105px]" />
+        <div className="absolute left-[24%] top-[42%] h-[32rem] w-[32rem] animate-pulse-subtle rounded-full bg-secondary-container/60 blur-[95px]" />
+        <div className="absolute bottom-[-10rem] right-[18%] h-[42rem] w-[42rem] animate-float-slow rounded-full bg-primary-container/50 blur-[120px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(113,245,229,0.34),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(0,107,93,0.20),transparent_30%),radial-gradient(circle_at_42%_55%,rgba(218,226,253,0.50),transparent_34%),radial-gradient(circle_at_78%_86%,rgba(113,245,229,0.28),transparent_32%)]" />
+      </div>
 
       <div className="max-w-7xl mx-auto space-y-10 relative z-10">
         
-        {/* Editorial Wise Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-neutral-200/60">
-          <div>
-            <h2 className="text-3xl md:text-5xl font-black font-display text-neutral-900 tracking-tight leading-none">
-              Client Workspace Dashboard
-            </h2>
-            <p className="text-sm text-neutral-500 mt-1 font-medium">Create project requirements, manage generated drafts, and negotiate with our AI broker.</p>
+        {/* Dashboard Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-outline-variant/30">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-container shadow-sm">
+              <img
+                src="/ve.png"
+                alt="Pre Sales Platform"
+                className="h-9 w-auto object-contain"
+              />
+            </div>
+            <div>
+              <h2 className="font-display-lg text-4xl md:text-5xl font-semibold text-navy-accent tracking-tight leading-tight">
+                Pre Sales Dashboard
+              </h2>
+              <p className="font-body-md text-base text-on-surface-variant mt-1">Create project requirements, manage generated drafts, and negotiate with our AI broker.</p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-brand-500 text-white font-semibold text-xs hover:bg-brand-600 shadow-md transition-all duration-200"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary-container text-navy-accent font-button-text text-sm font-semibold hover:shadow-md transition-all duration-200"
             >
               <PlusCircle size={14} className="mr-1.5" />
               New Proposal Request
             </button>
             <button
               onClick={handleRestart}
-              className="inline-flex items-center px-4 py-2 rounded-xl bg-neutral-950 text-white font-semibold text-xs hover:bg-neutral-800 shadow-md transition-all duration-200"
+              className="inline-flex items-center px-4 py-2 rounded-lg bg-navy-accent text-white font-button-text text-sm font-semibold hover:bg-navy-accent/90 shadow-md transition-all duration-200"
             >
               Restart Intake Wizard
             </button>
@@ -167,7 +184,7 @@ export default function ClientPortal() {
         </div>
 
         {/* Dashboard Navigation Tabs */}
-        <div className="flex space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-2xl text-xs font-semibold w-fit">
+        <div className="flex space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-full font-button-text text-sm font-medium w-fit">
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2 rounded-xl transition-all duration-200 ${
@@ -200,27 +217,27 @@ export default function ClientPortal() {
             {/* Overview cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <AnimatedCard className="p-6">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Active Requests</span>
-                <span className="text-3xl font-extrabold text-neutral-900 mt-1 block">3</span>
-                <p className="text-[10px] text-neutral-400 mt-2 font-medium">Scoping verified via voice</p>
+                <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Active Requests</span>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">3</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Scoping verified via voice</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Pending Proposals</span>
-                <span className="text-3xl font-extrabold text-neutral-900 mt-1 block">2</span>
-                <p className="text-[10px] text-neutral-400 mt-2 font-medium">Under broker review</p>
+                <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Pending Proposals</span>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">2</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Under broker review</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Approved Proposals</span>
-                <span className="text-3xl font-extrabold text-brand-600 mt-1 block">1</span>
-                <p className="text-[10px] text-neutral-400 mt-2 font-medium">Contract locked & signed</p>
+                <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Approved Proposals</span>
+                <span className="font-display-lg text-3xl font-semibold text-primary mt-1 block">1</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Contract locked & signed</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Total Estimated Budget</span>
-                <span className="text-3xl font-extrabold text-neutral-900 mt-1 block">$205,000</span>
-                <p className="text-[10px] text-neutral-400 mt-2 font-medium">Consolidated project cost</p>
+                <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Total Estimated Budget</span>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">$205,000</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Consolidated project cost</p>
               </AnimatedCard>
             </div>
 
@@ -228,30 +245,30 @@ export default function ClientPortal() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Timeline */}
               <div className="lg:col-span-6 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft space-y-6">
-                <h3 className="text-sm font-bold text-neutral-800 tracking-tight pb-3 border-b border-neutral-100 font-display">
+                <h3 className="font-headline-md text-lg font-semibold text-navy-accent pb-3 border-b border-neutral-100">
                   Active Build Status Tracker
                 </h3>
                 
                 <div className="relative pl-6 border-l border-neutral-100 space-y-6">
                   <div className="relative">
-                    <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-brand-500 ring-4 ring-brand-100" />
-                    <span className="text-[9px] uppercase font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">Active Phase</span>
-                    <h4 className="text-sm font-bold text-neutral-800 mt-1">1. Intake Modeling & Discovery</h4>
-                    <p className="text-xs text-neutral-500 mt-0.5">Specifications extracted: {projectData.name || "Zenith Retail Portal"}</p>
+                    <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container" />
+                    <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-primary bg-primary-container/40 px-2 py-0.5 rounded">Active Phase</span>
+                    <h4 className="font-body-md text-base font-semibold text-navy-accent mt-1">1. Intake Modeling & Discovery</h4>
+                    <p className="font-body-md text-sm text-on-surface-variant mt-0.5">Specifications extracted: {projectData.name || "Zenith Retail Portal"}</p>
                   </div>
                   
                   <div className="relative">
-                    <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-brand-500 ring-4 ring-brand-100" />
-                    <span className="text-[9px] uppercase font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded">Completed</span>
-                    <h4 className="text-sm font-bold text-neutral-800 mt-1">2. Proposal Negotiation & Balancing</h4>
-                    <p className="text-xs text-neutral-500 mt-0.5">Budget holds at ${activeProposal.budget.toLocaleString()} for {activeProposal.timeline}</p>
+                    <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container" />
+                    <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant bg-neutral-100 px-2 py-0.5 rounded">Completed</span>
+                    <h4 className="font-body-md text-base font-semibold text-navy-accent mt-1">2. Proposal Negotiation & Balancing</h4>
+                    <p className="font-body-md text-sm text-on-surface-variant mt-0.5">Budget holds at ${activeProposal.budget.toLocaleString()} for {activeProposal.timeline}</p>
                   </div>
                 </div>
               </div>
 
               {/* Proposals Review Section */}
               <div className="lg:col-span-6 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft space-y-4">
-                <h3 className="text-sm font-bold text-neutral-800 tracking-tight pb-3 border-b border-neutral-100 font-display">
+                <h3 className="font-headline-md text-lg font-semibold text-navy-accent pb-3 border-b border-neutral-100">
                   Your Proposals Directory
                 </h3>
                 <div className="space-y-3">
@@ -259,19 +276,19 @@ export default function ClientPortal() {
                     <div key={prop.id} className="p-4 bg-neutral-50 border border-neutral-100 rounded-xl space-y-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <span className="text-xs font-bold text-neutral-900 block">{prop.projectName}</span>
-                          <span className="text-[10px] text-neutral-500 font-medium">{prop.timeline} • {prop.techStack.join(', ')}</span>
+                          <span className="font-body-md text-sm font-semibold text-navy-accent block">{prop.projectName}</span>
+                          <span className="font-body-md text-sm text-on-surface-variant">{prop.timeline} • {prop.techStack.join(', ')}</span>
                         </div>
-                        <span className="text-xs font-bold text-brand-600">${prop.budget.toLocaleString()}</span>
+                        <span className="font-body-md text-sm font-semibold text-primary">${prop.budget.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60 text-[10px] font-bold">
+                      <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60 font-body-md text-sm font-semibold">
                         <span className={`px-2 py-0.5 rounded ${prop.status === 'Approved' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                           {prop.status}
                         </span>
                         <div className="space-x-2">
                           <button
                             onClick={() => alert(`Reviewing proposal: ${prop.projectName}`)}
-                            className="text-brand-600 hover:underline"
+                            className="text-primary hover:underline"
                           >
                             View Specs
                           </button>
@@ -296,8 +313,8 @@ export default function ClientPortal() {
           <div className="space-y-6">
             <div className="bg-white border border-neutral-200/80 rounded-3xl p-6 shadow-soft">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h3 className="text-lg font-bold text-neutral-800 tracking-tight">Your Proposal Requests</h3>
-                <div className="flex items-center space-x-2 text-xs">
+                <h3 className="font-headline-md text-lg font-semibold text-navy-accent">Your Proposal Requests</h3>
+                <div className="flex items-center space-x-2 font-body-md text-sm">
                   <Filter size={12} className="text-neutral-400" />
                   <select
                     value={statusFilter}
@@ -312,9 +329,9 @@ export default function ClientPortal() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse font-body-md text-sm">
                   <thead>
-                    <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
+                    <tr className="border-b border-neutral-100 text-on-surface-variant font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em]">
                       <th className="py-4">Project Name</th>
                       <th className="py-4">Domain</th>
                       <th className="py-4">Budget</th>
@@ -328,13 +345,13 @@ export default function ClientPortal() {
                       .filter(r => statusFilter === "All" || r.status === statusFilter)
                       .map((req) => (
                         <tr key={req.id} className="hover:bg-neutral-50/50 transition-colors">
-                          <td className="py-4 font-bold text-neutral-800">{req.name}</td>
+                          <td className="py-4 font-semibold text-navy-accent">{req.name}</td>
                           <td className="py-4 text-neutral-500 font-medium">{req.domain}</td>
-                          <td className="py-4 font-bold text-neutral-900">${req.budget.toLocaleString()}</td>
+                          <td className="py-4 font-semibold text-navy-accent">${req.budget.toLocaleString()}</td>
                           <td className="py-4 text-neutral-500 font-medium">{req.timeline}</td>
                           <td className="py-4">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              req.status === "Approved" ? "bg-brand-50 text-brand-600 border border-brand-100" : "bg-neutral-100 text-neutral-500"
+                            <span className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${
+                              req.status === "Approved" ? "bg-primary-container/40 text-primary border border-primary-container" : "bg-neutral-100 text-neutral-500"
                             }`}>
                               {req.status}
                             </span>
@@ -352,7 +369,7 @@ export default function ClientPortal() {
                                 updateProjectData(req);
                                 setActiveStep(4); // Switch to evolve comparison
                               }}
-                              className="p-1.5 rounded bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors"
+                              className="p-1.5 rounded bg-primary-container/40 text-primary hover:bg-primary-container/70 transition-colors"
                               title="Generate Proposal"
                             >
                               <RefreshCw size={12} />
@@ -379,7 +396,7 @@ export default function ClientPortal() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
             {/* Previous Requests sidebar */}
             <div className="lg:col-span-4 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft space-y-4">
-              <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Chat History & Blueprints</h4>
+              <h4 className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant">Chat History & Blueprints</h4>
               <div className="space-y-2">
                 {requestsList.map((req) => (
                   <button
@@ -392,8 +409,8 @@ export default function ClientPortal() {
                     }}
                     className="w-full p-3.5 rounded-xl border border-neutral-100 text-left hover:bg-neutral-50/50 transition-all duration-200"
                   >
-                    <span className="text-xs font-bold text-neutral-800 block">{req.name}</span>
-                    <span className="text-[10px] text-neutral-400 mt-0.5 block">{req.domain} • ${req.budget.toLocaleString()}</span>
+                    <span className="font-body-md text-sm font-semibold text-navy-accent block">{req.name}</span>
+                    <span className="font-body-md text-sm text-on-surface-variant mt-0.5 block">{req.domain} • ${req.budget.toLocaleString()}</span>
                   </button>
                 ))}
               </div>
@@ -402,15 +419,15 @@ export default function ClientPortal() {
             {/* Chat Box */}
             <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[450px]">
               <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                <span className="text-xs font-bold text-neutral-800">Scoping Assistant Chat</span>
-                <span className="text-[9px] uppercase font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">AI Broker Engine Online</span>
+                <span className="font-body-md text-base font-semibold text-navy-accent">Scoping Assistant Chat</span>
+                <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-primary bg-primary-container/40 px-2 py-0.5 rounded">AI Broker Engine Online</span>
               </div>
 
               {/* Messages feed */}
               <div className="flex-1 overflow-y-auto my-4 space-y-4 max-h-[250px]">
                 {chatLog.map((msg, idx) => (
                   <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-xs leading-relaxed ${
+                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${
                       msg.sender === 'user' ? 'bg-neutral-900 text-white rounded-tr-none' : 'bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none'
                     }`}>
                       {msg.text}
@@ -422,7 +439,7 @@ export default function ClientPortal() {
               {/* Action buttons & form input */}
               <div className="space-y-4 pt-3 border-t border-neutral-100">
                 {isRecordingVoice && (
-                  <div className="flex items-center justify-center space-x-2 text-xs text-brand-600 font-bold bg-brand-50 py-2 rounded-xl animate-pulse">
+                  <div className="flex items-center justify-center space-x-2 font-body-md text-sm font-semibold text-primary bg-primary-container/40 py-2 rounded-xl animate-pulse">
                     <Mic size={14} className="animate-bounce" />
                     <span>Listening to your voice inputs... Click Stop to finish.</span>
                   </div>
@@ -434,7 +451,7 @@ export default function ClientPortal() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Refine proposal parameters here..."
-                    className="flex-1 bg-transparent py-2.5 px-3 text-xs outline-none text-neutral-800"
+                    className="flex-1 bg-transparent py-2.5 px-3 font-body-md text-sm outline-none text-neutral-800"
                   />
                   <button
                     type="button"
@@ -445,7 +462,7 @@ export default function ClientPortal() {
                   </button>
                   <button
                     type="submit"
-                    className="p-2.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+                    className="p-2.5 rounded-lg bg-primary-container text-navy-accent hover:shadow-md transition-colors"
                   >
                     <Send size={14} />
                   </button>
@@ -467,87 +484,87 @@ export default function ClientPortal() {
             >
               <X size={16} />
             </button>
-            <h3 className="text-xl font-bold text-neutral-950 font-display mb-6">Create Scoping Request</h3>
+            <h3 className="font-headline-md text-xl font-semibold text-navy-accent mb-6">Create Scoping Request</h3>
 
-            <form onSubmit={handleCreateRequest} className="space-y-4 text-xs font-semibold text-neutral-700">
+            <form onSubmit={handleCreateRequest} className="space-y-4 font-body-md text-sm font-medium text-neutral-700">
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Project Name</label>
+                <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Project Name</label>
                 <input
                   type="text"
                   required
                   value={newProjName}
                   onChange={(e) => setNewProjName(e.target.value)}
                   placeholder="e.g. Zenith Retail Portal"
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Business Domain</label>
+                <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Business Domain</label>
                 <input
                   type="text"
                   required
                   value={newProjDomain}
                   onChange={(e) => setNewProjDomain(e.target.value)}
                   placeholder="e.g. E-Commerce"
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Project Description</label>
+                <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Project Description</label>
                 <textarea
                   required
                   value={newProjDesc}
                   onChange={(e) => setNewProjDesc(e.target.value)}
                   placeholder="Describe target features..."
                   rows={3}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 outline-none focus:border-brand-500 resize-none"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 outline-none focus:border-primary resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Budget ($)</label>
+                  <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Budget ($)</label>
                   <input
                     type="number"
                     required
                     value={newProjBudget}
                     onChange={(e) => setNewProjBudget(e.target.value)}
                     placeholder="e.g. 75000"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Timeline</label>
+                  <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Timeline</label>
                   <input
                     type="text"
                     required
                     value={newProjTimeline}
                     onChange={(e) => setNewProjTimeline(e.target.value)}
                     placeholder="e.g. 12 Weeks"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Preferred Technology</label>
+                  <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Preferred Technology</label>
                   <input
                     type="text"
                     value={newProjTech}
                     onChange={(e) => setNewProjTech(e.target.value)}
                     placeholder="React, Node.js"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">Communication Type</label>
+                  <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Communication Type</label>
                   <select
                     value={newProjComm}
                     onChange={(e) => setNewProjComm(e.target.value)}
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-brand-500"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 outline-none focus:border-primary"
                   >
                     <option value="Slack">Slack Workspace</option>
                     <option value="Discord">Discord Channel</option>
@@ -566,7 +583,7 @@ export default function ClientPortal() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-brand-500 text-white hover:bg-brand-600 transition-colors"
+                  className="flex-1 py-3 rounded-xl bg-primary-container text-navy-accent hover:shadow-md transition-colors"
                 >
                   Generate Proposal
                 </button>
@@ -586,30 +603,30 @@ export default function ClientPortal() {
             >
               <X size={16} />
             </button>
-            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Request Information</span>
-            <h3 className="text-xl font-bold font-display text-neutral-950 mt-1">{selectedRequest.name}</h3>
+            <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant">Request Information</span>
+            <h3 className="font-headline-md text-xl font-semibold text-navy-accent mt-1">{selectedRequest.name}</h3>
 
-            <div className="mt-6 space-y-4 text-xs">
+            <div className="mt-6 space-y-4 font-body-md text-sm">
               <div className="grid grid-cols-2 gap-4 pb-4 border-b border-neutral-100">
                 <div>
-                  <span className="text-neutral-400 block font-bold uppercase text-[9px]">Business Domain</span>
+                  <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em]">Business Domain</span>
                   <span className="text-neutral-800 font-semibold">{selectedRequest.domain}</span>
                 </div>
                 <div>
-                  <span className="text-neutral-400 block font-bold uppercase text-[9px]">Target Budget</span>
+                  <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em]">Target Budget</span>
                   <span className="text-neutral-800 font-semibold">${selectedRequest.budget.toLocaleString()}</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-neutral-400 block font-bold uppercase text-[9px] mb-1">Description</span>
+                <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em] mb-1">Description</span>
                 <p className="text-neutral-600 leading-relaxed bg-neutral-50 p-3 rounded-xl border border-neutral-100">{selectedRequest.desc}</p>
               </div>
 
               {selectedRequest.transcript && (
                 <div>
-                  <span className="text-neutral-400 block font-bold uppercase text-[9px] mb-1">Transcript & Extracted JSON</span>
-                  <pre className="text-[10px] text-brand-600 bg-brand-50/50 p-3 rounded-xl border border-brand-100/50 overflow-x-auto font-mono">
+                  <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em] mb-1">Transcript & Extracted JSON</span>
+                  <pre className="text-[13px] text-primary bg-primary-container/20 p-3 rounded-xl border border-primary-container/50 overflow-x-auto font-mono leading-relaxed">
                     {JSON.stringify({
                       projectName: selectedRequest.name,
                       domain: selectedRequest.domain,

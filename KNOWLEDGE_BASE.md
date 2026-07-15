@@ -27,3 +27,32 @@ The core schema for handoffs is `AgentExtractionResponse` (see `backend/app/sche
 - `follow_up_message` (str | null)
 
 **Note for Frontend Team:** Please check the `follow_up_message` in the JSON response. If it is not null, display it to the user so they can answer the AI's questions regarding missing budget/timeline.
+
+## 4. Resource Matching & Cost Estimation Engine (Employee Module)
+- **Location:** `backend/app/services/resource/matching.py`
+- **Core Functions:**
+  - `match_resources(proposal: Dict[str, Any], employees: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]`
+  - `match_resources_from_db_request(proposal_request_id: str) -> Dict[str, Any]`
+  - `get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]`
+- **Purpose:** Connects directly with PostgreSQL (`Employee` model, `employment_status == ACTIVE`), filters candidates based on exact/substring job roles and `minimum_experience`, and allocates resources over the project timeline.
+
+### Candidate Ranking & Priority Sorting
+Candidates are ranked using a strict 6-level tuple sort:
+1. **Bench Status (`bench_status == True` first)**
+2. **Global Bench (`global_bench == True` first)**
+3. **Highest Available Hours (`available_hours` descending)**
+4. **Lowest Allocated Hours (`allocated_hours` ascending)**
+5. **Highest Experience (`experience` descending)**
+6. **Lowest Hourly Rate (`hourly_cost` ascending)**
+
+### Cost Calculation & Fixed Company Overhead
+- **Developer Cost (`developer_cost`)**: `sum(allocated_hours * hourly_cost)` where `allocated_hours = timeline_weeks * 5 days * daily_capacity_hours`.
+- **Company Overhead (`company_static_cost`)**: Fixed at **$100.0** (`FIXED_COMPANY_STATIC_COST = 100.0`) unless overridden.
+- **Total Project Cost (`total_project_cost`)**: `developer_cost + company_static_cost`.
+
+### Nullable AI Input & Dual Budget Handling (`match_resources`)
+The engine seamlessly processes incoming payloads where `timeline_weeks`, `client_budget`, or `resource_requirements` are `null`:
+- **When `timeline_weeks` / `resource_requirements` are `null`**: Defaults to 12 weeks (`DEFAULT_TIMELINE_WEEKS`) and assigns a standard full-stack team (`Backend Engineer`, `Frontend Engineer`).
+- **When `client_budget` IS Provided (e.g., `$85,000`)**: Compares total project cost against budget and enriches output with `is_within_budget` (bool) and `budget_variance_usd`.
+- **When `client_budget` IS `null` (No Budget Given)**: Computes the full `developer_cost` + $100 overhead, sets `client_budget: null`, defaults `is_within_budget: true` (as there is no budget limit), and embeds `estimated_cost` (`= total_project_cost`) into the output JSON so downstream Proposal/PDF generation gets the exact price immediately.
+
