@@ -1,0 +1,117 @@
+from datetime import datetime, timedelta, timezone
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.core.security import (
+    create_access_token,
+    create_pending_token,
+    decode_token,
+    generate_otp,
+    verify_password,
+)
+from app.models.email_otp import EmailOTP
+from app.models.enums import OTPPurpose, UserRole
+from app.models.user import User
+from app.schemas.auth_schema import (
+    LoginRequest,
+    LoginResponse,
+    OTPRequiredResponse,
+    OTPVerifyRequest,
+)
+from app.services.auth.email_service import send_otp_email
+
+OTP_EXPIRE_MINUTES = 5
+MAX_OTP_ATTEMPTS = 5
+
+
+def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[UserRole]) -> OTPRequiredResponse:
+    """
+    Step 1: Verify email/password + role, then generate and email an OTP.
+    Returns a pending_token to be used in step 2 (verify_login_otp).
+    """
+    user = db.query(User).filter(User.email == credentials.email).first()
+
+    if not user or not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to log in through this portal",
+        )
+
+    otp_code = generate_otp()
+    otp_record = EmailOTP(
+        user_id=user.id,
+        email=user.email,
+        otp=otp_code,
+        purpose=OTPPurpose.LOGIN,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRE_MINUTES),
+    )
+    db.add(otp_record)
+    db.commit()
+
+    send_otp_email(user.email, otp_code)
+
+    pending_token = create_pending_token(str(user.id))
+    return OTPRequiredResponse(pending_token=pending_token)
+
+
+def verify_login_otp(db: Session, payload: OTPVerifyRequest) -> LoginResponse:
+    """
+    Step 2: Verify the pending_token + OTP, then issue the real access token.
+    """
+    token_data = decode_token(payload.pending_token)
+    if not token_data or token_data.get("stage") != "pending_otp":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session, please log in again",
+        )
+
+    user_id = token_data.get("sub")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    otp_record = (
+        db.query(EmailOTP)
+        .filter(
+            EmailOTP.user_id == user.id,
+            EmailOTP.purpose == OTPPurpose.LOGIN,
+            EmailOTP.is_verified.is_(False),
+        )
+        .order_by(EmailOTP.created_at.desc())
+        .first()
+    )
+
+    if not otp_record:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No OTP found, please log in again")
+
+    if otp_record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP expired, please log in again")
+
+    if otp_record.attempts >= MAX_OTP_ATTEMPTS:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many attempts, please log in again")
+
+    if otp_record.otp != payload.otp:
+        otp_record.attempts += 1
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect OTP")
+
+    otp_record.is_verified = True
+    otp_record.verified_at = datetime.now(timezone.utc)
+    db.commit()
+
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+
+    return LoginResponse(
+        access_token=access_token,
+        user_id=user.id,
+        full_name=user.full_name,
+        email=user.email,
+        role=user.role,
+    )
