@@ -17,7 +17,7 @@ function pickInitialRoleFromEmail(email) {
   return 'admin';
 }
 
-export default function AdminLogin({ onLogin }) {
+export default function AdminLogin({ onLogin, onCancel }) {
   const { setUser } = useAppStore();
 
   const [emailOrPhone, setEmailOrPhone] = useState('');
@@ -81,8 +81,19 @@ export default function AdminLogin({ onLogin }) {
                 </h1>
                 <p className="text-xs text-neutral-500 font-medium">{initialHint}</p>
               </div>
-              <div className="p-2 rounded-2xl border border-neutral-100 bg-white/60">
-                <RoleIcon size={18} className="text-neutral-700" />
+              <div className="flex items-center space-x-2">
+                <div className="p-2 rounded-2xl border border-neutral-100 bg-white/60">
+                  <RoleIcon size={18} className="text-neutral-700" />
+                </div>
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="p-2 rounded-2xl border border-neutral-100 bg-white/60 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-700 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
             </div>
 

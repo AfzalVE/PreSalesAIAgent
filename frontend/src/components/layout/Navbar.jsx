@@ -27,25 +27,7 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
           </div>
         )}
 
-        {/* Navigation Action Buttons */}
         <div className="flex items-center space-x-4">
-          {isAdmin ? (
-            <button
-              onClick={onToggleMode}
-              className="inline-flex items-center px-4 py-2 rounded-lg font-button-text text-xs font-semibold bg-primary-container text-navy-accent hover:shadow-md transition-all duration-200"
-            >
-              <UserCheck size={13} className="mr-1.5" />
-              Client Workspace
-            </button>
-          ) : (
-            <button
-              onClick={onToggleMode}
-              className="inline-flex items-center px-4 py-2 rounded-lg font-button-text text-xs font-semibold bg-white text-navy-accent border border-outline-variant/30 hover:bg-surface-container-low shadow-soft transition-all duration-200"
-            >
-              <ShieldAlert size={13} className="mr-1.5 text-primary" />
-              Admin Portal
-            </button>
-          )}
         </div>
       </div>
 
