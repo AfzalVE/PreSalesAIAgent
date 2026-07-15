@@ -3,6 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.database import Base, engine
+import app.models  # Ensures all models are registered
+
 # Routers (Uncomment as modules are created)
 # from app.api.v1.auth.auth_router import router as auth_router
 # from app.api.v1.users.user_router import router as user_router
@@ -20,6 +23,16 @@ async def lifespan(app: FastAPI):
     """
     Startup events
     """
+    print("🔨 Creating database tables...")
+    Base.metadata.create_all(bind=engine)
+    
+    # print("🌱 Seeding database...")
+    # from app.seed import seed_data
+    # try:
+    #     seed_data()
+    # except Exception as e:
+    #     print(f"⚠️ Seeding failed: {e}")
+        
     print("🚀 AI Proposal Generator API Started")
     yield
     print("🛑 AI Proposal Generator API Stopped")
