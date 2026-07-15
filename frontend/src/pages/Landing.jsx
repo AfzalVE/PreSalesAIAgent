@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, KeyRound, Mail, ArrowLeft, RefreshCw, X } from "lucide-react";
+import { ArrowRight, Check, KeyRound, Mail, ArrowLeft, RefreshCw, X, Sparkles, ShieldCheck, DollarSign } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
+import CardSwap, { Card } from "../components/common/CardSwap";
+import FlowingMenu from "../components/common/FlowingMenu";
+import Dock from "../components/common/Dock";
+import Threads from "../components/common/Threads";
 
 const countryCodes = [
   "US +1",
@@ -380,6 +384,15 @@ export default function Landing({ onAdminClick }) {
       </nav>
 
       <main className="relative z-10">
+        {/* Subtle WebGL Threads Background */}
+        <div className="absolute inset-x-0 top-0 h-[850px] pointer-events-none z-0 opacity-[0.25]">
+          <Threads
+            color={[0.0, 0.42, 0.36]}
+            amplitude={1.0}
+            distance={0.2}
+            enableMouseInteraction={true}
+          />
+        </div>
         {/* Hero Section */}
         <section className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-1 lg:grid-cols-2 gap-16 items-center pt-48 pb-24">
           <div className="space-y-stack-lg z-10 text-left">
@@ -572,6 +585,149 @@ export default function Landing({ onAdminClick }) {
           </div>
         </section>
 
+        {/* Interactive Lifecycle Showcase (CardSwap Component) */}
+        <section className="py-32 bg-[#fafaff] border-t border-b border-neutral-100/60 overflow-hidden">
+          <div className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+            
+            {/* Left side description */}
+            <div className="lg:col-span-5 space-y-6 text-left">
+              <span className="font-label-caps text-brand-600 bg-brand-50 px-3 py-1 rounded-full uppercase tracking-wider text-[11px] font-bold">
+                Interactive Walkthrough
+              </span>
+              <h2 className="font-display-lg text-4xl md:text-5xl text-navy-accent leading-tight">
+                Watch our AI architect in action.
+              </h2>
+              <p className="text-on-surface-variant text-base md:text-lg leading-relaxed">
+                Hover over the stack or click to pause. Our system seamlessly transitions from raw natural language input to production-ready team allocations and budget sheets.
+              </p>
+              <div className="pt-4 flex items-center gap-6">
+                <div className="flex items-center gap-2 text-xs font-bold text-neutral-500">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-pulse" />
+                  Realtime Scoping
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-neutral-500">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                  Staff Balancing
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-neutral-500">
+                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" />
+                  Autonomous Broker
+                </div>
+              </div>
+            </div>
+
+            {/* Right side large CardSwap deck */}
+            <div className="lg:col-span-7 relative h-[500px] w-full flex items-center justify-center overflow-visible">
+              <CardSwap
+                width={520}
+                height={420}
+                cardDistance={50}
+                verticalDistance={45}
+                delay={3500}
+                pauseOnHover={true}
+                skewAmount={3}
+              >
+                {/* Card 1: Intelligent Scoping */}
+                <Card className="flex flex-col justify-between border border-neutral-200/80 bg-white/95 rounded-3xl p-8 shadow-2xl">
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center pb-3 border-b border-neutral-100">
+                      <div>
+                        <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                          Phase 1: Intelligent Scoping
+                        </span>
+                        <h4 className="text-lg font-extrabold text-navy-accent mt-1">AI Voice Architect</h4>
+                      </div>
+                      <Sparkles className="text-brand-500 w-5 h-5 animate-pulse-subtle" />
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Natural Language Request</p>
+                      <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 text-xs italic text-neutral-600 leading-relaxed">
+                        "We need a secure online banking solution with SAML SSO, high-throughput microservices, and automatic load balancers."
+                      </div>
+                      <div className="p-4 bg-brand-50/50 rounded-2xl border border-brand-100 text-xs font-bold text-brand-700 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping" />
+                        Extracted: 5 core features, SAML SSO requirement, high-availability spec.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-neutral-100 flex justify-between items-center text-xs font-bold text-neutral-400">
+                    <span>Confidence: 99.8%</span>
+                    <span className="text-brand-600">Parsed in 340ms</span>
+                  </div>
+                </Card>
+
+                {/* Card 2: Resource Allocation Matrix */}
+                <Card className="flex flex-col justify-between border border-neutral-200/80 bg-white/95 rounded-3xl p-8 shadow-2xl">
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center pb-3 border-b border-neutral-100">
+                      <div>
+                        <span className="text-[10px] font-bold text-primary bg-primary-container/30 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                          Phase 2: Resource Balancing
+                        </span>
+                        <h4 className="text-lg font-extrabold text-navy-accent mt-1">Bench Staff Allocations</h4>
+                      </div>
+                      <ShieldCheck className="text-primary w-5 h-5" />
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Automated Team Matching</p>
+                      <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 text-xs">
+                        <div>
+                          <span className="font-bold text-neutral-800 block">Alex Rivera</span>
+                          <span className="text-[10px] text-neutral-500">Lead Architect • 9y Exp</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">
+                          100% Match
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100 text-xs">
+                        <div>
+                          <span className="font-bold text-neutral-800 block">Elena Rostova</span>
+                          <span className="text-[10px] text-neutral-500">Senior Full Stack Developer</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">
+                          94% Match
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-neutral-100 flex justify-between items-center text-xs font-bold text-neutral-400">
+                    <span>Total cost: $145,000</span>
+                    <span className="text-primary">3 developers assigned</span>
+                  </div>
+                </Card>
+
+                {/* Card 3: Interactive Negotiator */}
+                <Card className="flex flex-col justify-between border border-neutral-200/80 bg-white/95 rounded-3xl p-8 shadow-2xl">
+                  <div className="space-y-4 text-left">
+                    <div className="flex justify-between items-center pb-3 border-b border-neutral-100">
+                      <div>
+                        <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                          Phase 3: Autonomous Broker
+                        </span>
+                        <h4 className="text-lg font-extrabold text-navy-accent mt-1">Real-time Negotiation</h4>
+                      </div>
+                      <DollarSign className="text-purple-500 w-5 h-5" />
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Active Chat Thread</p>
+                      <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 text-xs text-purple-800">
+                        <strong>Client Proposal:</strong> "Can we reduce the budget by 15% and extend the duration?"
+                      </div>
+                      <div className="p-3 bg-brand-50/50 rounded-xl border border-brand-100 text-xs text-brand-800 font-semibold">
+                        <strong>AI Broker Agent:</strong> "Sure. I have removed Pulumi deployment and allocated 2 part-time devs. Budget adjusted to $123,000."
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-neutral-100 flex justify-between items-center text-xs font-bold text-neutral-400">
+                    <span>Draft: v1.3</span>
+                    <span className="text-purple-600 font-bold">Proposal Ready</span>
+                  </div>
+                </Card>
+              </CardSwap>
+            </div>
+          </div>
+        </section>
+
         {/* The Sovereign Way */}
         <section className="py-32 bg-white" id="about">
           <div className="max-w-container-max mx-auto px-6 md:px-margin-desktop">
@@ -718,6 +874,24 @@ export default function Landing({ onAdminClick }) {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Flowing Menu Showcase */}
+        <section className="relative w-full h-[550px] overflow-hidden border-t border-b border-neutral-100/60 bg-white">
+          <FlowingMenu
+            items={[
+              { link: '#', text: 'AI Scoping Estimator', image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=300' },
+              { link: '#', text: 'Resource Matching Matrix', image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=300' },
+              { link: '#', text: 'Interactive Negotiator', image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=300' },
+              { link: '#', text: 'Multi-Format Exporting', image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=300' }
+            ]}
+            speed={12}
+            textColor="#006b5d"
+            bgColor="#ffffff"
+            marqueeBgColor="#006b5d"
+            marqueeTextColor="#ffffff"
+            borderColor="rgba(0, 107, 93, 0.15)"
+          />
         </section>
 
         {/* Technology Grid */}
@@ -1637,6 +1811,45 @@ export default function Landing({ onAdminClick }) {
           </div>
         )}
       </AnimatePresence>
+
+      <Dock 
+        items={[
+          {
+            icon: <span className="material-symbols-outlined text-neutral-600 text-base">home</span>,
+            label: 'Home',
+            onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' })
+          },
+          {
+            icon: <span className="material-symbols-outlined text-neutral-600 text-base">info</span>,
+            label: 'About',
+            onClick: () => {
+              const el = document.getElementById('about');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          },
+          {
+            icon: <span className="material-symbols-outlined text-neutral-600 text-base">construction</span>,
+            label: 'Capabilities',
+            onClick: () => {
+              const el = document.getElementById('services');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
+          },
+          {
+            icon: <span className="material-symbols-outlined text-neutral-600 text-base">login</span>,
+            label: 'Client Portal',
+            onClick: () => triggerAuthFlow("entrance")
+          },
+          {
+            icon: <span className="material-symbols-outlined text-neutral-600 text-base">admin_panel_settings</span>,
+            label: 'Admin Portal',
+            onClick: onAdminClick
+          }
+        ]}
+        panelHeight={52}
+        baseItemSize={38}
+        magnification={52}
+      />
     </div>
   );
 }
