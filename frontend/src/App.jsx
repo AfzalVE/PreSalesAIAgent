@@ -61,7 +61,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
-      <Navbar isAdmin={isAdmin} onToggleMode={toggleAdminMode} />
+      {(activeStep > 0 || isAdmin) && <Navbar isAdmin={isAdmin} onToggleMode={toggleAdminMode} />}
       <main className="flex-grow">
         {renderActiveStep()}
       </main>
