@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse
-from app.services.ai_agent_service import extract_proposal_requirements
+from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
+from app.services.ai.ai_agent_service import extract_proposal_requirements, negotiate_proposal
 
 router = APIRouter()
 
@@ -15,3 +15,15 @@ async def extract_requirements(input_data: AgentTextInput):
         return extracted_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to extract requirements: {str(e)}")
+
+@router.post("/negotiate", response_model=NegotiationResponse)
+async def negotiate(input_data: NegotiationInput):
+    """
+    Negotiates proposal parameters using the AI Agent.
+    """
+    try:
+        negotiation_data = await negotiate_proposal(input_data)
+        return negotiation_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to negotiate: {str(e)}")
+

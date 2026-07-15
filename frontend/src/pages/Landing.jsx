@@ -443,14 +443,7 @@ export default function Landing() {
           <div className="relative mt-12 lg:mt-0 hero-graphic-shadow">
             <div className="glass-card p-8 relative z-10 overflow-hidden rounded-3xl border border-primary-container/70 bg-white/85 shadow-xl">
               <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center shadow-sm">
-                    <img
-                      src="/ve.png"
-                      alt="Pre Sales Platform"
-                      className="h-8 w-auto object-contain"
-                    />
-                  </div>
+                <div className="flex items-center">
                   <div className="text-left">
                     <h3 className="font-headline-md text-xl font-semibold text-navy-accent">
                       Pre Sales Dashboard

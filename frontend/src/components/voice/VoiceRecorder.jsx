@@ -4,38 +4,21 @@ import { Mic, MicOff, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import WaveformVisualizer from './WaveformVisualizer';
 import { useAppStore } from '../../store/useAppStore';
 
-const VOICE_SIMULATION_STEPS = [
-  {
-    aiPrompt: "Hi there! I'm the ProposalFlow AI assistant. What are you trying to build?",
-    userTranscript: "I want to build a mobile-first premium e-commerce portal called Zenith Retail. It needs a high-end storefront and an AI sizing recommendation engine.",
-    extract: { name: "Zenith Retail Portal", domain: "E-Commerce", features: ["High-end Storefront", "AI Sizing Recommendation Engine"], techStack: ["React", "Node.js"] }
-  },
-  {
-    aiPrompt: "That sounds exciting! What budget range are you considering for this project?",
-    userTranscript: "We have a budget of around eighty-five thousand dollars for this initial phase.",
-    extract: { budget: 85000 }
-  },
-  {
-    aiPrompt: "Understood. What timeline do you have in mind, and do you have any preferred backend technologies?",
-    userTranscript: "We need to launch within three months. For backend tech, we prefer Node.js and Postgres database.",
-    extract: { timeline: "12 Weeks", techStack: ["React", "Node.js", "PostgreSQL", "OpenAI API"] }
-  }
-];
-
 export default function VoiceRecorder({ onComplete }) {
   const { updateProjectData } = useAppStore();
-  const [currentStep, setCurrentStep] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [chatLog, setChatLog] = useState([
-    { sender: "ai", text: VOICE_SIMULATION_STEPS[0].aiPrompt }
+    { sender: "ai", text: "Hi there! I'm the ProposalFlow AI assistant. What are you trying to build? Please speak your requirements." }
   ]);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [recognition, setRecognition] = useState(null);
   
   const [extractedData, setExtractedData] = useState({
     name: "Pending...",
     features: [],
-    budget: 0,
+    budget: null,
     timeline: "Pending...",
     techStack: [],
     complexity: "Evaluating..."
@@ -47,83 +30,96 @@ export default function VoiceRecorder({ onComplete }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatLog, liveTranscript, isAiThinking]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      
+      rec.onresult = (event) => {
+        let currentTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        setLiveTranscript(currentTranscript);
+      };
+      
+      rec.onerror = (e) => {
+        console.error(e);
+        setIsRecording(false);
+      };
+      
+      setRecognition(rec);
+    }
+  }, []);
+
   const startVoiceCapture = () => {
-    if (isRecording || isAiThinking || currentStep >= VOICE_SIMULATION_STEPS.length) return;
-    
-    setIsRecording(true);
-    setLiveTranscript("");
-    
-    const stepData = VOICE_SIMULATION_STEPS[currentStep];
-    const words = stepData.userTranscript.split(" ");
-    let currentWordIndex = 0;
-    
-    // Simulate words appearing in transcription area in real-time
-    const interval = setInterval(() => {
-      if (currentWordIndex < words.length) {
-        setLiveTranscript(prev => prev + (prev ? " " : "") + words[currentWordIndex]);
-        currentWordIndex++;
-      } else {
-        clearInterval(interval);
-        finishVoiceStep(stepData);
-      }
-    }, 90);
+    if (!recognition) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
+
+    if (isRecording) {
+      recognition.stop();
+      setIsRecording(false);
+      processVoiceInput();
+    } else {
+      setLiveTranscript("");
+      recognition.start();
+      setIsRecording(true);
+      setHasInteracted(true);
+    }
   };
 
-  const finishVoiceStep = (stepData) => {
-    setIsRecording(false);
+  const processVoiceInput = async () => {
+    if (!liveTranscript.trim()) return;
+    
+    const userText = liveTranscript.trim();
+    setChatLog(prev => [...prev, { sender: "user", text: userText }]);
+    setLiveTranscript("");
     setIsAiThinking(true);
 
-    // AI Processes the transcription
-    setTimeout(() => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: userText })
+      });
+      const data = await res.json();
+      
+      // Update extracted panel
+      setExtractedData(prev => ({
+        name: data.project_name || prev.name,
+        features: [], // Since backend doesn't explicitly return features in the new schema, we just clear or keep.
+        budget: data.client_budget !== null ? data.client_budget : prev.budget,
+        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : prev.timeline,
+        techStack: data.resource_requirements ? data.resource_requirements.flatMap(r => r.skills) : prev.techStack,
+        complexity: "Analyzed"
+      }));
+
+      // Update AI chat
+      let reply = "Got it! Your requirements have been updated.";
+      if (data.follow_up_message) {
+        reply = data.follow_up_message;
+      }
+      setChatLog(prev => [...prev, { sender: "ai", text: reply }]);
+
+      // Push to store
+      updateProjectData({
+        name: data.project_name || extractedData.name,
+        budget: data.client_budget !== null ? data.client_budget : extractedData.budget,
+        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : extractedData.timeline,
+        estimatedTeam: data.resource_requirements ? data.resource_requirements.reduce((acc, curr) => acc + curr.count, 0) : 0
+      });
+
+    } catch (err) {
+      console.error(err);
+      setChatLog(prev => [...prev, { sender: "ai", text: "Error connecting to AI service." }]);
+    } finally {
       setIsAiThinking(false);
-      
-      // Update chat log
-      setChatLog(prev => [
-        ...prev,
-        { sender: "user", text: stepData.userTranscript }
-      ]);
-      
-      // Update extracted panel parameters
-      const updatedExtract = { ...extractedData, ...stepData.extract };
-      if (stepData.extract.features) {
-        updatedExtract.features = [...extractedData.features, ...stepData.extract.features];
-      }
-      if (stepData.extract.techStack) {
-        updatedExtract.techStack = Array.from(new Set([...extractedData.techStack, ...stepData.extract.techStack]));
-      }
-      if (currentStep === VOICE_SIMULATION_STEPS.length - 1) {
-        updatedExtract.complexity = "Medium-High";
-      }
-      setExtractedData(updatedExtract);
-      setLiveTranscript("");
-
-      // Proceed or set up next question
-      const nextStep = currentStep + 1;
-      if (nextStep < VOICE_SIMULATION_STEPS.length) {
-        setCurrentStep(nextStep);
-        setTimeout(() => {
-          setChatLog(prev => [
-            ...prev,
-            { sender: "ai", text: VOICE_SIMULATION_STEPS[nextStep].aiPrompt }
-          ]);
-        }, 1000);
-      } else {
-        // Complete collection, push back to store
-        updateProjectData({
-          name: updatedExtract.name,
-          domain: updatedExtract.domain,
-          description: "AI-generated from client voice requirements: A premium e-commerce portal named Zenith Retail features mobile optimization and an embedded artificial intelligence engine for clothing recommendation.",
-          techStack: updatedExtract.techStack,
-          budget: updatedExtract.budget,
-          timeline: updatedExtract.timeline,
-          complexity: updatedExtract.complexity,
-          estimatedTeam: 5
-        });
-      }
-    }, 1500);
+    }
   };
-
-  const isFinished = currentStep >= VOICE_SIMULATION_STEPS.length && !isAiThinking;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto items-stretch">
@@ -133,10 +129,11 @@ export default function VoiceRecorder({ onComplete }) {
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-brand-500 animate-ping" />
-            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Voice Session Active</span>
+            <span className={`w-2.5 h-2.5 rounded-full ${isRecording ? 'bg-red-500 animate-ping' : 'bg-neutral-300'}`} />
+            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              {isRecording ? "Voice Session Active" : "Voice Input"}
+            </span>
           </div>
-          <span className="text-xs font-medium text-neutral-400">Step {Math.min(currentStep + 1, 3)} of 3</span>
         </div>
 
         {/* Chat History bubble */}
@@ -154,7 +151,7 @@ export default function VoiceRecorder({ onComplete }) {
           ))}
 
           {/* Live Transcript displaying */}
-          {isRecording && (
+          {isRecording && liveTranscript && (
             <div className="flex justify-end">
               <div className="max-w-[85%] bg-neutral-900/10 text-neutral-800 font-medium rounded-2xl rounded-tr-none px-4 py-3 text-sm italic">
                 {liveTranscript}
@@ -167,7 +164,7 @@ export default function VoiceRecorder({ onComplete }) {
           {isAiThinking && (
             <div className="flex justify-start items-center space-x-2 py-2 text-neutral-400 text-xs">
               <Loader2 size={14} className="animate-spin text-brand-500" />
-              <span>Analyzing speech parameters...</span>
+              <span>Analyzing requirements with backend AI...</span>
             </div>
           )}
 
@@ -179,20 +176,20 @@ export default function VoiceRecorder({ onComplete }) {
           <WaveformVisualizer isRecording={isRecording} />
           
           <div className="mt-4 flex items-center space-x-4">
-            {!isFinished ? (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={startVoiceCapture}
-                disabled={isRecording || isAiThinking}
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
-                  isRecording 
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                    : 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer disabled:opacity-50'
-                }`}
-              >
-                {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
-              </motion.button>
-            ) : (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={startVoiceCapture}
+              disabled={isAiThinking}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
+                isRecording 
+                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                  : 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer disabled:opacity-50'
+              }`}
+            >
+              {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
+            </motion.button>
+            
+            {hasInteracted && !isRecording && !isAiThinking && (
               <motion.button
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
@@ -204,7 +201,7 @@ export default function VoiceRecorder({ onComplete }) {
               </motion.button>
             )}
             
-            {!isRecording && !isFinished && !isAiThinking && (
+            {!isRecording && !isAiThinking && !hasInteracted && (
               <span className="text-xs text-neutral-400 font-medium animate-pulse">
                 Click microphone to answer
               </span>
@@ -233,47 +230,25 @@ export default function VoiceRecorder({ onComplete }) {
               </div>
             </div>
 
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Domain</label>
-              <div className="text-sm font-medium mt-0.5 text-white/80">
-                {extractedData.domain || "Evaluating..."}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Extracted Features</label>
-              {extractedData.features.length === 0 ? (
-                <div className="text-xs italic text-neutral-500 mt-1">Listening for core modules...</div>
-              ) : (
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {extractedData.features.map((feat, idx) => (
-                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded bg-white/10 text-white/90 text-xs border border-white/5">
-                      {feat}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Budget</label>
                 <div className="text-sm font-semibold mt-0.5 text-brand-400">
-                  {extractedData.budget ? `$${extractedData.budget.toLocaleString()}` : "Pending..."}
+                  {extractedData.budget !== null ? `$${extractedData.budget.toLocaleString()}` : "Pending Employee Module"}
                 </div>
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Timeline</label>
                 <div className="text-sm font-semibold mt-0.5 text-white/90">
-                  {extractedData.timeline}
+                  {extractedData.timeline !== "Pending..." ? extractedData.timeline : "Pending Employee Module"}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Tech Stack</label>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Required Skills (Tech Stack)</label>
               {extractedData.techStack.length === 0 ? (
-                <div className="text-xs italic text-neutral-500 mt-1">Analyzing preference...</div>
+                <div className="text-xs italic text-neutral-500 mt-1">Analyzing...</div>
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {extractedData.techStack.map((tech, idx) => (
@@ -288,7 +263,7 @@ export default function VoiceRecorder({ onComplete }) {
         </div>
 
         <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Complexity Level</span>
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Status</span>
           <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
             extractedData.complexity === "Evaluating..." 
               ? 'bg-white/10 text-neutral-300'

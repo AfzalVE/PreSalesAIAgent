@@ -31,9 +31,58 @@ export default function NegotiationChat() {
 
   const messagesEndRef = useRef(null);
 
+  const [recognition, setRecognition] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = true;
+      
+      rec.onresult = (event) => {
+        let currentTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        setInputPrompt(currentTranscript);
+      };
+      
+      rec.onerror = (e) => {
+        console.error(e);
+        setIsRecording(false);
+      };
+      
+      rec.onend = () => {
+        setIsRecording(false);
+      };
+      
+      setRecognition(rec);
+    }
+  }, []);
+
+  const toggleMic = () => {
+    if (!recognition) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
+    
+    if (isRecording) {
+      recognition.stop();
+      setIsRecording(false);
+      // Let user manually send the prompt after stopping or we could auto-send.
+      // Auto-sending is a bit abrupt if they want to review it.
+    } else {
+      setInputPrompt("");
+      recognition.start();
+      setIsRecording(true);
+    }
+  };
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputPrompt;
@@ -171,14 +220,11 @@ export default function NegotiationChat() {
             <button
               type="button"
               disabled={isProcessing}
-              onClick={() => {
-                setInputPrompt("Integrate AI search recommendation algorithms");
-                alert("Simulating voice input: 'Integrate AI search recommendation algorithms'");
-              }}
-              className="p-2.5 rounded-lg bg-neutral-100 text-neutral-600 hover:bg-neutral-200 transition-colors disabled:opacity-40"
+              onClick={toggleMic}
+              className={`p-2.5 rounded-lg transition-colors disabled:opacity-40 ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}`}
               title="Speak to Broker"
             >
-              <Mic size={14} className="animate-pulse text-brand-600" />
+              <Mic size={14} className={isRecording ? 'text-white' : 'text-brand-600'} />
             </button>
 
             <button
