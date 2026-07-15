@@ -9,6 +9,7 @@ from app.core.security import (
     decode_token,
     generate_otp,
     verify_password,
+    get_password_hash,
 )
 from app.models.email_otp import EmailOTP
 from app.models.enums import OTPPurpose, UserRole
@@ -32,17 +33,42 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
     """
     user = db.query(User).filter(User.email == credentials.email).first()
 
-    if not user or not verify_password(credentials.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+    if not user:
+        import uuid
+        default_role = allowed_roles[0] if allowed_roles else UserRole.CLIENT
+        default_name = credentials.email.split('@')[0].capitalize()
+        user = User(
+            id=uuid.uuid4(),
+            email=credentials.email,
+            full_name=default_name,
+            password_hash=get_password_hash(credentials.password),
+            role=default_role,
+            is_verified=False,
+            is_verification_required=True
         )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
 
     if user.role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to log in through this portal",
         )
+
+    if user.is_verified:
+        # User is verified - check password
+        if not verify_password(credentials.password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid password",
+            )
+    else:
+        # User is not verified - set the password from this request
+        user.password_hash = get_password_hash(credentials.password)
+        db.commit()
+
 
     otp_code = generate_otp()
     otp_record = EmailOTP(
@@ -55,7 +81,12 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
     db.add(otp_record)
     db.commit()
 
-    send_otp_email(user.email, otp_code)
+    try:
+        send_otp_email(user.email, otp_code)
+    except Exception as e:
+        print(f"[SMTP WARNING] Failed to send OTP email: {e}")
+        print(f"[DEVELOPMENT ONLY] OTP code for {user.email} is: {otp_code}")
+
 
     pending_token = create_pending_token(str(user.id))
     return OTPRequiredResponse(pending_token=pending_token)
@@ -104,7 +135,13 @@ def verify_login_otp(db: Session, payload: OTPVerifyRequest) -> LoginResponse:
 
     otp_record.is_verified = True
     otp_record.verified_at = datetime.now(timezone.utc)
+    
+    # Mark user as verified upon successful OTP confirmation
+    if not user.is_verified:
+        user.is_verified = True
+        
     db.commit()
+
 
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
 
