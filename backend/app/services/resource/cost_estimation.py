@@ -179,48 +179,73 @@ def filter_candidates(
     1. Role (Exact match or flexible substring match, e.g. 'Backend Engineer' matches 'Senior Backend Engineer')
     2. Minimum experience
     3. Skills alignment if specific required skills are provided
+
+    Uses multi-tiered normalization to match synonyms ('developer' <-> 'engineer') and domain keywords.
     """
-    candidates = []
     req_role_lower = requirement.role.lower()
 
+    # Normalize synonyms
+    normalized_req = req_role_lower.replace("developer", "engineer").replace("programmer", "engineer").replace("specialist", "engineer")
+
+    # Domain keywords to check for overlap if exact strings differ
+    domain_keywords = ["backend", "frontend", "fullstack", "devops", "qa", "testing", "cloud", "security", "solutions", "architect", "data", "ai", "ml", "mobile", "ios", "android"]
+    req_domains = [kw for kw in domain_keywords if kw in req_role_lower]
+
+    def is_role_match(emp_role: str) -> bool:
+        emp_lower = emp_role.lower()
+        norm_emp = emp_lower.replace("developer", "engineer").replace("programmer", "engineer").replace("specialist", "engineer")
+        if norm_emp == normalized_req or normalized_req in norm_emp or norm_emp in normalized_req:
+            return True
+        if req_domains and any(domain in emp_lower for domain in req_domains):
+            return True
+        return False
+
+    # Tier 1: Role match + experience + skill overlap
+    tier1 = []
     for emp in employees:
-        emp_role_lower = emp["role"].lower()
-
-        # Role matching: exact match, or substring match
-        role_matches = (
-            emp_role_lower == req_role_lower
-            or req_role_lower in emp_role_lower
-            or emp_role_lower in req_role_lower
-        )
-        if not role_matches:
+        if not is_role_match(emp["role"]):
             continue
-
-        # Experience matching
         if emp["experience"] < requirement.minimum_experience:
             continue
-
-        # If specific required skills are listed, check skill overlap
         if requirement.skills:
             emp_skills_lower = [s.lower() for s in emp["skills"]]
             req_skills_lower = [s.lower() for s in requirement.skills]
-            # Ensure at least one skill matches if skills are requested
-            if not any(req_s in emp_skills_lower for req_s in req_skills_lower):
-                continue
+            if any(req_s in emp_skills_lower for req_s in req_skills_lower):
+                tier1.append(emp)
+        else:
+            tier1.append(emp)
 
-        candidates.append(emp)
+    if tier1:
+        return tier1
 
-    # If strict skill check filtered out everyone but role & experience matched, relax skill check
-    if not candidates and requirement.skills:
+    # Tier 2: Role match + experience (relaxing skill check)
+    tier2 = []
+    for emp in employees:
+        if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
+            tier2.append(emp)
+    if tier2:
+        return tier2
+
+    # Tier 3: Domain / synonym role match (relaxing experience requirements if exact level not available)
+    tier3 = []
+    for emp in employees:
+        if is_role_match(emp["role"]):
+            tier3.append(emp)
+    if tier3:
+        return tier3
+
+    # Tier 4: Skill match (if role wording differed but required skills match e.g. Python/FastAPI)
+    if requirement.skills:
+        tier4 = []
+        req_skills_lower = [s.lower() for s in requirement.skills]
         for emp in employees:
-            emp_role_lower = emp["role"].lower()
-            if (
-                emp_role_lower == req_role_lower
-                or req_role_lower in emp_role_lower
-                or emp_role_lower in req_role_lower
-            ) and emp["experience"] >= requirement.minimum_experience:
-                candidates.append(emp)
+            emp_skills_lower = [s.lower() for s in emp["skills"]]
+            if any(req_s in emp_skills_lower for req_s in req_skills_lower):
+                tier4.append(emp)
+        if tier4:
+            return tier4
 
-    return candidates
+    return []
 
 
 # ==========================================================
@@ -262,8 +287,12 @@ def select_resources(
 ) -> List[Dict[str, Any]]:
     """
     Returns the best N developers for a role.
+    If no specific candidate matched across tiers, falls back to best ranked available candidates
+    to ensure proposal resource allocation is never left empty (`[]`).
     """
     candidates = filter_candidates(employees, requirement)
+    if not candidates:
+        candidates = list(employees)
     ranked = rank_candidates(candidates)
     return ranked[: requirement.count]
 
@@ -417,6 +446,8 @@ def match_resources(
         "project_name": proposal.get("project_name", "Untitled AI Project Proposal"),
         "timeline_weeks": timeline_weeks,
         "client_budget": client_budget,
+        "recommended_budget": estimate.total_project_cost if client_budget is None else client_budget,
+        "budget": estimate.total_project_cost if client_budget is None else client_budget,
         "resource_requirements": resource_requirements_used,
         "selected_resources": resources,
         "developer_cost": estimate.developer_cost,
@@ -449,8 +480,8 @@ if __name__ == "__main__":
         "proposal_id": "PROP-DEMO-001",
         "project_name": "AI Proposal Generator MVP",
         "timeline_weeks": 12,
-        "client_budget": 85000.0,
-        "company_static_cost": 100.0,  # Fixed $100 overhead
+        "client_budget": 55000.0,
+        "company_static_cost": 100.0,
         "resource_requirements": [
             {
                 "role": "Senior Backend Engineer",
@@ -467,57 +498,25 @@ if __name__ == "__main__":
         ]
     }
 
-    # Mock employee list if DB is not active or for isolated testing
-    mock_employees = [
-        {
-            "employee_id": "EMP-101",
-            "name": "John Doe",
-            "role": "Senior Backend Engineer",
-            "skills": ["Python", "FastAPI", "PostgreSQL"],
-            "experience": 8,
-            "hourly_cost": 75.0,
-            "daily_capacity_hours": 8,
-            "allocated_hours": 0,
-            "available_hours": 8,
-            "bench_status": True,
-            "global_bench": False,
-        },
-        {
-            "employee_id": "EMP-102",
-            "name": "Jane Miller",
-            "role": "Senior Frontend Engineer",
-            "skills": ["React", "TypeScript", "Tailwind CSS"],
-            "experience": 6,
-            "hourly_cost": 70.0,
-            "daily_capacity_hours": 8,
-            "allocated_hours": 0,
-            "available_hours": 8,
-            "bench_status": True,
-            "global_bench": False,
-        }
-    ]
-
     print("\n========================================================")
     print(" 1. Testing Resource Match against REAL PostgreSQL DB ")
     print("========================================================\n")
     try:
         db_result = match_resources(sample_input)
-        print("✅ Matched successfully using live database candidates:")
+        print("[SUCCESS] Matched successfully using live database candidates:")
         print(json.dumps(db_result, indent=4))
     except Exception as e:
-        print(f"⚠️ Note: DB match encountered an issue or no active DB ({e}).")
+        print(f"[WARNING] Note: DB match encountered an issue or no active DB ({e}).")
 
     print("\n========================================================")
-    print(" 2. Testing Resource Match against Mock Candidate Pool ")
-    print("========================================================\n")
-    mock_result = match_resources(sample_input, employees=mock_employees)
-    print(json.dumps(mock_result, indent=4))
-
-    print("\n========================================================")
-    print(" 3. Testing Resource Match with NO CLIENT BUDGET (client_budget: None)")
+    print(" 2. Testing Resource Match with NO CLIENT BUDGET (client_budget: None)")
     print("========================================================\n")
     sample_no_budget = dict(sample_input)
     sample_no_budget["client_budget"] = None
-    no_budget_result = match_resources(sample_no_budget, employees=mock_employees)
-    print(json.dumps(no_budget_result, indent=4))
+    try:
+        no_budget_result = match_resources(sample_no_budget)
+        print("[SUCCESS] Matched successfully without client budget using live DB candidates:")
+        print(json.dumps(no_budget_result, indent=4))
+    except Exception as e:
+        print(f"[WARNING] Note: DB match encountered an issue ({e}).")
 

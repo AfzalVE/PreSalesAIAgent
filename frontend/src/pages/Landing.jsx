@@ -13,7 +13,7 @@ const countryCodes = [
   "SG +65",
 ];
 
-export default function Landing() {
+export default function Landing({ onAdminClick }) {
   const { setUser, setActiveStep } = useAppStore();
 
   // Single entrance validation
@@ -362,10 +362,16 @@ export default function Landing() {
               About
             </a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onAdminClick}
+              className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
+            >
+              Admin Login
+            </button>
             <button
               onClick={() => triggerAuthFlow("register")}
-              className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold"
+              className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm"
             >
               Get Started
             </button>
@@ -406,6 +412,12 @@ export default function Landing() {
                 <span className="material-symbols-outlined">
                   arrow_forward
                 </span>
+              </button>
+              <button
+                onClick={onAdminClick}
+                className="border border-outline/30 bg-white/50 px-8 py-4 rounded-xl font-button-text text-lg hover:bg-white hover:-translate-y-1 transition-all text-navy-accent font-semibold shadow-md flex items-center gap-2"
+              >
+                Admin Login
               </button>
               <button
                 onClick={() => triggerAuthFlow("entrance")}
