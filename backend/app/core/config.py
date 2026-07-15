@@ -10,13 +10,15 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        extra="ignore"
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # ----------------------------------
-    # App
+    # Application
     # ----------------------------------
     APP_NAME: str = "AI Proposal Generator API"
+    PROJECT_NAME: str = "AI Proposal Generator API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
@@ -33,9 +35,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ----------------------------------
-    # OpenAI
+    # AI Providers
     # ----------------------------------
     OPENAI_API_KEY: str | None = None
+    GROQ_API_KEY: str | None = None
 
     # ----------------------------------
     # SMTP
