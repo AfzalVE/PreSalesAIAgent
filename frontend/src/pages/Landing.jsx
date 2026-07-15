@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -28,6 +28,16 @@ const countryCodes = [
   "UAE +971",
   "SG +65",
 ];
+const Counter = ({
+  end,
+  duration = 2000,
+  delay = 0,
+  suffix = "",
+  prefix = "",
+  decimals = 0,
+  start = false,
+}) => {
+ 
 
 export default function Landing({ onAdminClick }) {
   const { setUser, setActiveStep } = useAppStore();
@@ -67,7 +77,29 @@ export default function Landing({ onAdminClick }) {
 
   // Modal display state
   const [showAuthModal, setShowAuthModal] = useState(false);
+const statsRef = useRef(null);
 
+const [startCounter, setStartCounter] = useState(false);
+
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        setStartCounter(true);
+        observer.disconnect();
+      }
+    },
+    {
+      threshold: 0.3,
+    }
+  );
+
+  if (statsRef.current) {
+    observer.observe(statsRef.current);
+  }
+
+  return () => observer.disconnect();
+}, []);
   const validateEntrance = (value) => {
     setEntranceInput(value);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -581,20 +613,34 @@ export default function Landing({ onAdminClick }) {
         </section>
 
         {/* Stats Section */}
-        <section className="bg-navy-accent py-20 relative overflow-hidden">
+       <section
+  ref={statsRef}
+  className="bg-navy-accent py-20 relative overflow-hidden"
+>
           <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none bg-grid"></div>
           <div className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-2 lg:grid-cols-4 gap-12 relative z-10 text-center">
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-                500+
-              </p>
+      <Counter
+    end={500}
+    suffix="+"
+    duration={2600}
+    delay={0}
+    start={startCounter}
+/>        </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Projects Delivered
               </p>
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-                120+
+             <Counter
+    end={120}
+    suffix="+"
+    duration={3400}
+    delay={300}
+    start={startCounter}
+/>
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Specialist Models
@@ -602,7 +648,13 @@ export default function Landing({ onAdminClick }) {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-                98%
+               <Counter
+    end={98}
+    suffix="%"
+    duration={4200}
+    delay={600}
+    start={startCounter}
+/>
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Customer Retention
@@ -610,7 +662,15 @@ export default function Landing({ onAdminClick }) {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-                $2.4B
+             <Counter
+    end={2.4}
+    prefix="$"
+    suffix="B"
+    decimals={1}
+    duration={5200}
+    delay={900}
+    start={startCounter}
+/>
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Pipeline Value
@@ -2073,4 +2133,5 @@ export default function Landing({ onAdminClick }) {
       />
     </div>
   );
+}
 }
