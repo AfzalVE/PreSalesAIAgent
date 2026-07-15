@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PlusCircle, Send, Trash2, Eye, Filter, RefreshCw, X, Mic } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
@@ -30,6 +30,28 @@ export default function ClientPortal() {
     { sender: "ai", text: "Welcome to the real-time scoping assistant. Feel free to refine your requirements here." }
   ]);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setChatInput(prev => (prev + " " + transcript).trim());
+        setIsRecordingVoice(false);
+      };
+      rec.onerror = (e) => {
+        console.error(e);
+        setIsRecordingVoice(false);
+      };
+      rec.onend = () => setIsRecordingVoice(false);
+      setRecognition(rec);
+    }
+  }, []);
 
   // Mock list of client's proposal requests
   const [requestsList, setRequestsList] = useState([
@@ -105,32 +127,56 @@ export default function ClientPortal() {
     setRequestsList(requestsList.filter(r => r.id !== id));
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || isChatLoading) return;
 
-    const userMsg = { sender: "user", text: chatInput };
+    const userText = chatInput.trim();
+    const userMsg = { sender: "user", text: userText };
     setChatLog(prev => [...prev, userMsg]);
     setChatInput("");
+    setIsChatLoading(true);
 
-    setTimeout(() => {
-      setChatLog(prev => [...prev, {
-        sender: "ai",
-        text: `Scoping updated. Adjusting metadata criteria for: "${userMsg.text}".`
-      }]);
-    }, 1000);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: userText })
+      });
+      const data = await res.json();
+      
+      let reply = "I've extracted your requirements and updated the project scope.";
+      if (data.follow_up_message) {
+        reply = data.follow_up_message;
+      }
+      
+      setChatLog(prev => [...prev, { sender: "ai", text: reply }]);
+      
+      updateProjectData({
+        name: data.project_name || projectData.name,
+        budget: data.client_budget || projectData.budget,
+        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline
+      });
+      
+    } catch (err) {
+      setChatLog(prev => [...prev, { sender: "ai", text: "Error connecting to AI service." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   const toggleVoiceRecording = () => {
-    setIsRecordingVoice(!isRecordingVoice);
-    if (!isRecordingVoice) {
-      setTimeout(() => {
-        setChatLog(prev => [...prev, {
-          sender: "user",
-          text: "Integrated dynamic billing engine with multi-currency subscriptions."
-        }]);
-        setIsRecordingVoice(false);
-      }, 3000);
+    if (!recognition) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
+    
+    if (isRecordingVoice) {
+      recognition.stop();
+      setIsRecordingVoice(false);
+    } else {
+      recognition.start();
+      setIsRecordingVoice(true);
     }
   };
 
@@ -434,6 +480,13 @@ export default function ClientPortal() {
                     </div>
                   </div>
                 ))}
+                {isChatLoading && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none animate-pulse">
+                      Analyzing...
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action buttons & form input */}
