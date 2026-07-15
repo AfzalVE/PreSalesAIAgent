@@ -37,7 +37,37 @@ const Counter = ({
   decimals = 0,
   start = false,
 }) => {
- 
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!start) return;
+    let startTime;
+    let animationFrame;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = timestamp - startTime - delay;
+      if (progress < 0) {
+        animationFrame = requestAnimationFrame(animate);
+        return;
+      }
+      
+      const percentage = Math.min(progress / duration, 1);
+      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
+      
+      setCount(end * easeOut);
+      
+      if (percentage < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration, delay, start]);
+
+  return <span>{prefix}{count.toFixed(decimals)}{suffix}</span>;
+};
 
 export default function Landing({ onAdminClick }) {
   const { setUser, setActiveStep } = useAppStore();
@@ -2162,5 +2192,4 @@ useEffect(() => {
       />
     </div>
   );
-}
 }
