@@ -330,7 +330,7 @@ export default function Landing() {
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm">
         <div className="flex justify-between items-center px-6 md:px-margin-desktop py-4 max-w-container-max mx-auto">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => triggerAuthFlow("entrance")}>
+          <div className="flex items-center gap-2">
             <img src="/ve.png" alt="Pre Sales Platform" className="h-9 w-auto object-contain" />
             <span className="font-display-lg text-2xl text-navy-accent font-extrabold tracking-tight">
               Pre Sales Platform
