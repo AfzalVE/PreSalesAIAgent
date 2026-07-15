@@ -10,19 +10,32 @@ import Negotiation from './pages/Negotiation';
 import FinalApproval from './pages/FinalApproval';
 import ClientPortal from './pages/ClientPortal';
 import AdminPortal from './pages/AdminPortal';
+import AdminLogin from './pages/AdminLogin';
+import AdminPortalRoute from './routes/AdminPortalRoute';
 
 function App() {
-  const { activeStep } = useAppStore();
+  const { activeStep, user } = useAppStore();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
 
   const toggleAdminMode = () => {
     setIsAdmin(!isAdmin);
+    setShowAdminLogin(!showAdminLogin);
   };
 
   const renderActiveStep = () => {
     if (isAdmin) {
-      return <AdminPortal />;
+      if (!user?.role) {
+        return <AdminLogin onLogin={() => { setShowAdminLogin(false); }} />;
+      }
+
+      return (
+        <AdminPortalRoute>
+          <AdminPortal />
+        </AdminPortalRoute>
+      );
     }
+
 
     switch (activeStep) {
       case 0:
@@ -48,7 +61,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
-      <Navbar isAdmin={isAdmin} onToggleMode={toggleAdminMode} />
+      {(activeStep > 0 || isAdmin) && <Navbar isAdmin={isAdmin} onToggleMode={toggleAdminMode} />}
       <main className="flex-grow">
         {renderActiveStep()}
       </main>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Mic, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 
@@ -129,19 +129,11 @@ export default function Onboarding() {
                   budget: 100000,
                   timeline: "12 Weeks"
                 });
-                setActiveStep(7); // Redirects straight to ClientPortal dashboard chat tab
+                setActiveStep(5); // Redirects straight to negotiation AI chat
               }}
-              className="px-3.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold transition-all duration-200"
+              className="px-3.5 py-1.5 rounded-xl bg-primary-container text-navy-accent text-xs font-bold hover:shadow-md transition-all duration-200"
             >
               Skip to AI Chat
-            </button>
-
-            <button 
-              onClick={() => setActiveStep(2)} // Route to voice capture page
-              className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-bold border border-brand-100/30 transition-all duration-200"
-            >
-              <Mic size={12} className="mr-1.5 animate-pulse" />
-              Switch to Voice
             </button>
           </div>
         </div>
@@ -170,7 +162,7 @@ export default function Onboarding() {
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={question.placeholder}
                 rows={4}
-                className="w-full bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white text-xs outline-none p-4 rounded-xl border border-neutral-200 focus:border-brand-500 transition-all duration-200 text-neutral-800 resize-none font-semibold"
+                className="w-full bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white text-xs outline-none p-4 rounded-xl border border-neutral-200 focus:border-primary transition-all duration-200 text-neutral-800 resize-none font-semibold"
               />
             ) : (
               <input
@@ -178,7 +170,7 @@ export default function Onboarding() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={question.placeholder}
-                className="w-full h-12 bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white text-xs outline-none px-4 rounded-xl border border-neutral-200 focus:border-brand-500 transition-all duration-200 text-neutral-800 font-semibold"
+                className="w-full h-12 bg-neutral-50 hover:bg-neutral-100/60 focus:bg-white text-xs outline-none px-4 rounded-xl border border-neutral-200 focus:border-primary transition-all duration-200 text-neutral-800 font-semibold"
               />
             )}
             {question.helper && (
@@ -195,7 +187,7 @@ export default function Onboarding() {
             {ONBOARDING_QUESTIONS.map((q, idx) => (
               <div 
                 key={q.key} 
-                className={`w-2 h-2 rounded-full ${idx <= currentIdx ? 'bg-brand-500' : 'bg-neutral-200'}`}
+                className={`w-2 h-2 rounded-full ${idx <= currentIdx ? 'bg-primary' : 'bg-neutral-200'}`}
               />
             ))}
           </div>
@@ -215,7 +207,7 @@ export default function Onboarding() {
               disabled={!inputValue.trim() && !question.optional}
               className={`inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
                 inputValue.trim() || question.optional
-                  ? 'bg-brand-500 text-white hover:bg-brand-600 shadow-md shadow-brand-500/10 cursor-pointer'
+                  ? 'bg-primary-container text-navy-accent hover:shadow-md cursor-pointer'
                   : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
               }`}
             >
