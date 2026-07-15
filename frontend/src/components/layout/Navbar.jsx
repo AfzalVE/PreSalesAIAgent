@@ -1,14 +1,24 @@
-import { ShieldAlert, UserCheck } from "lucide-react";
+import { ShieldAlert, UserCheck, ArrowLeft } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import JourneyStepper from "../common/JourneyStepper";
 
 export default function Navbar({ isAdmin = false, onToggleMode }) {
-  const { activeStep } = useAppStore();
+  const { activeStep, setActiveStep } = useAppStore();
+
+  const handleBack = () => {
+    if (activeStep === 2) {
+      setActiveStep(0); // Voice Capture -> Landing
+    } else if (activeStep === 3) {
+      setActiveStep(1); // Summary -> Onboarding
+    } else if (activeStep > 1) {
+      setActiveStep(activeStep - 1); // Generic previous step
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full py-4 px-4 sm:px-8 border-b border-outline-variant/20 bg-surface/80 backdrop-blur-md shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Brand Logo */}
+        {/* Brand Logo & Back Button */}
         <div className="flex items-center space-x-2.5">
           <img
             src="/ve.png"
@@ -27,25 +37,7 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
           </div>
         )}
 
-        {/* Navigation Action Buttons */}
         <div className="flex items-center space-x-4">
-          {isAdmin ? (
-            <button
-              onClick={onToggleMode}
-              className="inline-flex items-center px-4 py-2 rounded-lg font-button-text text-xs font-semibold bg-primary-container text-navy-accent hover:shadow-md transition-all duration-200"
-            >
-              <UserCheck size={13} className="mr-1.5" />
-              Client Workspace
-            </button>
-          ) : (
-            <button
-              onClick={onToggleMode}
-              className="inline-flex items-center px-4 py-2 rounded-lg font-button-text text-xs font-semibold bg-white text-navy-accent border border-outline-variant/30 hover:bg-surface-container-low shadow-soft transition-all duration-200"
-            >
-              <ShieldAlert size={13} className="mr-1.5 text-primary" />
-              Admin Portal
-            </button>
-          )}
         </div>
       </div>
 

@@ -26,13 +26,13 @@ class Settings(BaseSettings):
     # ----------------------------------
     # Database
     # ----------------------------------
-    DATABASE_URL: str
+    DATABASE_URL:str='postgresql+psycopg://neondb_owner:npg_wgxYMB8psS4E@ep-odd-heart-addo8465-pooler.c-2.us-east-1.aws.neon.tech/presalesmanagement?sslmode=require&channel_binding=require'
 
     # ----------------------------------
     # JWT
     # ----------------------------------
-    SECRET_KEY: str
-    ALGORITHM: str = "HS256"
+    SECRET_KEY:str ='your_super_secret_key_here'
+    ALGORITHM: str = 'HS256'
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ----------------------------------

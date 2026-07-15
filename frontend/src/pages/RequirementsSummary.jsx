@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { useState } from 'react';
 import { ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
+=======
+import { ArrowLeft, ArrowRight, Cpu, Clock, Users, ArrowUpRight } from 'lucide-react';
+>>>>>>> 52a8096acb83de608f08d45905f0dc3197cdacae
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 import AnimatedCard from '../components/common/AnimatedCard';
@@ -32,6 +36,19 @@ export default function RequirementsSummary() {
 
       <div className="max-w-5xl mx-auto space-y-10 relative z-10">
         
+        {/* Header Indicator */}
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setActiveStep(1)}
+              className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-neutral-400">Project Blueprint</span>
+          </div>
+        </div>
+
         {/* Title Wise-style Header */}
         <div className="text-center space-y-3">
           <h2 className="text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">

@@ -26,7 +26,15 @@ function App() {
   const renderActiveStep = () => {
     if (isAdmin) {
       if (!user?.role) {
-        return <AdminLogin onLogin={() => { setShowAdminLogin(false); }} />;
+        return (
+          <AdminLogin
+            onLogin={() => { setShowAdminLogin(false); }}
+            onCancel={() => {
+              setIsAdmin(false);
+              setShowAdminLogin(false);
+            }}
+          />
+        );
       }
 
       return (
@@ -39,7 +47,10 @@ function App() {
 
     switch (activeStep) {
       case 0:
-        return <Landing />;
+        return <Landing onAdminClick={() => {
+          setIsAdmin(true);
+          setShowAdminLogin(true);
+        }} />;
       case 1:
         return <Onboarding />;
       case 2:
@@ -55,7 +66,10 @@ function App() {
       case 7:
         return <ClientPortal />;
       default:
-        return <Landing />;
+        return <Landing onAdminClick={() => {
+          setIsAdmin(true);
+          setShowAdminLogin(true);
+        }} />;
     }
   };
 

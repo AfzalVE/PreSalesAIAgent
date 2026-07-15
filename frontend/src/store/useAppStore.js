@@ -27,14 +27,14 @@ export const useAppStore = create((set, get) => ({
     emailOrPhone: '',
     isVerified: false
   },
-  
+
   // Navigation & Guided Steps
   // Steps: 0: Landing, 1: Onboarding, 2: Voice, 3: Summary, 4: Evolution, 5: Negotiation, 6: Approval
   activeStep: 0,
-  
+
   // Project specifications
   projectData: { ...INITIAL_PROJECT_DATA },
-  
+
   // Voice Recording state
   voiceData: {
     isRecording: false,
@@ -48,47 +48,47 @@ export const useAppStore = create((set, get) => ({
       complexity: ''
     }
   },
-  
+
   // Proposals & Stages
   proposalStages: { ...MOCK_PROPOSAL_STAGES },
   selectedProposalStage: 'growth', // 'mvp' | 'growth' | 'enterprise'
-  
+
   // Active (negotiated) versions
   activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
   negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
   negotiationError: '',
-  
+
   // Actions
   setUser: (userData) => set({ user: userData }),
   setActiveStep: (step) => set({ activeStep: step }),
-  
+
   updateProjectData: (data) => set((state) => {
     const updated = { ...state.projectData, ...data };
-    
+
     // Automatically update proposals based on user onboarding choices
     const currentGrowth = { ...state.proposalStages.growth };
     currentGrowth.budget = updated.budget || currentGrowth.budget;
     currentGrowth.timeline = updated.timeline || currentGrowth.timeline;
-    
-    return { 
+
+    return {
       projectData: updated,
       activeProposal: currentGrowth
     };
   }),
-  
+
   setVoiceData: (data) => set((state) => ({
     voiceData: { ...state.voiceData, ...data }
   })),
-  
+
   setSelectedProposalStage: (stage) => set((state) => ({
     selectedProposalStage: stage,
     activeProposal: { ...state.proposalStages[stage] }
   })),
-  
+
   addNegotiationHistory: (entry) => set((state) => ({
     negotiationHistory: [entry, ...state.negotiationHistory]
   })),
-  
+
   generateProposalsFromBackend: async () => {
     const store = get();
     const payload = {
@@ -101,14 +101,14 @@ export const useAppStore = create((set, get) => ({
     };
 
     try {
-      const response = await fetch("http://localhost:8001/api/v1/proposals/generate-demo", {
+      const response = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       if (!response.ok) throw new Error("Failed to generate proposals");
       const data = await response.json();
-      
+
       const mvpProposal = data.proposals.find(p => p.proposal_type === "MVP");
       const fullProposal = data.proposals.find(p => p.proposal_type === "FULL");
 
@@ -174,13 +174,12 @@ export const useAppStore = create((set, get) => ({
 
   selectProposalFromBackend: async (proposalId) => {
     try {
-      const response = await fetch(`http://localhost:8001/api/v1/proposals/${proposalId}/select`, {
+      const response = await fetch(`http://localhost:8000/api/v1/proposals/${proposalId}/select`, {
         method: "POST"
       });
       if (!response.ok) throw new Error("Failed to select proposal");
-
       const data = await response.json();
-      
+
       set((state) => ({
         activeProposal: {
           ...state.activeProposal,
@@ -206,7 +205,7 @@ export const useAppStore = create((set, get) => ({
   }),
 
 
-  
+
   // AI Negotiation Logic
   applyNegotiationRequest: (clientPrompt) => {
     const prompt = clientPrompt.toLowerCase();
@@ -214,10 +213,10 @@ export const useAppStore = create((set, get) => ({
     const currentProposal = { ...store.activeProposal };
     let responseText;
     let negotiationError = "";
-    
+
     // Create copy for new version history
     const nextVersionNum = `v1.${store.negotiationHistory.length}`;
-    
+
     // 1. Check for budget reduction request
     if (prompt.includes("budget") && (prompt.includes("reduce") || prompt.includes("cut") || prompt.includes("lower") || prompt.includes("less"))) {
       let reductionPercent = 20; // default 20%
@@ -225,9 +224,9 @@ export const useAppStore = create((set, get) => ({
       if (match) {
         reductionPercent = parseInt(match[1], 10);
       }
-      
+
       const newBudget = Math.round(currentProposal.budget * (1 - reductionPercent / 100));
-      
+
       if (newBudget < 25000) {
         negotiationError = "Reducing the budget below $25,000 might compromise critical software quality standards. We recommend scheduling a direct kickoff to talk scope reductions.";
         responseText = "I cannot automatically lower the budget that far without dropping key deliverables. Let me flag this for manager approval, or we can scale down requirements.";
@@ -254,19 +253,19 @@ export const useAppStore = create((set, get) => ({
           }
         }));
       }
-    } 
+    }
     // 3. Timeline adjustment request
     else if (prompt.includes("month") || prompt.includes("week") || prompt.includes("launch in") || prompt.includes("timeline")) {
       const matchWeeks = prompt.match(/(\d+)\s*week/);
       const matchMonths = prompt.match(/(\d+)\s*month/);
       let targetWeeks = 8;
-      
+
       if (matchWeeks) {
         targetWeeks = parseInt(matchWeeks[1], 10);
       } else if (matchMonths) {
         targetWeeks = parseInt(matchMonths[1], 10) * 4;
       }
-      
+
       if (targetWeeks < 5) {
         negotiationError = "A release timeline shorter than 5 weeks is highly risky for enterprise-grade applications. We recommend connecting with management to discuss MVP phases.";
         responseText = "That timeline is extremely tight for the planned feature set. Let's arrange a human call to discuss dropping non-critical modules.";
@@ -296,12 +295,12 @@ export const useAppStore = create((set, get) => ({
     else {
       responseText = "Your request was processed by the AI Proposal Broker. I've updated the blueprints, modified allocation metrics, and adjusted details on the flight.";
     }
-    
+
     if (negotiationError) {
       set({ negotiationError });
       return { success: false, text: responseText, error: negotiationError };
     }
-    
+
     const newHistoryEntry = {
       version: nextVersionNum,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -310,13 +309,13 @@ export const useAppStore = create((set, get) => ({
       author: "Client Request",
       changeDescription: `Prompt: "${clientPrompt}". AI Adjustment: ${responseText}`
     };
-    
+
     set((state) => ({
       activeProposal: currentProposal,
       negotiationHistory: [newHistoryEntry, ...state.negotiationHistory],
       negotiationError: ''
     }));
-    
+
     return { success: true, text: responseText };
   }
 }));
