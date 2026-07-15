@@ -53,7 +53,7 @@ export default function Negotiation() {
 
           <button
             onClick={handleApproveProposal}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-xs hover:bg-brand-600 shadow-md flex items-center justify-center transition-all duration-200"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primary/90 shadow-md flex items-center justify-center transition-all duration-200"
           >
             Approve & Lock Blueprint
             <FileCheck2 size={14} className="ml-1.5" />
