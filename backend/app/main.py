@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from app.api.v1.resource_allocation.resource_router import router as resource_router
 # from app.api.v1.poc.poc_router import router as poc_router
 # from app.api.v1.pdf.pdf_router import router as pdf_router
-
+from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,3 +83,4 @@ async def health():
 # app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
 # app.include_router(poc_router, prefix="/api/v1/poc", tags=["POC"])
 # app.include_router(pdf_router, prefix="/api/v1/pdf", tags=["PDF"])
+app.include_router(ai_agent_router, prefix="/api/v1/ai-agent", tags=["AI Agent"])
