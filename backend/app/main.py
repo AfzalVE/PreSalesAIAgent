@@ -13,7 +13,7 @@ import app.models  # Ensures all models are registered
 # from app.api.v1.proposal_requests.proposal_request_router import router as proposal_request_router
 # from app.api.v1.proposals.proposal_router import router as proposal_router
 # from app.api.v1.cost_estimation.cost_router import router as cost_router
-# from app.api.v1.resource_allocation.resource_router import router as resource_router
+from app.api.v1.resource_allocation.resource_router import router as resource_router
 # from app.api.v1.poc.poc_router import router as poc_router
 # from app.api.v1.pdf.pdf_router import router as pdf_router
 from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
@@ -92,7 +92,7 @@ async def health():
 # app.include_router(employee_router, prefix="/api/v1/employees", tags=["Employees"])
 # app.include_router(proposal_request_router, prefix="/api/v1/proposal-requests", tags=["Proposal Requests"])
 # app.include_router(cost_router, prefix="/api/v1/cost-estimation", tags=["Cost Estimation"])
-# app.include_router(resource_router, prefix="/api/v1/resource-allocation", tags=["Resource Allocation"])
+app.include_router(resource_router, prefix="/api/v1/resource-allocation", tags=["Resource Allocation"])
 # app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
 # app.include_router(poc_router, prefix="/api/v1/poc", tags=["POC"])
 # app.include_router(pdf_router, prefix="/api/v1/pdf", tags=["PDF"])
