@@ -16,3 +16,17 @@ class AgentExtractionResponse(BaseModel):
     client_budget: Optional[float] = Field(None, description="The budget of the client in USD. If not provided, leave it null for downstream calculation.")
     resource_requirements: Optional[List[ResourceRequirement]] = Field(None, description="The list of resources required for the project. If not provided, leave it null for downstream calculation.")
     follow_up_message: Optional[str] = Field(None, description="A message to ask the user follow-up questions if budget, timeline, or resources were missing and had to be suggested. Leave null if everything was provided.")
+
+class NegotiationInput(BaseModel):
+    user_request: str = Field(..., description="The user's negotiation request (e.g. 'lower budget by 20%').")
+    current_budget: float = Field(..., description="The current budget.")
+    current_timeline: str = Field(..., description="The current timeline (e.g. '12 Weeks').")
+    current_tech_stack: List[str] = Field(default_factory=list, description="The current tech stack.")
+
+class NegotiationResponse(BaseModel):
+    new_budget: float = Field(..., description="The updated budget after negotiation.")
+    new_timeline: str = Field(..., description="The updated timeline after negotiation.")
+    new_tech_stack: List[str] = Field(..., description="The updated tech stack after negotiation.")
+    response_message: str = Field(..., description="The AI's conversational response explaining the adjustments.")
+    success: bool = Field(..., description="Whether the negotiation was successful (e.g. false if budget requested is impossibly low).")
+    error_message: Optional[str] = Field(None, description="Warning or error message if success is false.")

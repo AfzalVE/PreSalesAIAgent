@@ -2,7 +2,7 @@ import json
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 from app.core.config import settings
-from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse
+from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 
 # Initialize the OpenAI client asynchronously, pointing to Groq's API
 client = AsyncOpenAI(
