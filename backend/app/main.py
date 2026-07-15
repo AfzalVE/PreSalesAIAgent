@@ -11,39 +11,51 @@ import app.models  # Ensures all models are registered
 # from app.api.v1.users.user_router import router as user_router
 # from app.api.v1.employees.employee_router import router as employee_router
 # from app.api.v1.proposal_requests.proposal_request_router import router as proposal_request_router
-# from app.api.v1.proposals.proposal_router import router as proposal_router
-# from app.api.v1.cost_estimation.cost_router import router as cost_router
+from fastapi.staticfiles import StaticFiles
 from app.api.v1.resource_allocation.resource_router import router as resource_router
-# from app.api.v1.poc.poc_router import router as poc_router
-# from app.api.v1.pdf.pdf_router import router as pdf_router
+from app.api.v1.proposals.proposal_router import router as proposal_router
 from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Startup events
     """
-    print("🔨 Creating database tables...")
+    print("[DB] Creating database tables...")
     Base.metadata.create_all(bind=engine)
     
-    # print("🌱 Seeding database...")
-    # from app.seed import seed_data
-    # try:
-    #     seed_data()
-    # except Exception as e:
-    #     print(f"⚠️ Seeding failed: {e}")
+    # Run manual migration for timeline_phases
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS timeline_phases JSONB"))
+            conn.commit()
+            print("[DB] Database migration: proposals.timeline_phases verified/created.")
+    except Exception as e:
+        print(f"[DB] Migration failed: {e}")
+
+    
+    print("[DB] Seeding database...")
+    from app.seed import seed_data
+    try:
+        seed_data()
+    except Exception as e:
+        print(f"[DB] Seeding failed: {e}")
         
-    print("🚀 AI Proposal Generator API Started")
+    print("[API] AI Proposal Generator API Started")
     yield
-    print("🛑 AI Proposal Generator API Stopped")
+    print("[API] AI Proposal Generator API Stopped")
+
 
 
 app = FastAPI(
     title="AI Proposal Generator API",
     version="1.0.0",
     description="Backend API for AI Proposal Generator Platform",
-    lifespan=lifespan,
-)
+#     lifespan=lifespan,
+ )
 
 # ----------------------------
 # CORS
@@ -93,7 +105,10 @@ async def health():
 # app.include_router(proposal_request_router, prefix="/api/v1/proposal-requests", tags=["Proposal Requests"])
 # app.include_router(cost_router, prefix="/api/v1/cost-estimation", tags=["Cost Estimation"])
 app.include_router(resource_router, prefix="/api/v1/resource-allocation", tags=["Resource Allocation"])
-# app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
-# app.include_router(poc_router, prefix="/api/v1/poc", tags=["POC"])
-# app.include_router(pdf_router, prefix="/api/v1/pdf", tags=["PDF"])
+app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
 app.include_router(ai_agent_router, prefix="/api/v1/ai-agent", tags=["AI Agent"])
+
+# Mount static folder for proposals
+import os
+os.makedirs("app/static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")

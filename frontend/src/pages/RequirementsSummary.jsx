@@ -1,15 +1,30 @@
-import { ArrowRight, Cpu, Clock, Users, ArrowUpRight } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 import AnimatedCard from '../components/common/AnimatedCard';
 import SkillTag from '../components/common/SkillTag';
 
 export default function RequirementsSummary() {
-  const { projectData, setActiveStep } = useAppStore();
+  const { projectData, setActiveStep, generateProposalsFromBackend } = useAppStore();
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateProposals = () => {
-    setActiveStep(4); // Navigate to Proposal Comparison Page
+  const handleCreateProposals = async () => {
+    setLoading(true);
+    try {
+      const res = await generateProposalsFromBackend();
+      if (res.success) {
+        setActiveStep(4); // Navigate to Proposal Comparison Page
+      } else {
+        alert("Failed to generate proposals: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
@@ -121,10 +136,20 @@ export default function RequirementsSummary() {
         <div className="flex justify-center pt-4">
           <button
             onClick={handleCreateProposals}
-            className="inline-flex items-center px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-sm hover:bg-brand-600 shadow-md transition-all duration-200"
+            disabled={loading}
+            className="inline-flex items-center px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-sm hover:bg-brand-600 shadow-md transition-all duration-200 disabled:opacity-50"
           >
-            Review Custom Proposals
-            <ArrowUpRight size={16} className="ml-1.5" />
+            {loading ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Generating Custom Proposals...
+              </>
+            ) : (
+              <>
+                Review Custom Proposals
+                <ArrowUpRight size={16} className="ml-1.5" />
+              </>
+            )}
           </button>
         </div>
 
@@ -132,3 +157,4 @@ export default function RequirementsSummary() {
     </div>
   );
 }
+

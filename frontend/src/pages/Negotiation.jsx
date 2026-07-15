@@ -1,14 +1,29 @@
-import { FileCheck2 } from 'lucide-react';
+import { useState } from 'react';
+import { FileCheck2, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import NegotiationChat from '../components/proposal/NegotiationChat';
 import FloatingBackground from '../components/common/FloatingBackground';
 
 export default function Negotiation() {
-  const { setActiveStep, activeProposal } = useAppStore();
+  const { setActiveStep, activeProposal, selectProposalFromBackend } = useAppStore();
+  const [isCompiling, setIsCompiling] = useState(false);
 
-  const handleApproveProposal = () => {
-    setActiveStep(6); // Navigate to Final Approval Page
+  const handleApproveProposal = async () => {
+    setIsCompiling(true);
+    try {
+      const res = await selectProposalFromBackend(activeProposal.id);
+      if (res.success) {
+        setActiveStep(6); // Navigate to Final Approval Page
+      } else {
+        alert("Failed to finalize proposal: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCompiling(false);
+    }
   };
+
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
@@ -40,10 +55,20 @@ export default function Negotiation() {
 
           <button
             onClick={handleApproveProposal}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-xs hover:bg-brand-600 shadow-md flex items-center justify-center transition-all duration-200"
+            disabled={isCompiling}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-xs hover:bg-brand-600 shadow-md flex items-center justify-center transition-all duration-200 disabled:opacity-50"
           >
-            Approve & Lock Blueprint
-            <FileCheck2 size={14} className="ml-1.5" />
+            {isCompiling ? (
+              <>
+                <Loader2 size={14} className="mr-1.5 animate-spin" />
+                Compiling Final Proposal...
+              </>
+            ) : (
+              <>
+                Approve & Lock Blueprint
+                <FileCheck2 size={14} className="ml-1.5" />
+              </>
+            )}
           </button>
         </div>
 
@@ -51,3 +76,4 @@ export default function Negotiation() {
     </div>
   );
 }
+

@@ -108,6 +108,12 @@ class Proposal(Base):
         default=ProposalStatus.GENERATED,
     )
 
+    timeline_phases: Mapped[list] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

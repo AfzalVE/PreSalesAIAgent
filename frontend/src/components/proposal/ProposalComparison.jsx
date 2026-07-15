@@ -133,8 +133,9 @@ export default function ProposalComparison() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <BudgetChart budget={activeProposal.budget} />
-            <TimelineRoadmap timeline={activeProposal.timeline} />
+            <TimelineRoadmap timeline={activeProposal.timeline} timelinePhases={activeProposal.timeline_phases} />
           </div>
+
         </div>
 
         {/* Right Side: Stacked Features & Team Nodes */}

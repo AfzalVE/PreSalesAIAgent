@@ -1,0 +1,166 @@
+import os
+import uuid
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.core.database import SessionLocal
+from app.models.user import User
+from app.models.enums import UserRole
+from app.models.proposal import Proposal, ProposalStatus, ProposalType
+from app.models.final_proposal import FinalProposal
+from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
+from app.services.proposal.proposal_generation_service import generate_proposals_for_request
+from app.services.proposal.docx_generator import generate_proposal_docx
+
+router = APIRouter()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class GenerateDemoRequest(BaseModel):
+    project_name: Optional[str] = Field(None, description="Project Name")
+    project_description: Optional[str] = Field(None, description="Description")
+    business_domain: Optional[str] = Field(None, description="Business Domain")
+    preferred_technology: Optional[List[str]] = Field(default_factory=list, description="Technologies")
+    budget: Optional[float] = Field(None, description="Budget Goals")
+    timeline: Optional[str] = Field(None, description="Timeline Expectation")
+
+@router.post("/generate-demo", summary="Generate MVP and Full Proposals")
+async def generate_demo_proposals(
+    payload: GenerateDemoRequest,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Generates two proposal options (MVP and Full Product) using AI.
+    Infers missing fields if any data is not present.
+    """
+    client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
+    if not client_user:
+        client_user = db.query(User).first()
+    
+    if client_user:
+        client_id = client_user.id
+    else:
+        # Static UUID fallback if database is empty
+        client_id = uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+
+    print(f"Generating proposals for client_id: {client_id}")
+    try:
+        result = await generate_proposals_for_request(
+            db=db,
+            client_id=client_id,
+            project_name=payload.project_name,
+            project_description=payload.project_description,
+            business_domain=payload.business_domain,
+            preferred_technology=payload.preferred_technology,
+            budget=payload.budget,
+            timeline=payload.timeline
+        )
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Proposal generation failed: {str(e)}"
+        )
+
+@router.post("/{proposal_id}/select", summary="Approve and finalize a proposal")
+async def select_proposal(
+    proposal_id: uuid.UUID,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Approves the chosen proposal, rejects other options under the same request,
+    creates the final proposal, generates the finalized Word document from the template,
+    and returns details including the download path.
+    """
+    print(proposal_id)
+    proposal = db.query(Proposal).filter(Proposal.id == proposal_id).first()
+    if not proposal:
+        raise HTTPException(
+            status_code=404,
+            detail="Proposal not found"
+        )
+
+    try:
+        # Approve selected proposal
+        proposal.status = ProposalStatus.APPROVED
+        
+        # Reject sibling proposals
+        siblings = db.query(Proposal).filter(
+            Proposal.request_id == proposal.request_id,
+            Proposal.id != proposal_id
+        ).all()
+        for sib in siblings:
+            sib.status = ProposalStatus.REJECTED
+
+        # Create or update FinalProposal record
+        final_proposal = db.query(FinalProposal).filter(FinalProposal.proposal_id == proposal_id).first()
+        
+        # Generate document file path
+        static_dir = os.path.join("app", "static", "proposals")
+        os.makedirs(static_dir, exist_ok=True)
+        docx_filename = f"{proposal_id}.docx"
+        output_filepath = os.path.join(static_dir, docx_filename)
+        
+        # Structure payload for docx generation
+        proposal_dict = {
+            "project_name": proposal.proposal_request.project_name if proposal.proposal_request else "AI Custom Product Development",
+            "proposal_type": proposal.proposal_type.value,
+            "tech_stack": proposal.tech_stack,
+            "estimated_cost": float(proposal.estimated_cost),
+            "estimated_duration": proposal.estimated_duration,
+            "scope": proposal.scope,
+            "assumptions": proposal.assumptions,
+            "risks": proposal.risks,
+            "timeline_phases": proposal.timeline_phases or [],
+            "selected_resources": proposal.selected_resources
+        }
+        
+        generate_proposal_docx(proposal_dict, output_filepath)
+        
+        doc_url = f"/static/proposals/{docx_filename}"
+        
+        if not final_proposal:
+            final_proposal = FinalProposal(
+                id=uuid.uuid4(),
+                proposal_id=proposal_id,
+                final_cost=proposal.estimated_cost,
+                final_timeline=proposal.estimated_duration,
+                final_scope=proposal.scope,
+                poc_url=doc_url,  # Save docx download link here
+                pdf_url=doc_url   # Save docx download link here
+            )
+            db.add(final_proposal)
+        else:
+            final_proposal.final_cost = proposal.estimated_cost
+            final_proposal.final_timeline = proposal.estimated_duration
+            final_proposal.final_scope = proposal.scope
+            final_proposal.poc_url = doc_url
+            final_proposal.pdf_url = doc_url
+
+        db.commit()
+        
+        return {
+            "message": "Proposal approved successfully",
+            "proposal_id": str(proposal.id),
+            "proposal_type": proposal.proposal_type.value,
+            "status": proposal.status.value,
+            "estimated_cost": float(proposal.estimated_cost),
+            "estimated_duration": proposal.estimated_duration,
+            "scope": proposal.scope,
+            "docx_url": doc_url
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Proposal selection failed: {str(e)}"
+        )

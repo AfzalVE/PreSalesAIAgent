@@ -11,12 +11,23 @@ export default function ApprovalFlow() {
   const [activePocTab, setActivePocTab] = useState("architecture");
 
   const triggerDownload = (type) => {
+    if (type === "Proposal Document" && activeProposal.docx_url) {
+      const link = document.createElement("a");
+      link.href = `http://localhost:8001${activeProposal.docx_url}`;
+
+      link.setAttribute("download", `proposal_${activeProposal.id}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
     setDownloading(type);
     setTimeout(() => {
       setDownloading(null);
       alert(`${type} Package generated and downloaded successfully!`);
     }, 1500);
   };
+
 
   // Mock employee values derived for Resource Allocation
   const allocatedResources = (activeProposal.team || []).map((t, idx) => ({
@@ -130,7 +141,8 @@ export default function ApprovalFlow() {
               >
                 <span className="flex items-center">
                   <FileText size={14} className="mr-2 text-brand-400" />
-                  {downloading === "Proposal Document" ? "Generating..." : "Download Proposal PDF"}
+                  {downloading === "Proposal Document" ? "Generating..." : (activeProposal.docx_url ? "Download Proposal DOCX" : "Download Proposal PDF")}
+
                 </span>
                 <Download size={14} />
               </button>

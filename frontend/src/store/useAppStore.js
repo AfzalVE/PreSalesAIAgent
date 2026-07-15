@@ -89,6 +89,112 @@ export const useAppStore = create((set, get) => ({
     negotiationHistory: [entry, ...state.negotiationHistory]
   })),
   
+  generateProposalsFromBackend: async () => {
+    const store = get();
+    const payload = {
+      project_name: store.projectData.name,
+      project_description: store.projectData.description,
+      business_domain: store.projectData.domain,
+      preferred_technology: store.projectData.techStack,
+      budget: store.projectData.budget,
+      timeline: store.projectData.timeline
+    };
+
+    try {
+      const response = await fetch("http://localhost:8001/api/v1/proposals/generate-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error("Failed to generate proposals");
+      const data = await response.json();
+      
+      const mvpProposal = data.proposals.find(p => p.proposal_type === "MVP");
+      const fullProposal = data.proposals.find(p => p.proposal_type === "FULL");
+
+      const formatProposal = (p, label, descOverride) => {
+        const teamMapped = (p.selected_resources?.resources || []).map(r => ({
+          name: r.name,
+          role: r.role
+        }));
+
+        return {
+          id: p.id,
+          label: label,
+          description: descOverride || p.scope,
+          timeline: p.estimated_duration,
+          budget: p.estimated_cost,
+          teamSize: teamMapped.length,
+          team: teamMapped,
+          features: [
+            { name: "Core Scope & Deliverables", status: "active", desc: p.scope },
+            { name: "Key Assumptions", status: "active", desc: p.assumptions },
+            { name: "Risk Mitigation", status: "active", desc: p.risks }
+          ],
+          architecture: {
+            client: "Web Application Client",
+            apiGateway: "RESTful API Layer",
+            services: [Object.values(p.tech_stack).join(", ")],
+            databases: [p.tech_stack.db || "PostgreSQL"]
+          },
+          timeline_phases: p.timeline_phases || []
+        };
+      };
+
+      const proposalStages = {
+        mvp: formatProposal(mvpProposal, "MVP Launch", "Lean implementation focusing on core functionalities."),
+        growth: formatProposal(fullProposal, "Growth Engine", "Full product release with complete architecture and integrations."),
+        enterprise: {
+          ...formatProposal(fullProposal, "Enterprise Scale", "Scalable multi-region deployment with enterprise SLAs and auditing."),
+          budget: Math.round(fullProposal.estimated_cost * 1.3),
+          timeline: `${Math.round(parseInt(fullProposal.estimated_duration) * 1.4)} Weeks`
+        }
+      };
+
+      set({
+        proposalStages,
+        activeProposal: proposalStages.growth,
+        selectedProposalStage: 'growth',
+        projectData: {
+          ...store.projectData,
+          name: data.project_name,
+          domain: data.business_domain,
+          description: data.project_description,
+          techStack: data.preferred_technology,
+          budget: data.budget,
+          timeline: data.timeline
+        }
+      });
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  selectProposalFromBackend: async (proposalId) => {
+    try {
+      const response = await fetch(`http://localhost:8001/api/v1/proposals/${proposalId}/select`, {
+        method: "POST"
+      });
+      if (!response.ok) throw new Error("Failed to select proposal");
+
+      const data = await response.json();
+      
+      set((state) => ({
+        activeProposal: {
+          ...state.activeProposal,
+          status: data.status,
+          docx_url: data.docx_url
+        }
+      }));
+      return { success: true, docx_url: data.docx_url };
+    } catch (e) {
+      console.error(e);
+      return { success: false, error: e.message };
+    }
+  },
+
   resetStore: () => set({
     user: { emailOrPhone: '', isVerified: false },
     activeStep: 0,
@@ -98,6 +204,8 @@ export const useAppStore = create((set, get) => ({
     negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
     negotiationError: ''
   }),
+
+
   
   // AI Negotiation Logic
   applyNegotiationRequest: (clientPrompt) => {

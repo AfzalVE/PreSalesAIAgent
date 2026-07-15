@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Calendar, Compass, Layers, CheckSquare, Sparkles, Rocket } from 'lucide-react';
 
-export default function TimelineRoadmap({ timeline }) {
+export default function TimelineRoadmap({ timeline, timelinePhases }) {
   // Parse timeline weeks
   const weeks = parseInt(timeline, 10) || 12;
 
@@ -12,6 +12,45 @@ export default function TimelineRoadmap({ timeline }) {
     { title: "AI Modules Tuning", duration: `Week ${Math.round(weeks * 0.65) + 1}-${Math.round(weeks * 0.8)}`, desc: "Custom embedding vectors set up.", icon: Sparkles },
     { title: "QA Release Handover", duration: `Week ${Math.round(weeks * 0.8) + 1}-${weeks}`, desc: "System checks, cloud launch.", icon: Rocket }
   ];
+
+  if (timelinePhases && timelinePhases.length > 0) {
+    return (
+      <div className="w-full bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft md:col-span-2">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-1">Project Milestone Schedule</h4>
+            <span className="text-sm font-semibold text-neutral-800">Total duration: {timeline}</span>
+          </div>
+          <Calendar size={18} className="text-brand-500" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-neutral-100 bg-neutral-50/50">
+                <th className="py-2.5 px-3 font-bold text-neutral-400 uppercase tracking-wider">Phase</th>
+                <th className="py-2.5 px-3 font-bold text-neutral-400 uppercase tracking-wider">Duration</th>
+                <th className="py-2.5 px-3 font-bold text-neutral-400 uppercase tracking-wider">Output</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {timelinePhases.map((phase, idx) => (
+                <tr key={idx} className="hover:bg-neutral-50/30 transition-colors">
+                  <td className="py-3 px-3 font-bold text-neutral-800">{phase.Phase || phase.phase}</td>
+                  <td className="py-3 px-3">
+                    <span className="px-2 py-0.5 rounded bg-brand-50 text-brand-600 font-bold text-[10px]">
+                      {phase.Duration || phase.duration}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-neutral-500 font-medium">{phase.Output || phase.output}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft">

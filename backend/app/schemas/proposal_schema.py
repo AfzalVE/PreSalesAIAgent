@@ -20,6 +20,8 @@ class ProposalBase(BaseModel):
     risks: str | None = None
     generated_by_ai: bool = True
     version: int = 1
+    status: ProposalStatus = ProposalStatus.GENERATED
+    timeline_phases: list | None = None
 
 
 class ProposalCreate(ProposalBase):
@@ -37,6 +39,7 @@ class ProposalUpdate(BaseModel):
     generated_by_ai: bool | None = None
     version: int | None = None
     status: ProposalStatus | None = None
+    timeline_phases: list | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,3 +51,7 @@ class ProposalResponse(ProposalBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProposalSelection(BaseModel):
+    proposal_id: UUID
