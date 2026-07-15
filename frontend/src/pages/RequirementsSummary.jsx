@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { useState } from 'react';
-import { ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
-=======
-import { ArrowLeft, ArrowRight, Cpu, Clock, Users, ArrowUpRight } from 'lucide-react';
->>>>>>> 52a8096acb83de608f08d45905f0dc3197cdacae
+import { ArrowLeft, ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 import AnimatedCard from '../components/common/AnimatedCard';
