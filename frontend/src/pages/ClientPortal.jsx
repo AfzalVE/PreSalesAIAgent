@@ -151,13 +151,6 @@ export default function ClientPortal() {
         {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-outline-variant/30">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary-container shadow-sm">
-              <img
-                src="/ve.png"
-                alt="Pre Sales Platform"
-                className="h-9 w-auto object-contain"
-              />
-            </div>
             <div>
               <h2 className="font-display-lg text-4xl md:text-5xl font-semibold text-navy-accent tracking-tight leading-tight">
                 Pre Sales Dashboard
