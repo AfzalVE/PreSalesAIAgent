@@ -28,6 +28,10 @@ The core schema for handoffs is `AgentExtractionResponse` (see `backend/app/sche
 
 **Note for Frontend Team:** Please check the `follow_up_message` in the JSON response. If it is not null, display it to the user so they can answer the AI's questions regarding missing budget/timeline.
 
+The schemas used for negotiation are `NegotiationInput` and `NegotiationResponse`.
+- `NegotiationInput` includes the user's request and current budget, timeline, and tech stack.
+- `NegotiationResponse` provides the adjusted `new_budget`, `new_timeline`, `new_tech_stack`, along with a conversational `response_message` and `success` boolean.
+
 ## 4. Resource Matching & Cost Estimation Engine (Employee Module)
 - **Location:** `backend/app/services/resource/matching.py`
 - **Core Functions:**
@@ -56,3 +60,7 @@ The engine seamlessly processes incoming payloads where `timeline_weeks`, `clien
 - **When `client_budget` IS Provided (e.g., `$85,000`)**: Compares total project cost against budget and enriches output with `is_within_budget` (bool) and `budget_variance_usd`.
 - **When `client_budget` IS `null` (No Budget Given)**: Computes the full `developer_cost` + $100 overhead, sets `client_budget: null`, defaults `is_within_budget: true` (as there is no budget limit), and embeds `estimated_cost` (`= total_project_cost`) into the output JSON so downstream Proposal/PDF generation gets the exact price immediately.
 
+## 5. AI Negotiation Workflow (Agent Module)
+- **Endpoint:** `POST /api/v1/ai-agent/negotiate`
+- **LLM Provider:** Groq (`llama3-70b-8192`) using standard OpenAI SDK (`base_url="https://api.groq.com/openai/v1"`).
+- **Purpose:** Handles client negotiation requests (e.g., lower budget, faster timeline, changed tech stack). It uses structured JSON output to intelligently adjust parameters, returning structured adjustments (`new_budget`, `new_timeline`, `new_tech_stack`) alongside a conversational response and success indicator. Unrealistic requests will trigger `success: false` and return an `error_message`.
