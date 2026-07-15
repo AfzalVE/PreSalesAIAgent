@@ -56,9 +56,19 @@ const ONBOARDING_QUESTIONS = [
 
 export default function Onboarding() {
   const { updateProjectData, setActiveStep } = useAppStore();
+  const [isSinglePage, setIsSinglePage] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [tempData, setTempData] = useState({});
+
+  // Single-page form states
+  const [formName, setFormName] = useState("");
+  const [formDomain, setFormDomain] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formTechStack, setFormTechStack] = useState("");
+  const [formBudget, setFormBudget] = useState(75000);
+  const [formTimeline, setFormTimeline] = useState("12 Weeks");
+  const [formWorkforce, setFormWorkforce] = useState(4);
 
   const question = ONBOARDING_QUESTIONS[currentIdx];
 
@@ -99,8 +109,189 @@ export default function Onboarding() {
     handleNext();
   };
 
+  const handleSinglePageSubmit = (e) => {
+    e.preventDefault();
+    if (!formName.trim() || !formDomain.trim() || !formDescription.trim()) {
+      return;
+    }
+    const techArray = formTechStack
+      ? formTechStack.split(',').map(t => t.trim()).filter(Boolean)
+      : ["React", "Node.js"];
+      
+    updateProjectData({
+      name: formName,
+      domain: formDomain,
+      description: formDescription,
+      techStack: techArray,
+      budget: Number(formBudget) || 75000,
+      timeline: formTimeline,
+      estimatedTeam: Number(formWorkforce) || 4
+    });
+    setActiveStep(3); // Go to summary
+  };
+
+  if (isSinglePage) {
+    return (
+      <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-12 font-sans bg-[#f7f7f7]">
+        <FloatingBackground />
+        
+        <div className="max-w-2xl w-full bg-white border border-[#e5e5e5] rounded-xl p-8 shadow-sm relative z-10">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-[#e5e5e5] mb-6 gap-4">
+            <div>
+              <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#7cebcb]/15 border border-[#00d4a4]/20 mb-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#00d4a4]" />
+                <span className="text-[11px] font-semibold text-[#00b48a] uppercase tracking-wider">Specifications Form</span>
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-[#0a0a0a]">
+                Project Scope & Requirements
+              </h2>
+              <p className="text-xs text-[#5a5a5c] mt-1">
+                Fill in all details in a single page to skip step-by-step discovery.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => setIsSinglePage(false)}
+              className="self-start sm:self-center px-4 py-2 rounded-full border border-[#e5e5e5] text-xs font-medium text-[#0a0a0a] hover:bg-[#fafafa] transition-colors"
+            >
+              Step-by-Step Mode
+            </button>
+          </div>
+
+          <form onSubmit={handleSinglePageSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                  Project Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. Zenith Retail Portal"
+                  className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                  Business Domain <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formDomain}
+                  onChange={(e) => setFormDomain(e.target.value)}
+                  placeholder="e.g. Fintech / E-Commerce"
+                  className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                Project Description <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                required
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Describe core features, user roles, or business goals..."
+                rows={4}
+                className="px-3 py-2.5 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                Technologies & Frameworks (Optional)
+              </label>
+              <input
+                type="text"
+                value={formTechStack}
+                onChange={(e) => setFormTechStack(e.target.value)}
+                placeholder="e.g. React, Node.js, PostgreSQL (comma separated)"
+                className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                  Budget (USD)
+                </label>
+                <input
+                  type="number"
+                  value={formBudget}
+                  onChange={(e) => setFormBudget(e.target.value)}
+                  className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                  Target Timeline
+                </label>
+                <input
+                  type="text"
+                  value={formTimeline}
+                  onChange={(e) => setFormTimeline(e.target.value)}
+                  placeholder="e.g. 12 Weeks"
+                  className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
+                  Workforce (Team Size)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={formWorkforce}
+                  onChange={(e) => setFormWorkforce(e.target.value)}
+                  className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-[#e5e5e5] flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setFormName("");
+                  setFormDomain("");
+                  setFormDescription("");
+                  setFormTechStack("");
+                  setFormBudget(75000);
+                  setFormTimeline("12 Weeks");
+                  setFormWorkforce(4);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-[#5a5a5c] hover:text-[#0a0a0a] transition-colors"
+              >
+                Clear Form
+              </button>
+
+              <button
+                type="submit"
+                disabled={!formName.trim() || !formDomain.trim() || !formDescription.trim()}
+                className="px-6 py-2.5 rounded-full bg-[#00d4a4] hover:bg-[#00b48a] text-[#0a0a0a] font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Build Proposal Summary
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4">
+    <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 bg-[#f8f9ff]">
       <FloatingBackground />
 
       <div className="max-w-xl w-full bg-white border border-neutral-200/80 rounded-3xl p-8 shadow-premium relative z-10">
@@ -118,6 +309,12 @@ export default function Onboarding() {
           </div>
 
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsSinglePage(true)}
+              className="px-3.5 py-1.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-semibold hover:shadow-sm transition-all duration-200"
+            >
+              Single Page Form
+            </button>
             <button
               onClick={() => {
                 // Populate default mockup variables and go straight to chat comparison/negotiation page

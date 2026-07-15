@@ -63,3 +63,53 @@ async def extract_proposal_requirements(input_data: AgentTextInput) -> AgentExtr
     except Exception as e:
         print(f"Error calling Groq API: {str(e)}")
         raise e
+async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationResponse:
+    """
+    Calls the Groq API to negotiate proposal parameters (budget, timeline, tech stack)
+    based on the user's request, returning structured adjustments.
+    """
+    schema_str = json.dumps(NegotiationResponse.model_json_schema(), indent=2)
+
+    system_prompt = f"""
+    You are an expert Pre-Sales AI Agent for a software development company.
+    Your job is to read a client's negotiation request (e.g. asking for a lower budget, faster timeline, or different tech stack)
+    and intelligently adjust the current project parameters.
+
+    Here are the rules:
+    1. Evaluate the `user_request` against the current parameters: 
+       - Budget: ${input_data.current_budget}
+       - Timeline: {input_data.current_timeline}
+       - Tech Stack: {', '.join(input_data.current_tech_stack)}
+    2. Make reasonable concessions if requested. However, if a request is entirely unrealistic (e.g., cutting budget by 90%), set `success` to false and explain why in `error_message`.
+    3. Calculate and provide a `new_budget` (float), `new_timeline` (string), and `new_tech_stack` (array of strings). If a parameter shouldn't change, keep it the same as the current one.
+    4. Provide a conversational `response_message` addressing the client's request directly and explaining the new proposal parameters.
+    
+    Ensure your output strictly follows this JSON schema:
+    {schema_str}
+    
+    Return ONLY valid JSON.
+    """
+
+    try:
+        response = await client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": input_data.user_request}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2
+        )
+        
+        response_content = response.choices[0].message.content
+        extracted_dict = json.loads(response_content)
+        
+        negotiation_data = NegotiationResponse(**extracted_dict)
+        return negotiation_data
+        
+    except ValidationError as ve:
+        print(f"Pydantic Validation Error during negotiation: {ve}")
+        raise ValueError(f"The LLM returned invalid data for negotiation: {ve}")
+    except Exception as e:
+        print(f"Error calling Groq API during negotiation: {str(e)}")
+        raise e

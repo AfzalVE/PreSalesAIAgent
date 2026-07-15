@@ -13,7 +13,7 @@ const countryCodes = [
   "SG +65",
 ];
 
-export default function Landing() {
+export default function Landing({ onAdminClick }) {
   const { setUser, setActiveStep } = useAppStore();
 
   // Single entrance validation
@@ -362,10 +362,16 @@ export default function Landing() {
               About
             </a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onAdminClick}
+              className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
+            >
+              Admin Login
+            </button>
             <button
               onClick={() => triggerAuthFlow("register")}
-              className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold"
+              className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm"
             >
               Get Started
             </button>
@@ -377,7 +383,7 @@ export default function Landing() {
         {/* Hero Section */}
         <section className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-1 lg:grid-cols-2 gap-16 items-center pt-48 pb-24">
           <div className="space-y-stack-lg z-10 text-left">
-            <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/20 px-4 py-1.5 rounded-full">
+            {/* <div className="inline-flex items-center gap-2 bg-primary/5 border border-primary/20 px-4 py-1.5 rounded-full">
               <span
                 className="material-symbols-outlined text-[18px] text-primary"
                 style={{ fontVariationSettings: "'FILL' 1" }}
@@ -387,7 +393,7 @@ export default function Landing() {
               <span className="font-label-caps text-primary tracking-wider uppercase font-semibold">
                 v2.0 Pre-Sales Engine
               </span>
-            </div>
+            </div> */}
             <h1 className="font-display-lg text-5xl md:text-7xl text-navy-accent leading-[1.1] text-left">
               AI Proposal <br />
               <span className="text-primary">Generator Platform</span>
@@ -1197,8 +1203,8 @@ export default function Landing() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register" || view === "otp"
-                  ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
-                  : "max-w-md rounded-3xl p-8 text-left"
+                ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
+                : "max-w-md rounded-3xl p-8 text-left"
                 }`}
             >
               {/* Close Button */}
@@ -1244,8 +1250,8 @@ export default function Landing() {
                         onClick={handleEntranceContinue}
                         disabled={!isValidEntrance}
                         className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-200 ${isValidEntrance
-                            ? "bg-primary text-white hover:bg-primary/90 shadow-md cursor-pointer"
-                            : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                          ? "bg-primary text-white hover:bg-primary/90 shadow-md cursor-pointer"
+                          : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
                           }`}
                       >
                         Continue

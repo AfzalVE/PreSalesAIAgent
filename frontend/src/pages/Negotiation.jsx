@@ -1,4 +1,4 @@
-import { FileCheck2 } from 'lucide-react';
+import { ArrowLeft, FileCheck2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import NegotiationChat from '../components/proposal/NegotiationChat';
 import FloatingBackground from '../components/common/FloatingBackground';
@@ -16,6 +16,19 @@ export default function Negotiation() {
 
       <div className="max-w-6xl mx-auto space-y-10 relative z-10">
         
+        {/* Header Indicator */}
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setActiveStep(4)}
+              className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-neutral-400">Broker Negotiation</span>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-3">
           <h2 className="text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">
