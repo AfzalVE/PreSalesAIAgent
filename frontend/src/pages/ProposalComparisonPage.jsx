@@ -1,4 +1,4 @@
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import ProposalComparison from '../components/proposal/ProposalComparison';
 import FloatingBackground from '../components/common/FloatingBackground';
@@ -12,6 +12,19 @@ export default function ProposalComparisonPage() {
 
       <div className="max-w-7xl mx-auto space-y-12 relative z-10">
         
+        {/* Header Indicator */}
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setActiveStep(3)}
+              className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-neutral-400">Proposal Comparison</span>
+          </div>
+        </div>
+
         {/* Wise Editorial Typography Header */}
         <div className="text-center space-y-3">
           <h2 className="text-4xl md:text-6xl font-black font-display tracking-tight text-neutral-900 leading-none">

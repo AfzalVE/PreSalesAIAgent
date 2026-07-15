@@ -17,3 +17,14 @@ class LoginResponse(BaseModel):
     full_name: str
     email: EmailStr
     role: UserRole
+
+
+class OTPRequiredResponse(BaseModel):
+    """Returned after password check passes; OTP has been emailed."""
+    pending_token: str
+    message: str = "OTP sent to your registered email"
+
+
+class OTPVerifyRequest(BaseModel):
+    pending_token: str
+    otp: str
