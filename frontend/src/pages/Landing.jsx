@@ -21,6 +21,7 @@ import FlowingMenu from "../components/common/FlowingMenu";
 import Dock from "../components/common/Dock";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
+import AdminLogin from "./AdminLogin";
 
 const countryCodes = [
   "US +1",
@@ -114,6 +115,7 @@ export default function Landing({ onAdminClick }) {
 
   // Modal display state
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeNav, setActiveNav] = useState("platform");
 const statsRef = useRef(null);
 
 const [startCounter, setStartCounter] = useState(false);
@@ -356,6 +358,9 @@ useEffect(() => {
           -webkit-backdrop-filter: blur(20px);
           border: 1px solid rgba(241, 245, 249, 0.8);
           box-shadow: 0 8px 32px 0 rgba(0, 107, 93, 0.05);
+          will-change: transform, opacity;
+          -webkit-transform: translateZ(0);
+          transform: translateZ(0);
         }
 
         .bg-grid {
@@ -372,12 +377,16 @@ useEffect(() => {
           filter: blur(60px);
           z-index: -1;
           animation: float 20s infinite alternate ease-in-out;
+          will-change: transform;
+          -webkit-transform: translateZ(0);
+          transform: translateZ(0);
+          backface-visibility: hidden;
         }
 
         @keyframes float {
-          0% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(100px, 50px) scale(1.1); }
-          100% { transform: translate(-50px, 100px) scale(0.9); }
+          0% { transform: translate3d(0, 0, 0) scale(1); }
+          50% { transform: translate3d(100px, 50px, 0) scale(1.1); }
+          100% { transform: translate3d(-50px, 100px, 0) scale(0.9); }
         }
 
         .shimmer {
@@ -423,7 +432,13 @@ useEffect(() => {
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm">
         <div className="flex justify-between items-center px-6 md:px-margin-desktop py-4 max-w-container-max mx-auto">
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => {
+              setActiveNav("platform");
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
             <img
               src="/ve.png"
               alt="Pre Sales Platform"
@@ -433,35 +448,50 @@ useEffect(() => {
               Pre Sales Platform
             </span>
           </div>
-          <div className="hidden md:flex items-center gap-stack-lg">
-            <a
-              className="font-body-md text-navy-accent font-semibold border-b-2 border-primary py-1"
-              href="#"
+          <div className="hidden md:flex items-center gap-stack-lg relative">
+            <button
+              onClick={() => {
+                setActiveNav("platform");
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
+                activeNav === "platform"
+                  ? "text-navy-accent border-b-2 border-primary"
+                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+              }`}
             >
               Platform
-            </a>
-            <a
-              className="font-body-md text-on-surface-variant hover:text-navy-accent transition-colors py-1"
-              href="#services"
+            </button>
+            <button
+              onClick={() => {
+                setActiveNav("services");
+                document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
+                activeNav === "services"
+                  ? "text-navy-accent border-b-2 border-primary"
+                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+              }`}
             >
               Services
-            </a>
-            <a
-              className="font-body-md text-on-surface-variant hover:text-navy-accent transition-colors py-1"
-              href="#pricing"
-            >
-              Pricing
-            </a>
-            <a
-              className="font-body-md text-on-surface-variant hover:text-navy-accent transition-colors py-1"
-              href="#about"
+            </button>
+            <button
+              onClick={() => {
+                setActiveNav("about");
+                document.getElementById('footer')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
+                activeNav === "about"
+                  ? "text-navy-accent border-b-2 border-primary"
+                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+              }`}
             >
               About
-            </a>
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={onAdminClick}
+              onClick={() => triggerAuthFlow("admin")}
               className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
             >
               Admin Login
@@ -478,7 +508,7 @@ useEffect(() => {
 
       <main className="relative z-10">
         {/* Subtle WebGL Threads Background */}
-        <div className="absolute inset-x-0 top-0 h-[850px] pointer-events-none z-0 opacity-[0.25]">
+        <div className="absolute inset-x-0 top-0 h-[850px] pointer-events-none z-0 opacity-[0.25] transform-gpu">
           <Threads
             color={[0.0, 0.42, 0.36]}
             amplitude={1.0}
@@ -537,7 +567,7 @@ useEffect(() => {
                 <span className="material-symbols-outlined">arrow_forward</span>
               </button>
               <button
-                onClick={() => triggerAuthFlow("entrance")}
+                onClick={() => triggerAuthFlow("register")}
                 className="border border-outline/30 bg-white/50 px-8 py-4 rounded-xl font-button-text text-lg hover:bg-white transition-all text-navy-accent font-medium"
               >
                 Book Consultation
@@ -969,19 +999,19 @@ useEffect(() => {
                   Comprehensive Engine for technical Dokumentation.
                 </h2>
               </div>
-              <a
-                className="font-button-text text-navy-accent group flex items-center gap-2 hover:text-primary transition-colors text-lg font-bold"
-                href="#"
+              <button
+                onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="font-button-text text-navy-accent group flex items-center gap-2 hover:text-primary transition-colors text-lg font-bold cursor-pointer"
               >
                 Explore Platform{" "}
                 <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
                   arrow_right_alt
                 </span>
-              </a>
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
               <div
-                onClick={() => triggerAuthFlow("entrance")}
+                onClick={() => triggerAuthFlow("register")}
                 className="glass-card p-8 rounded-3xl border-transparent hover:border-primary/20 hover:bg-white transition-all duration-300 group cursor-pointer text-left"
               >
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform">
@@ -998,7 +1028,7 @@ useEffect(() => {
                 </p>
               </div>
               <div
-                onClick={() => triggerAuthFlow("entrance")}
+                onClick={() => triggerAuthFlow("register")}
                 className="glass-card p-8 rounded-3xl border-transparent hover:border-primary/20 hover:bg-white transition-all duration-300 group cursor-pointer text-left"
               >
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform">
@@ -1015,7 +1045,7 @@ useEffect(() => {
                 </p>
               </div>
               <div
-                onClick={() => triggerAuthFlow("entrance")}
+                onClick={() => triggerAuthFlow("register")}
                 className="glass-card p-8 rounded-3xl border-transparent hover:border-primary/20 hover:bg-white transition-all duration-300 group cursor-pointer text-left"
               >
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform">
@@ -1032,7 +1062,7 @@ useEffect(() => {
                 </p>
               </div>
               <div
-                onClick={() => triggerAuthFlow("entrance")}
+                onClick={() => triggerAuthFlow("register")}
                 className="glass-card p-8 rounded-3xl border-transparent hover:border-primary/20 hover:bg-white transition-all duration-300 group cursor-pointer text-left"
               >
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform">
@@ -1166,7 +1196,7 @@ useEffect(() => {
               <div className="grid grid-cols-3 gap-6 relative">
                 <div className="absolute -inset-4 bg-primary/5 rounded-full blur-3xl -z-10"></div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1177,7 +1207,7 @@ useEffect(() => {
                   </span>
                 </div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 translate-y-6 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1188,7 +1218,7 @@ useEffect(() => {
                   </span>
                 </div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1199,7 +1229,7 @@ useEffect(() => {
                   </span>
                 </div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1210,7 +1240,7 @@ useEffect(() => {
                   </span>
                 </div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 translate-y-6 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1223,7 +1253,7 @@ useEffect(() => {
                   </span>
                 </div>
                 <div
-                  onClick={() => triggerAuthFlow("entrance")}
+                  onClick={() => triggerAuthFlow("register")}
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
@@ -1381,19 +1411,19 @@ useEffect(() => {
               >
                 Get Started Free
               </button>
-              <button
-                onClick={() => triggerAuthFlow("entrance")}
+              {/* <button
+                onClick={() => triggerAuthFlow("register")}
                 className="bg-navy-accent text-white px-12 py-5 rounded-2xl font-button-text text-xl hover:bg-navy-accent/90 shadow-xl transition-all font-bold"
               >
                 Schedule Live Demo
-              </button>
+              </button> */}
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-outline-variant/30 pt-16 relative z-10">
+      <footer id="footer" className="bg-white border-t border-outline-variant/30 pt-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 px-6 md:px-margin-desktop pb-16 max-w-container-max mx-auto">
           <div className="md:col-span-1 space-y-5 text-left">
             <div className="flex items-center gap-2">
@@ -1624,7 +1654,7 @@ useEffect(() => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${
-                view === "register" || view === "otp"
+                view === "register" || view === "otp" || view === "admin"
                   ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
                   : "max-w-md rounded-3xl p-8 text-left"
               }`}
@@ -1697,6 +1727,18 @@ useEffect(() => {
                       to simulate existing login. Any other email triggers sign
                       up.
                     </p>
+                  </motion.div>
+                )}
+
+                {/* ADMIN LOGIN VIEW */}
+                {view === "admin" && (
+                  <motion.div
+                    key="admin"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                  >
+                    <AdminLogin isModal={true} onLogin={() => navigate('/admin/dashboard')} />
                   </motion.div>
                 )}
 
@@ -2187,54 +2229,70 @@ useEffect(() => {
         items={[
           {
             icon: (
-              <span className="material-symbols-outlined text-neutral-600 text-base">
+              <span className="material-symbols-outlined text-base">
                 home
               </span>
             ),
-            label: "Home",
-            onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
-          },
-          {
-            icon: (
-              <span className="material-symbols-outlined text-neutral-600 text-base">
-                info
-              </span>
-            ),
-            label: "About",
+            label: "Platform",
+            isActive: activeNav === "platform",
             onClick: () => {
-              const el = document.getElementById("about");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            },
+              setActiveNav("platform");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
           },
           {
             icon: (
-              <span className="material-symbols-outlined text-neutral-600 text-base">
+              <span className="material-symbols-outlined text-base">
                 construction
               </span>
             ),
-            label: "Capabilities",
+            label: "Services",
+            isActive: activeNav === "services",
             onClick: () => {
+              setActiveNav("services");
               const el = document.getElementById("services");
               if (el) el.scrollIntoView({ behavior: "smooth" });
             },
           },
           {
             icon: (
-              <span className="material-symbols-outlined text-neutral-600 text-base">
-                login
+              <span className="material-symbols-outlined text-base">
+                info
               </span>
             ),
-            label: "Client Portal",
-            onClick: () => triggerAuthFlow("entrance"),
+            label: "About",
+            isActive: activeNav === "about",
+            onClick: () => {
+              setActiveNav("about");
+              const el = document.getElementById("footer");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            },
           },
           {
             icon: (
-              <span className="material-symbols-outlined text-neutral-600 text-base">
+              <span className="material-symbols-outlined text-base">
+                login
+              </span>
+            ),
+            label: "Client Login",
+            isActive: activeNav === "client",
+            onClick: () => {
+              setActiveNav("client");
+              triggerAuthFlow("register");
+            },
+          },
+          {
+            icon: (
+              <span className="material-symbols-outlined text-base">
                 admin_panel_settings
               </span>
             ),
-            label: "Admin Portal",
-            onClick: onAdminClick,
+            label: "Admin Login",
+            isActive: activeNav === "admin",
+            onClick: () => {
+              setActiveNav("admin");
+              triggerAuthFlow("admin");
+            },
           },
         ]}
         panelHeight={52}

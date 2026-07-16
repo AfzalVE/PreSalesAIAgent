@@ -29,7 +29,7 @@ function pickInitialRoleFromEmail(email) {
   return "admin";
 }
 
-export default function AdminLogin({ onLogin, onCancel }) {
+export default function AdminLogin({ onLogin, onCancel, isModal }) {
   const { setUser } = useAppStore();
 
   const [emailOrPhone, setEmailOrPhone] = useState("");
