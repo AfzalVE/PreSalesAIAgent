@@ -138,7 +138,7 @@ export default function Onboarding() {
     <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-12 font-sans bg-[#f7f7f7]">
       <FloatingBackground />
 
-      <div className="max-w-2xl w-full bg-white border border-[#e5e5e5] rounded-xl p-8 shadow-sm relative z-10">
+      <div className="max-w-2xl w-full bg-white border border-[#e5e5e5] rounded-2xl sm:rounded-xl p-5 sm:p-8 shadow-sm relative z-10">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-[#e5e5e5] mb-6 gap-4">
           <div>
@@ -319,7 +319,7 @@ export default function Onboarding() {
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-[#e5e5e5] flex items-center justify-between">
+          <div className="mt-8 pt-6 border-t border-[#e5e5e5] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <button
               type="button"
               onClick={() => {
@@ -331,16 +331,16 @@ export default function Onboarding() {
                 setFormTimeline("12 Weeks");
                 setFormWorkforce(4);
               }}
-              className="px-5 py-2.5 rounded-full border border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 transition-all font-bold text-xs"
+              className="px-5 py-2.5 rounded-full border border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 transition-all font-bold text-xs w-full sm:w-auto text-center"
             >
               Clear Form
             </button>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => navigate("/broker")}
-                className="px-5 py-2.5 rounded-full border border-primary text-primary hover:bg-primary/5 transition-all font-bold text-xs"
+                className="px-4 sm:px-5 py-2.5 rounded-full border border-primary text-primary hover:bg-primary/5 transition-all font-bold text-xs flex-1 sm:flex-initial text-center justify-center inline-flex"
               >
                 Skip to Broker Chat
               </button>
@@ -348,9 +348,9 @@ export default function Onboarding() {
               <button
                 type="submit"
                 disabled={!formName.trim() || !formDomain.trim() || !formDescription.trim()}
-                className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 sm:px-6 py-2.5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-initial"
               >
-                Build Proposal & Open Broker
+                <span>Build Proposal & Open Broker</span>
                 <ChevronRight size={14} />
               </button>
             </div>

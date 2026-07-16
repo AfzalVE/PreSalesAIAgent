@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, Send, Trash2, Eye, Filter, RefreshCw, X, Mic } from 'lucide-react';
+import { PlusCircle, Send, Trash2, Eye, Filter, RefreshCw, X, Mic, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
@@ -90,6 +90,11 @@ export default function ClientPortal() {
   const handleRestart = () => {
     resetStore();
     navigate('/'); // Restart journey
+  };
+
+  const handleLogout = () => {
+    if (resetStore) resetStore();
+    navigate('/');
   };
 
   const handleCreateRequest = (e) => {
@@ -216,45 +221,63 @@ export default function ClientPortal() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center flex-wrap gap-2 sm:gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-primary-container text-navy-accent font-button-text text-sm font-semibold hover:shadow-md transition-all duration-200"
+              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-primary-container text-navy-accent font-button-text text-xs sm:text-sm font-semibold hover:shadow-md transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
-              <PlusCircle size={14} className="mr-1.5" />
-              New Proposal Request
+              <PlusCircle size={14} className="mr-1.5 flex-shrink-0" />
+              <span>New Proposal Request</span>
             </button>
             <button
               onClick={handleRestart}
-              className="inline-flex items-center px-4 py-2 rounded-lg bg-navy-accent text-white font-button-text text-sm font-semibold hover:bg-navy-accent/90 shadow-md transition-all duration-200"
+              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-navy-accent text-white font-button-text text-xs sm:text-sm font-semibold hover:bg-navy-accent/90 shadow-md transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
-              Restart Intake Wizard
+              <span>Restart Intake Wizard</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              title="Sign out of Client Portal"
+              className="inline-flex items-center justify-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-red-50 text-red-600 font-button-text text-xs sm:text-sm font-semibold hover:bg-red-100 hover:text-red-700 border border-red-200/60 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer gap-1.5 w-full sm:w-auto"
+            >
+              <LogOut size={14} className="text-red-500 flex-shrink-0" />
+              <span>Log Out</span>
             </button>
           </div>
         </div>
 
-        {/* Dashboard Navigation Tabs */}
-        <div className="flex space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-full font-button-text text-sm font-medium w-fit">
+        {/* Dashboard Navigation Tabs & Inline Logout */}
+        <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl font-button-text text-xs sm:text-sm font-medium self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "overview" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "overview" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
               }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "requests" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "requests" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
               }`}
           >
             Proposal Requests
           </button>
           <button
             onClick={() => setActiveTab("chat")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "chat" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "chat" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
               }`}
           >
             AI Assistant Chat
+          </button>
+
+          {/* Logout Option Inline exactly matching Admin / Super Admin portals */}
+          <button
+            onClick={handleLogout}
+            title="Sign out of Client Portal"
+            className="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-auto"
+          >
+            <LogOut size={14} className="text-red-500 flex-shrink-0" />
+            <span>Logout</span>
           </button>
         </div>
 
@@ -375,8 +398,8 @@ export default function ClientPortal() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse font-body-md text-sm">
+              <div className="overflow-x-auto w-full -mx-6 sm:mx-0 px-6 sm:px-0">
+                <table className="w-full text-left border-collapse font-body-md text-sm min-w-[650px]">
                   <thead>
                     <tr className="border-b border-neutral-100 text-on-surface-variant font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em]">
                       <th className="py-4">Project Name</th>
@@ -534,8 +557,8 @@ export default function ClientPortal() {
 
       {/* NEW PROPOSAL REQUEST DIALOG MODAL */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm">
-          <div className="bg-white border border-neutral-200 rounded-3xl p-8 w-full max-w-xl shadow-xl relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm">
+          <div className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-xl shadow-xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowCreateModal(false)}
               className="absolute top-4 right-4 p-2 rounded-xl hover:bg-neutral-50 text-neutral-400"
@@ -581,7 +604,7 @@ export default function ClientPortal() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Budget ($)</label>
                   <input
@@ -606,7 +629,7 @@ export default function ClientPortal() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">Preferred Technology</label>
                   <input
@@ -653,8 +676,8 @@ export default function ClientPortal() {
 
       {/* PROPOSAL REQUEST DETAILS MODAL */}
       {selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm">
-          <div className="bg-white border border-neutral-200 rounded-3xl p-8 w-full max-w-xl shadow-xl relative max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm">
+          <div className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-xl shadow-xl relative max-h-[85vh] overflow-y-auto">
             <button
               onClick={() => setSelectedRequest(null)}
               className="absolute top-4 right-4 p-2 rounded-xl hover:bg-neutral-50 text-neutral-400"
@@ -665,7 +688,7 @@ export default function ClientPortal() {
             <h3 className="font-headline-md text-xl font-semibold text-navy-accent mt-1">{selectedRequest.name}</h3>
 
             <div className="mt-6 space-y-4 font-body-md text-sm">
-              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-neutral-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-neutral-100">
                 <div>
                   <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em]">Business Domain</span>
                   <span className="text-neutral-800 font-semibold">{selectedRequest.domain}</span>

@@ -256,7 +256,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Sub-tab Navigation with Moveable Select Effect & Inline Logout */}
-          <div className="flex items-center flex-wrap sm:flex-nowrap whitespace-nowrap overflow-visible w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm">
+          <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
             {[
               { id: "overview", label: "Overview" },
               { id: "admins", label: `Admins (${mergedUsers.filter((u) => u.role === "Admin").length})` },
@@ -372,8 +372,8 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
+            <div className="overflow-x-auto w-full -mx-4 sm:mx-0 px-4 sm:px-0">
+              <table className="w-full text-left border-collapse text-sm min-w-[650px]">
                 <thead>
                   <tr className="border-b border-neutral-200/80 text-neutral-400 font-bold uppercase tracking-wider text-xs">
                     <th className="py-4 px-2">Account Profile</th>
@@ -627,8 +627,8 @@ export default function SuperAdminDashboard() {
 
       {/* FLOATING EDIT USER MODAL ABOVE DASHBOARD */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-neutral-200 rounded-3xl p-8 w-full max-w-xl shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-xl shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEditingUser(null)}
               className="absolute top-5 right-5 p-2 rounded-xl hover:bg-neutral-100 text-neutral-400 transition-colors"
@@ -760,8 +760,8 @@ export default function SuperAdminDashboard() {
 
       {/* FLOATING ADD ACCOUNT MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-neutral-200 rounded-3xl p-8 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowAddModal(false)}
               className="absolute top-5 right-5 p-2 rounded-xl hover:bg-neutral-100 text-neutral-400 transition-colors"

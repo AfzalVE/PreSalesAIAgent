@@ -157,7 +157,7 @@ export default function AdminPortal() {
           </div>
 
           {/* Sub-tab Navigation with Moveable Select Effect & Inline Logout */}
-          <div className="flex items-center flex-wrap sm:flex-nowrap whitespace-nowrap overflow-visible w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm">
+          <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
             {[
               { id: "dashboard", label: "Dashboard", path: "/admin/dashboard" },
               { id: "proposals", label: "Proposals Console", path: "/admin/proposal-console" },
@@ -254,8 +254,8 @@ export default function AdminPortal() {
                 Active Client Proposals
               </h3>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
+              <div className="overflow-x-auto w-full -mx-6 sm:mx-0 px-6 sm:px-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                   <thead>
                     <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
                       <th className="py-4">Project Name</th>
@@ -404,8 +404,8 @@ export default function AdminPortal() {
               Registered Client Workspaces
             </h3>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto w-full -mx-6 sm:mx-0 px-6 sm:px-0">
+              <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                 <thead>
                   <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
                     <th className="py-4">Name</th>
@@ -470,8 +470,8 @@ export default function AdminPortal() {
               OTP Verification Logs
             </h3>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto w-full -mx-6 sm:mx-0 px-6 sm:px-0">
+              <table className="w-full text-left border-collapse text-xs min-w-[650px]">
                 <thead>
                   <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
                     <th className="py-4">User</th>
@@ -513,12 +513,12 @@ export default function AdminPortal() {
       {/* USER DETAILS MODAL */}
       <AnimatePresence>
         {selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-neutral-200 rounded-3xl p-8 w-full max-w-md shadow-xl relative"
+              className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl relative"
             >
               <button
                 onClick={() => setSelectedUser(null)}
@@ -602,12 +602,12 @@ export default function AdminPortal() {
       {/* PROPOSAL DETAILS MODAL */}
       <AnimatePresence>
         {selectedProposal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-neutral-900/40 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-neutral-200 rounded-3xl p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-xl relative"
+              className="bg-white border border-neutral-200 rounded-2xl sm:rounded-3xl p-5 sm:p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-xl relative"
             >
               <button
                 onClick={() => setSelectedProposal(null)}

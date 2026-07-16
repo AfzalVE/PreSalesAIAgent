@@ -61,7 +61,7 @@ export default function ApprovalFlow() {
         <div className="w-16 h-16 rounded-full bg-brand-50 mx-auto flex items-center justify-center text-brand-500 shadow-sm border border-brand-100/50">
           <CheckCircle2 size={32} className="text-brand-500" />
         </div>
-        <h2 className="text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">
           Congratulations! Your Blueprint is Active.
         </h2>
         <p className="text-sm text-neutral-500 max-w-xl mx-auto leading-relaxed font-medium">
@@ -195,7 +195,7 @@ export default function ApprovalFlow() {
         </div>
 
         {/* Tab Selection */}
-        <div className="flex flex-wrap gap-2 border-b border-neutral-100 pb-3 text-xs font-semibold text-neutral-400">
+        <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none gap-2 border-b border-neutral-100 pb-3 text-xs font-semibold text-neutral-400 max-w-full">
           {[
             { id: "architecture", label: "Architecture", icon: Layers },
             { id: "modules", label: "Modules", icon: Cpu },
@@ -265,8 +265,8 @@ export default function ApprovalFlow() {
           )}
 
           {activePocTab === "apis" && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto w-full -mx-4 sm:mx-0 px-4 sm:px-0">
+              <table className="w-full text-left border-collapse text-xs min-w-[500px]">
                 <thead>
                   <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
                     <th className="py-3">Method</th>
@@ -325,8 +325,8 @@ export default function ApprovalFlow() {
           <p className="text-xs text-neutral-400 mt-0.5">Assigned employees, billing rates, and effort logs.</p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto w-full -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table className="w-full text-left border-collapse text-xs min-w-[550px]">
             <thead>
               <tr className="border-b border-neutral-100 text-neutral-400 font-bold uppercase tracking-wider">
                 <th className="py-4">Employee</th>
