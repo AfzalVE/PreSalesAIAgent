@@ -360,7 +360,7 @@ export default function Landing({ onAdminClick }) {
             navigate("/onboarding");
           }
         }
-      }, 1000);
+      }, 1000)
     } catch (err) {
       setOtpStatus("error");
       setError(err.message || "Invalid OTP code.");
