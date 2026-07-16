@@ -55,17 +55,17 @@ const Counter = ({
         animationFrame = requestAnimationFrame(animate);
         return;
       }
-      
+
       const percentage = Math.min(progress / duration, 1);
       const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
-      
+
       setCount(end * easeOut);
-      
+
       if (percentage < 1) {
         animationFrame = requestAnimationFrame(animate);
       }
     };
-    
+
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
   }, [end, duration, delay, start]);
@@ -74,9 +74,10 @@ const Counter = ({
 };
 
 export default function Landing({ onAdminClick }) {
-  const { setUser } = useAppStore();
+  const { user, setUser, resetStore } = useAppStore();
   const navigate = useNavigate();
 
+  const [activeNav, setActiveNav] = useState("platform");
   // Single entrance validation
   const [entranceInput, setEntranceInput] = useState("");
   const [isValidEntrance, setIsValidEntrance] = useState(false);
@@ -91,6 +92,7 @@ export default function Landing({ onAdminClick }) {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Register Form
   const [regFullName, setRegFullName] = useState("");
@@ -98,7 +100,7 @@ export default function Landing({ onAdminClick }) {
   const [regCountryCode, setRegCountryCode] = useState("US +1");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regCompanyName, setRegCompanyName] = useState("");
   const [isNotRobot, setIsNotRobot] = useState(false);
 
   // Forgot Password
@@ -110,35 +112,35 @@ export default function Landing({ onAdminClick }) {
   const [otpCode, setOtpCode] = useState("");
   const [otpResendTimer, setOtpResendTimer] = useState(0);
   const [otpStatus, setOtpStatus] = useState(""); // "" | "verifying" | "success" | "error"
+  const [pendingToken, setPendingToken] = useState("");
 
   const [error, setError] = useState("");
 
   // Modal display state
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [activeNav, setActiveNav] = useState("platform");
-const statsRef = useRef(null);
+  const statsRef = useRef(null);
 
-const [startCounter, setStartCounter] = useState(false);
+  const [startCounter, setStartCounter] = useState(false);
 
-useEffect(() => {
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      if (entry.isIntersecting) {
-        setStartCounter(true);
-        observer.disconnect();
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStartCounter(true);
+          observer.disconnect();
+        }
+      },
+      {
+        threshold: 0.3,
       }
-    },
-    {
-      threshold: 0.3,
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
     }
-  );
 
-  if (statsRef.current) {
-    observer.observe(statsRef.current);
-  }
-
-  return () => observer.disconnect();
-}, []);
+    return () => observer.disconnect();
+  }, []);
   const validateEntrance = (value) => {
     setEntranceInput(value);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,19 +161,26 @@ useEffect(() => {
     }
   };
 
-  const handleEntranceContinue = () => {
+  const handleEntranceContinue = async () => {
     if (!isValidEntrance) return;
     setError("");
 
-    // If it's a test email, go to login. Else, go to registration.
-    if (
-      entranceInput.includes("acme") ||
-      entranceInput.includes("hello") ||
-      entranceInput.includes("admin")
-    ) {
-      setEmail(entranceInput);
-      setView("login");
-    } else {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/auth/check-email?email=${encodeURIComponent(entranceInput)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to check email status");
+      }
+
+      if (data.exists && data.is_verified) {
+        setEmail(entranceInput);
+        setView("login");
+      } else {
+        setRegEmail(entranceInput);
+        setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
+        setView("register");
+      }
+    } catch (err) {
       setRegEmail(entranceInput);
       setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
       setView("register");
@@ -191,32 +200,108 @@ useEffect(() => {
     }, 1000);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
     }
     setError("");
-    setUser({
-      emailOrPhone: email,
-      fullName: "Alex Rivera",
-      companyName: "Sovereign Enterprise",
-      isVerified: true,
-    });
-    navigate('/onboarding');
+    setOtpStatus("verifying");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Authentication failed.");
+      }
+
+      if (data.otp_required === false) {
+        setOtpStatus("success");
+        setTimeout(() => {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
+            navigate("/super-admin-dashboard");
+          } else if (data.role === "admin") {
+            navigate("/admin");
+          } else {
+            navigate("/onboarding");
+          }
+        }, 1000);
+        return;
+      }
+
+      setPendingToken(data.pending_token);
+      setOtpPurpose("login");
+      setView("otp");
+      setOtpStatus("");
+      setOtpCode("");
+      startOtpResendTimer();
+    } catch (err) {
+      setOtpStatus("");
+      setError(err.message);
+    }
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
       setError("Please complete all fields and confirm you are not a robot.");
       return;
     }
     setError("");
-    setOtpPurpose("register");
-    setView("otp");
-    startOtpResendTimer();
+    setOtpStatus("verifying");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: regEmail,
+          password: regPassword,
+          full_name: regFullName,
+          phone: regCountryCode + " " + regPhone,
+          company_name: regCompanyName
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Registration failed.");
+      }
+
+      if (data.otp_required === false) {
+        setOtpStatus("success");
+        setTimeout(() => {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          navigate('/onboarding');
+        }, 1000);
+        return;
+      }
+
+      setPendingToken(data.pending_token);
+      setOtpPurpose("register");
+      setView("otp");
+      setOtpStatus("");
+      setOtpCode("");
+      startOtpResendTimer();
+    } catch (err) {
+      setOtpStatus("");
+      setError(err.message);
+    }
   };
 
   const handleForgotSubmit = (e) => {
@@ -231,7 +316,7 @@ useEffect(() => {
     startOtpResendTimer();
   };
 
-  const handleOtpVerify = (e) => {
+  const handleOtpVerify = async (e) => {
     e.preventDefault();
     if (otpCode.length < 4) {
       setError("Please enter a valid OTP code.");
@@ -240,29 +325,46 @@ useEffect(() => {
     setError("");
     setOtpStatus("verifying");
 
-    setTimeout(() => {
-      if (otpCode === "1234") {
-        setOtpStatus("success");
-        setTimeout(() => {
-          if (otpPurpose === "forgot") {
-            setView("reset-password");
-            setOtpStatus("");
-            setOtpCode("");
-          } else {
-            setUser({
-              emailOrPhone: email || regEmail,
-              fullName: regFullName || "Alex Rivera",
-              companyName: "Sovereign Enterprise",
-              isVerified: true,
-            });
-            navigate('/onboarding');
-          }
-        }, 1000);
-      } else {
-        setOtpStatus("error");
-        setError("Invalid OTP code. Use test code: 1234");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pending_token: pendingToken,
+          otp: otpCode
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Invalid OTP code.");
       }
-    }, 1200);
+      setOtpStatus("success");
+      setTimeout(() => {
+        if (otpPurpose === "forgot") {
+          setView("reset-password");
+          setOtpStatus("");
+          setOtpCode("");
+        } else {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
+            navigate("/super-admin-dashboard");
+          } else if (data.role === "admin") {
+            navigate("/admin");
+          } else {
+            navigate("/onboarding");
+          }
+        }
+      }, 1000);
+    } catch (err) {
+      setOtpStatus("error");
+      setError(err.message || "Invalid OTP code.");
+    }
   };
 
   const handleResetPassword = (e) => {
@@ -281,7 +383,11 @@ useEffect(() => {
   };
 
   // Open auth modal helpers
-  const triggerAuthFlow = (initialView = "register") => {
+  const triggerAuthFlow = (initialView = "entrance") => {
+    if (user?.isVerified) {
+      navigate('/onboarding');
+      return;
+    }
     setError("");
     setView(initialView);
     setShowAuthModal(true);
@@ -432,7 +538,7 @@ useEffect(() => {
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm">
         <div className="flex justify-between items-center px-6 md:px-margin-desktop py-4 max-w-container-max mx-auto">
-          <div 
+          <div
             className="flex items-center gap-2 cursor-pointer"
             onClick={() => {
               setActiveNav("platform");
@@ -454,11 +560,10 @@ useEffect(() => {
                 setActiveNav("platform");
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
-                activeNav === "platform"
-                  ? "text-navy-accent border-b-2 border-primary"
-                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
-              }`}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${activeNav === "platform"
+                ? "text-navy-accent border-b-2 border-primary"
+                : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+                }`}
             >
               Platform
             </button>
@@ -467,11 +572,10 @@ useEffect(() => {
                 setActiveNav("services");
                 document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
-                activeNav === "services"
-                  ? "text-navy-accent border-b-2 border-primary"
-                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
-              }`}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${activeNav === "services"
+                ? "text-navy-accent border-b-2 border-primary"
+                : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+                }`}
             >
               Services
             </button>
@@ -480,28 +584,43 @@ useEffect(() => {
                 setActiveNav("about");
                 document.getElementById('footer')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${
-                activeNav === "about"
-                  ? "text-navy-accent border-b-2 border-primary"
-                  : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
-              }`}
+              className={`font-body-md font-semibold py-1 cursor-pointer transition-colors ${activeNav === "about"
+                ? "text-navy-accent border-b-2 border-primary"
+                : "text-on-surface-variant hover:text-navy-accent border-b-2 border-transparent"
+                }`}
             >
               About
             </button>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/admin/sign-up")}
-              className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
-            >
-              Admin Login
-            </button>
-            <button
-              onClick={() => triggerAuthFlow("register")}
-              className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm"
-            >
-              Get Started
-            </button>
+            {user?.isVerified ? (
+              <>
+                <span className="text-xs font-semibold text-navy-accent bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200">
+                  {user.fullName || user.emailOrPhone}
+                </span>
+                <button
+                  onClick={resetStore}
+                  className="border border-red-200 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-button-text hover:bg-red-100 transition-all font-semibold text-xs shadow-sm hover:shadow-md cursor-pointer"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/admin/login")}
+                  className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm cursor-pointer"
+                >
+                  Admin Login
+                </button>
+                <button
+                  onClick={() => triggerAuthFlow("register")}
+                  className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm cursor-pointer"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -684,34 +803,34 @@ useEffect(() => {
         </section>
 
         {/* Stats Section */}
-       <section
-  ref={statsRef}
-  className="bg-navy-accent py-20 relative overflow-hidden"
->
+        <section
+          ref={statsRef}
+          className="bg-navy-accent py-20 relative overflow-hidden"
+        >
           <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none bg-grid"></div>
           <div className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-2 lg:grid-cols-4 gap-12 relative z-10 text-center">
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-      <Counter
-    end={500}
-    suffix="+"
-    duration={2600}
-    delay={0}
-    start={startCounter}
-/>        </p>
+                <Counter
+                  end={500}
+                  suffix="+"
+                  duration={2600}
+                  delay={0}
+                  start={startCounter}
+                />        </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Projects Delivered
               </p>
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-             <Counter
-    end={120}
-    suffix="+"
-    duration={3400}
-    delay={300}
-    start={startCounter}
-/>
+                <Counter
+                  end={120}
+                  suffix="+"
+                  duration={3400}
+                  delay={300}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Specialist Models
@@ -719,13 +838,13 @@ useEffect(() => {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-               <Counter
-    end={98}
-    suffix="%"
-    duration={4200}
-    delay={600}
-    start={startCounter}
-/>
+                <Counter
+                  end={98}
+                  suffix="%"
+                  duration={4200}
+                  delay={600}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Customer Retention
@@ -733,15 +852,15 @@ useEffect(() => {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-             <Counter
-    end={2.4}
-    prefix="$"
-    suffix="B"
-    decimals={1}
-    duration={5200}
-    delay={900}
-    start={startCounter}
-/>
+                <Counter
+                  end={2.4}
+                  prefix="$"
+                  suffix="B"
+                  decimals={1}
+                  duration={5200}
+                  delay={900}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Pipeline Value
@@ -996,7 +1115,7 @@ useEffect(() => {
                   Capabilities
                 </span>
                 <h2 className="font-display-lg text-4xl md:text-5xl text-navy-accent mt-4">
-                  Comprehensive Engine for technical Dokumentation.
+                  Comprehensive Engine for technical Documentation.
                 </h2>
               </div>
               <button
@@ -1200,10 +1319,7 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-current text-[#00D8FF]">
-                      <title>React</title>
-                      <path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.41 0-.783.093-1.106.278-1.375.793-1.683 3.264-.973 6.365C1.98 8.917 0 10.42 0 12.004c0 1.59 1.99 3.097 5.043 4.03-.704 3.113-.39 5.588.988 6.38.32.187.69.275 1.102.275 1.345 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.41 0 .783-.09 1.106-.275 1.374-.792 1.683-3.263.973-6.365C22.02 15.096 24 13.59 24 12.004c0-1.59-1.99-3.097-5.043-4.032.704-3.11.39-5.587-.988-6.38-.318-.184-.688-.277-1.092-.278zm-.005 1.09v.006c.225 0 .406.044.558.127.666.382.955 1.835.73 3.704-.054.46-.142.945-.25 1.44-.96-.236-2.006-.417-3.107-.534-.66-.905-1.345-1.727-2.035-2.447 1.592-1.48 3.087-2.292 4.105-2.295zm-9.77.02c1.012 0 2.514.808 4.11 2.28-.686.72-1.37 1.537-2.02 2.442-1.107.117-2.154.298-3.113.538-.112-.49-.195-.964-.254-1.42-.23-1.868.054-3.32.714-3.707.19-.09.4-.127.563-.132zm4.882 3.05c.455.468.91.992 1.36 1.564-.44-.02-.89-.034-1.345-.034-.46 0-.915.01-1.36.034.44-.572.895-1.096 1.345-1.565zM12 8.1c.74 0 1.477.034 2.202.093.406.582.802 1.203 1.183 1.86.372.64.71 1.29 1.018 1.946-.308.655-.646 1.31-1.013 1.95-.38.66-.773 1.288-1.18 1.87-.728.063-1.466.098-2.21.098-.74 0-1.477-.035-2.202-.093-.406-.582-.802-1.204-1.183-1.86-.372-.64-.71-1.29-1.018-1.946.303-.657.646-1.313 1.013-1.954.38-.66.773-1.286 1.18-1.868.728-.064 1.466-.098 2.21-.098zm-3.635.254c-.24.377-.48.763-.704 1.16-.225.39-.435.782-.635 1.174-.265-.656-.49-1.31-.676-1.947.64-.15 1.315-.283 2.015-.386zm7.26 0c.695.103 1.365.23 2.006.387-.18.632-.405 1.282-.66 1.933-.2-.39-.41-.783-.64-1.174-.225-.392-.465-.774-.705-1.146zm3.063.675c.484.15.944.317 1.375.498 1.732.74 2.852 1.708 2.852 2.476-.005.768-1.125 1.74-2.857 2.475-.42.18-.88.342-1.355.493-.28-.958-.646-1.956-1.1-2.98.45-1.017.81-2.01 1.085-2.964zm-13.395.004c.278.96.645 1.957 1.1 2.98-.45 1.017-.812 2.01-1.086 2.964-.484-.15-.944-.318-1.37-.5-1.732-.737-2.852-1.706-2.852-2.474 0-.768 1.12-1.742 2.852-2.476.42-.18.88-.342 1.356-.494zm11.678 4.28c.265.657.49 1.312.676 1.948-.64.157-1.316.29-2.016.39.24-.375.48-.762.705-1.158.225-.39.435-.788.636-1.18zm-9.945.02c.2.392.41.783.64 1.175.23.39.465.772.705 1.143-.695-.102-1.365-.23-2.006-.386.18-.63.406-1.282.66-1.933zM17.92 16.32c.112.493.2.968.254 1.423.23 1.868-.054 3.32-.714 3.708-.147.09-.338.128-.563.128-1.012 0-2.514-.807-4.11-2.28.686-.72 1.37-1.536 2.02-2.44 1.107-.118 2.154-.3 3.113-.54zm-11.83.01c.96.234 2.006.415 3.107.532.66.905 1.345 1.727 2.035 2.446-1.595 1.483-3.092 2.295-4.11 2.295-.22-.005-.406-.05-.553-.132-.666-.38-.955-1.834-.73-3.703.054-.46.142-.944.25-1.438zm4.56.64c.44.02.89.034 1.345.034.46 0 .915-.01 1.36-.034-.44.572-.895 1.095-1.345 1.565-.455-.47-.91-.993-1.36-1.565z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-[#00D8FF]">R</span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     React
@@ -1214,10 +1330,7 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 translate-y-6 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-current text-[#3776AB]">
-                      <title>Python</title>
-                      <path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-[#3776AB]">Py</span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     Python
@@ -1228,10 +1341,7 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-current text-black">
-                      <title>Vercel</title>
-                      <path d="m12 1.608 12 20.784H0Z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-black">V</span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     Vercel
@@ -1242,10 +1352,7 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-current text-[#10A37F]">
-                      <title>OpenAI</title>
-                      <path d="M14.949 6.547a3.94 3.94 0 0 0-.348-3.273 4.11 4.11 0 0 0-4.4-1.934A4.1 4.1 0 0 0 8.423.2 4.15 4.15 0 0 0 6.305.086a4.1 4.1 0 0 0-1.891.948 4.04 4.04 0 0 0-1.158 1.753 4.1 4.1 0 0 0-1.563.679A4 4 0 0 0 .554 4.72a3.99 3.99 0 0 0 .502 4.731 3.94 3.94 0 0 0 .346 3.274 4.11 4.11 0 0 0 4.402 1.933c.382.425.852.764 1.377.995.526.231 1.095.35 1.67.346 1.78.002 3.358-1.132 3.901-2.804a4.1 4.1 0 0 0 1.563-.68 4 4 0 0 0 1.14-1.253 3.99 3.99 0 0 0-.506-4.716m-6.097 8.406a3.05 3.05 0 0 1-1.945-.694l.096-.054 3.23-1.838a.53.53 0 0 0 .265-.455v-4.49l1.366.778q.02.011.025.035v3.722c-.003 1.653-1.361 2.992-3.037 2.996m-6.53-2.75a2.95 2.95 0 0 1-.36-2.01l.095.057L5.29 12.09a.53.53 0 0 0 .527 0l3.949-2.246v1.555a.05.05 0 0 1-.022.041L6.473 13.3c-1.454.826-3.311.335-4.15-1.098m-.85-6.94A3.02 3.02 0 0 1 3.07 3.949v3.785a.51.51 0 0 0 .262.451l3.93 2.237-1.366.779a.05.05 0 0 1-.048 0L2.585 9.342a2.98 2.98 0 0 1-1.113-4.094zm11.216 2.571L8.747 5.576l1.362-.776a.05.05 0 0 1 .048 0l3.265 1.86a3 3 0 0 1 1.173 1.207 2.96 2.96 0 0 1-.27 3.2 3.05 3.05 0 0 1-1.36.997V8.279a.52.52 0 0 0-.276-.445m1.36-2.015-.097-.057-3.226-1.855a.53.53 0 0 0-.53 0L6.249 6.153V4.598a.04.04 0 0 1 .019-.04L9.533 2.7a3.07 3.07 0 0 1 3.257.139c.474.325.843.778 1.066 1.303.223.526.289 1.103.191 1.664zM5.503 8.575 4.139 7.8a.05.05 0 0 1-.026-.037V4.049c0-.57.166-1.127.476-1.607s.752-.864 1.275-1.105a3.08 3.08 0 0 1-1.503-2.617c0-.206.022-.407.06-.603z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-primary">AI</span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     OpenAI
@@ -1256,10 +1363,9 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 translate-y-6 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" className="w-9 h-9 fill-current text-[#FF9900]">
-                      <title>Amazon AWS</title>
-                      <path d="M180.41 203.01c-.72 22.65 10.6 32.68 10.88 39.05a8.164 8.164 0 0 1-4.1 6.27l-12.8 8.96a10.66 10.66 0 0 1-5.63 1.92c-.43-.02-8.19 1.83-20.48-25.61a78.608 78.608 0 0 1-62.61 29.45c-16.28.89-60.4-9.24-58.13-56.21-1.59-38.28 34.06-62.06 70.93-60.05 7.1.02 21.6.37 46.99 6.27v-15.62c2.69-26.46-14.7-46.99-44.81-43.91-2.4.01-19.4-.5-45.84 10.11-7.36 3.38-8.3 2.82-10.75 2.82-7.41 0-4.36-21.48-2.94-24.2 5.21-6.4 35.86-18.35 65.94-18.18a76.857 76.857 0 0 1 55.69 17.28 70.285 70.285 0 0 1 17.67 52.36l-.01 69.29zM93.99 235.4c32.43-.47 46.16-19.97 49.29-30.47 2.46-10.05 2.05-16.41 2.05-27.4-9.67-2.32-23.59-4.85-39.56-4.87-15.15-1.14-42.82 5.63-41.74 32.26-1.24 16.79 11.12 31.4 29.96 30.48zm170.92 23.05c-7.86.72-11.52-4.86-12.68-10.37l-49.8-164.65c-.97-2.78-1.61-5.65-1.92-8.58a4.61 4.61 0 0 1 3.86-5.25c.24-.04-2.13 0 22.25 0 8.78-.88 11.64 6.03 12.55 10.37l35.72 140.83 33.16-140.83c.53-3.22 2.94-11.07 12.8-10.24h17.16c2.17-.18 11.11-.5 12.68 10.37l33.42 142.63L420.98 80.1c.48-2.18 2.72-11.37 12.68-10.37h19.72c.85-.13 6.15-.81 5.25 8.58-.43 1.85 3.41-10.66-52.75 169.9-1.15 5.51-4.82 11.09-12.68 10.37h-18.69c-10.94 1.15-12.51-9.66-12.68-10.75L328.67 110.7l-32.78 136.99c-.16 1.09-1.73 11.9-12.68 10.75h-18.3zm273.48 5.63c-5.88.01-33.92-.3-57.36-12.29a12.802 12.802 0 0 1-7.81-11.91v-10.75c0-8.45 6.2-6.9 8.83-5.89 10.04 4.06 16.48 7.14 28.81 9.6 36.65 7.53 52.77-2.3 56.72-4.48 13.15-7.81 14.19-25.68 5.25-34.95-10.48-8.79-15.48-9.12-53.13-21-4.64-1.29-43.7-13.61-43.79-52.36-.61-28.24 25.05-56.18 69.52-55.95 12.67-.01 46.43 4.13 55.57 15.62 1.35 2.09 2.02 4.55 1.92 7.04v10.11c0 4.44-1.62 6.66-4.87 6.66-7.71-.86-21.39-11.17-49.16-10.75-6.89-.36-39.89.91-38.41 24.97-.43 18.96 26.61 26.07 29.7 26.89 36.46 10.97 48.65 12.79 63.12 29.58 17.14 22.25 7.9 48.3 4.35 55.44-19.08 37.49-68.42 34.44-69.26 34.42zm40.2 104.86c-70.03 51.72-171.69 79.25-258.49 79.25A469.127 469.127 0 0 1 2.83 327.46c-6.53-5.89-.77-13.96 7.17-9.47a637.37 637.37 0 0 0 316.88 84.12 630.22 630.22 0 0 0 241.59-49.55c11.78-5 21.77 7.8 10.12 16.38zm29.19-33.29c-8.96-11.52-59.28-5.38-81.81-2.69-6.79.77-7.94-5.12-1.79-9.47 40.07-28.17 105.88-20.1 113.44-10.63 7.55 9.47-2.05 75.41-39.56 106.91-5.76 4.87-11.27 2.3-8.71-4.1 8.44-21.25 27.39-68.49 18.43-80.02z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-[#FF9900]">
+                      AWS
+                    </span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     Amazon
@@ -1270,10 +1376,7 @@ useEffect(() => {
                   className="bg-white aspect-square rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col items-center justify-center gap-3 group hover:border-primary hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center">
-                    <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 fill-current text-[#47A248]">
-                      <title>MongoDB</title>
-                      <path d="M17.193 9.555c-1.264-5.58-4.252-7.414-4.573-8.115-.28-.394-.53-.954-.735-1.44-.036.495-.055.685-.523 1.184-.723.566-4.438 3.682-4.74 10.02-.282 5.912 4.27 9.435 4.888 9.884l.07.05A73.49 73.49 0 0111.91 24h.481c.114-1.032.284-2.056.51-3.07.417-.296.604-.463.85-.693a11.342 11.342 0 003.639-8.464c.01-.814-.103-1.662-.197-2.218zm-5.336 8.195s0-8.291.275-8.29c.213 0 .49 10.695.49 10.695-.381-.045-.765-1.76-.765-2.405z"/>
-                    </svg>
+                    <span className="font-bold text-xl text-[#47A248]">DB</span>
                   </div>
                   <span className="font-label-caps text-[10px] text-on-surface-variant font-bold">
                     MongoDB
@@ -1669,21 +1772,18 @@ useEffect(() => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${
-                view === "register" || view === "otp"
-                  ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
-                  : "max-w-md rounded-3xl p-8 text-left"
-              }`}
+              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register" || view === "otp"
+                ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10 max-h-[90vh] overflow-y-auto"
+                : "max-w-md rounded-3xl p-8 text-left max-h-[90vh] overflow-y-auto"
+                }`}
             >
               {/* Close Button */}
-              {view !== "register" && (
-                <button
-                  onClick={() => setShowAuthModal(false)}
-                  className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors z-20"
-                >
-                  <X size={18} />
-                </button>
-              )}
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="absolute top-5 right-5 p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors z-20 cursor-pointer"
+              >
+                <X size={20} />
+              </button>
 
               <AnimatePresence mode="wait">
                 {/* 1. ENTRANCE GATE */}
@@ -1719,11 +1819,10 @@ useEffect(() => {
                       <button
                         onClick={handleEntranceContinue}
                         disabled={!isValidEntrance}
-                        className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-200 ${
-                          isValidEntrance
-                            ? "bg-primary text-white hover:bg-primary/90 shadow-md cursor-pointer"
-                            : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                        }`}
+                        className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-200 ${isValidEntrance
+                          ? "bg-primary text-white hover:bg-primary/90 shadow-md cursor-pointer"
+                          : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                          }`}
                       >
                         Continue
                         <ArrowRight size={13} className="ml-1" />
@@ -1790,12 +1889,12 @@ useEffect(() => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                           />
                           <button
                             type="button"
                             onClick={() => setShowLoginPassword(!showLoginPassword)}
-                            className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                            className="absolute right-3 inset-y-0 flex items-center text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
                           >
                             {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
@@ -1864,18 +1963,18 @@ useEffect(() => {
                     exit={{ opacity: 0, y: -10 }}
                     className="font-sans"
                   >
-                    <div className="text-center mb-8">
-                      <h3 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">
+                    <div className="text-center mb-5">
+                      <h3 className="font-headline-md text-2xl font-bold text-[#0a0a0a]">
                         Get In Touch
                       </h3>
-                      <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
+                      <p className="mt-1 font-body-md text-sm text-[#5a5a5c]">
                         Join the network for sovereign enterprise management.
                       </p>
                     </div>
 
-                    <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                    <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
                       <div>
-                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Full Name
                         </label>
                         <input
@@ -1884,12 +1983,12 @@ useEffect(() => {
                           value={regFullName}
                           onChange={(e) => setRegFullName(e.target.value)}
                           placeholder="John Doe"
-                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                          className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Work Email
                         </label>
                         <input
@@ -1898,19 +1997,32 @@ useEffect(() => {
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
                           placeholder="name@company.com"
-                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                          className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          Company Name <span className="text-neutral-400 font-normal lowercase">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={regCompanyName}
+                          onChange={(e) => setRegCompanyName(e.target.value)}
+                          placeholder="Acme Corp"
+                          className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Phone Number
                         </label>
-                        <div className="flex h-11 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
+                        <div className="flex h-10 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
                           <select
                             value={regCountryCode}
                             onChange={(e) => setRegCountryCode(e.target.value)}
-                            className="w-[104px] shrink-0 border-0 border-r border-[#e5e5e5] bg-[#f7f7f7] px-3 font-body-md text-sm font-medium text-[#0a0a0a] outline-none focus:ring-0"
+                            className="w-[104px] shrink-0 border-0 border-r border-[#e5e5e5] bg-[#f7f7f7] px-2.5 font-body-md text-sm font-semibold text-[#0a0a0a] outline-none focus:ring-0"
                           >
                             {countryCodes.map((country) => (
                               <option key={country} value={country}>
@@ -1924,13 +2036,13 @@ useEffect(() => {
                             value={regPhone}
                             onChange={(e) => setRegPhone(e.target.value)}
                             placeholder="(555) 000-0000"
-                            className="min-w-0 flex-1 border-0 bg-transparent px-4 font-body-md text-base text-[#0a0a0a] outline-none placeholder:text-[#a8a8aa] focus:ring-0"
+                            className="min-w-0 flex-1 border-0 bg-transparent px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none placeholder:text-[#a8a8aa] placeholder:font-normal focus:ring-0"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Password
                         </label>
                         <div className="relative">
@@ -1940,30 +2052,30 @@ useEffect(() => {
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                            className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white pl-3.5 pr-9 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                           />
                           <button
                             type="button"
                             onClick={() => setShowRegPassword(!showRegPassword)}
-                            className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                            className="absolute right-2.5 inset-y-0 flex items-center text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
                           >
                             {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                           </button>
                         </div>
                       </div>
 
-                      <label className="flex h-14 cursor-pointer items-center rounded-md border border-[#e5e5e5] bg-white px-4">
+                      <label className="flex h-11 cursor-pointer items-center rounded-md border border-[#e5e5e5] bg-white px-3.5">
                         <input
                           type="checkbox"
                           checked={isNotRobot}
                           onChange={(e) => setIsNotRobot(e.target.checked)}
                           className="h-4 w-4 rounded border-[#cfd5dc] text-[#14e1d0] focus:ring-[#14e1d0]"
                         />
-                        <span className="ml-3 font-body-md text-sm font-medium text-[#0a0a0a]">
+                        <span className="ml-3 font-body-md text-sm font-semibold text-[#0a0a0a]">
                           I'm not a robot
                         </span>
-                        <div className="ml-auto flex flex-col items-center font-label-caps text-[8px] font-semibold uppercase leading-tight text-[#888888]">
-                          <span className="material-symbols-outlined text-[18px] text-[#888888]">
+                        <div className="ml-auto flex flex-col items-center font-label-caps text-[9px] font-bold uppercase leading-tight text-[#888888]">
+                          <span className="material-symbols-outlined text-[16px] text-[#888888]">
                             cached
                           </span>
                           Recaptcha
@@ -1971,18 +2083,18 @@ useEffect(() => {
                       </label>
 
                       {error && (
-                        <p className="text-[10px] font-bold text-red-500">
+                        <p className="text-xs font-bold text-red-500">
                           {error}
                         </p>
                       )}
 
                       <button
                         type="submit"
-                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
+                        className="mt-2.5 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-bold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                       >
                         Sign Up
                       </button>
-                      <div className="mt-4 text-center font-body-md text-xs text-[#5a5a5c]">
+                      <div className="mt-3 text-center font-body-md text-xs font-medium text-[#5a5a5c]">
                         Already have an account?{" "}
                         <button
                           type="button"
@@ -1990,7 +2102,7 @@ useEffect(() => {
                             setError("");
                             setView("login");
                           }}
-                          className="font-semibold text-primary hover:underline"
+                          className="font-bold text-primary hover:underline"
                         >
                           Login
                         </button>
@@ -2028,22 +2140,27 @@ useEffect(() => {
                         Security Verification
                       </h3>
                       <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                        We've simulated sending a security code. Enter test code{" "}
-                        <strong className="font-semibold text-[#0a0a0a]">
-                          1234
-                        </strong>{" "}
-                        to verify your account.
+                        We've sent a security code to your email. Enter the code below to verify.
                       </p>
+                      <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200/60 text-left">
+                        <p className="font-body-md text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">info</span>
+                          Dev Mode Hint:
+                        </p>
+                        <p className="mt-1 font-body-md text-[11px] text-amber-700 leading-normal">
+                          If SMTP is not configured, check the backend terminal console for the printed OTP or inspect the <strong>OTP Logs</strong> in the Admin portal.
+                        </p>
+                      </div>
                     </div>
 
                     <form onSubmit={handleOtpVerify} className="space-y-5">
                       <div>
                         <label className="mb-2 block text-center font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          4-Digit Security Code
+                          6-Digit Security Code
                         </label>
                         <input
                           type="text"
-                          maxLength={4}
+                          maxLength={6}
                           required
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}
@@ -2295,7 +2412,7 @@ useEffect(() => {
             isActive: activeNav === "admin",
             onClick: () => {
               setActiveNav("admin");
-              navigate("/admin/sign-up");
+              navigate("/admin/login");
             },
           },
         ]}

@@ -135,16 +135,51 @@ function App() {
             element={<EditUser />}
           />
 
-          {/* Admin Login */}
+          <Route
+            path="/super-admin"
+            element={<Navigate to="/super-admin-dashboard" replace />}
+          />
 
+          {/* Admin Login */}
+          <Route
+            path="/admin/login"
+            element={
+              user?.role === "super-admin" ? (
+                <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <AdminLogin
+                  onLogin={({ role }) => {
+                    if (role === "super-admin") {
+                      navigate("/super-admin-dashboard");
+                    } else {
+                      navigate("/admin");
+                    }
+                  }}
+                  onCancel={() => navigate("/")}
+                />
+              )
+            }
+          />
+
+          {/* Admin Sign-up */}
           <Route
             path="/admin/sign-up"
             element={
-              user?.role ? (
+              user?.role === "super-admin" ? (
+                <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role ? (
                 <Navigate to="/admin" replace />
               ) : (
                 <AdminSignup 
-                  onLogin={() => navigate("/admin")}
+                  onLogin={({ role }) => {
+                    if (role === "super-admin") {
+                      navigate("/super-admin-dashboard");
+                    } else {
+                      navigate("/admin");
+                    }
+                  }}
                   onCancel={() => navigate("/")}
                 />
               )
@@ -158,10 +193,10 @@ function App() {
             element={
               user?.role ? (
                 <AdminPortalRoute>
-                  <AdminSignup />
+                  <AdminPortal />
                 </AdminPortalRoute>
               ) : (
-                <Navigate to="/admin/sign-up" replace />
+                <Navigate to="/admin/login" replace />
               )
             }
           />

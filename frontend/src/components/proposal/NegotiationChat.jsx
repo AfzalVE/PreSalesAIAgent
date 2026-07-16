@@ -36,7 +36,9 @@ function StreamingText({ text, onComplete }) {
 export default function NegotiationChat() {
   const { 
     applyNegotiationRequest, 
-    negotiationHistory
+    negotiationHistory,
+    projectData,
+    updateProjectData
   } = useAppStore();
 
   const [inputPrompt, setInputPrompt] = useState("");
@@ -124,38 +126,65 @@ export default function NegotiationChat() {
       }
     ]);
 
-    // Simulate AI thinking and recalculating allocation values
-    setTimeout(() => {
-      const result = applyNegotiationRequest(text);
-      
-      const aiMessageId = generateMessageId("ai");
-      setIsProcessing(false);
+    try {
+      const payload = {
+        user_request: text,
+        current_budget: projectData.budget || 0,
+        current_timeline: projectData.timeline || "TBD",
+        current_tech_stack: projectData.techStack || []
+      };
 
-      if (result.success) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: aiMessageId,
-            sender: "ai",
-            text: result.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            success: true
-          }
-        ]);
-      } else {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: aiMessageId,
-            sender: "ai",
-            text: result.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            success: false,
-            warning: result.error
-          }
-        ]);
+      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/negotiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to process request");
       }
-    }, 1200);
+
+      // Update store with new negotiated parameters if successful
+      if (data.success) {
+        updateProjectData({
+          budget: data.new_budget,
+          timeline: data.new_timeline,
+          techStack: data.new_tech_stack
+        });
+      }
+
+      const aiMessageId = generateMessageId("ai");
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: aiMessageId,
+          sender: "ai",
+          text: data.response_message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          success: data.success,
+          warning: data.success ? undefined : data.error_message
+        }
+      ]);
+    } catch (err) {
+      console.error("API error, falling back to simulation:", err);
+      const result = applyNegotiationRequest(text);
+      const aiMessageId = generateMessageId("ai");
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: aiMessageId,
+          sender: "ai",
+          text: result.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          success: result.success,
+          warning: result.success ? undefined : result.error
+        }
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

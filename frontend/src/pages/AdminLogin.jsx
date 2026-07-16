@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   KeyRound,
@@ -24,8 +25,7 @@ function pickInitialRoleFromEmail(email) {
   if (
     e.includes("super") ||
     e.includes("root") ||
-    e.includes("owner") ||
-    e.includes("admin")
+    e.includes("owner")
   )
     return "super-admin";
   if (e.includes("manager") || e.includes("mgr")) return "manager";
@@ -33,6 +33,7 @@ function pickInitialRoleFromEmail(email) {
 }
 
 export default function AdminLogin({ onLogin, onCancel, isModal }) {
+  const navigate = useNavigate();
   const { setUser } = useAppStore();
 
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -67,7 +68,15 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
     });
 
     setSubmitting(false);
-    onLogin({ role: effectiveRole, emailOrPhone });
+    if (typeof onLogin === "function") {
+      onLogin({ role: effectiveRole, emailOrPhone });
+    } else {
+      if (effectiveRole === "super-admin") {
+        navigate("/super-admin-dashboard");
+      } else {
+        navigate("/admin");
+      }
+    }
   };
 
   const RoleIcon =
@@ -227,7 +236,14 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
 
                   <select
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      if (newRole === "super-admin") {
+                        navigate("/super-admin-login");
+                      } else {
+                        setRole(newRole);
+                      }
+                    }}
                     className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 focus:border-2 focus:border-[#00d4a4]"
                   >
                     {ROLE_OPTIONS.map((r) => (
@@ -263,6 +279,19 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                     <div>manager@corp.com</div>
                     <div>admin@corp.com</div>
                   </div>
+                </div>
+
+                <div className="pt-2 text-center">
+                  <p className="font-body-md text-sm text-[#5a5a5c]">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => window.location.href = "/admin/sign-up"}
+                      className="text-primary font-bold hover:underline ml-1"
+                    >
+                      Sign up here
+                    </button>
+                  </p>
                 </div>
               </form>
             </div>

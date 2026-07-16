@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class AgentTextInput(BaseModel):
     text: str = Field(..., description="The unstructured text or transcribed voice input from the user.")
+    request_id: Optional[str] = Field(None, description="Optional request ID if continuing an existing chat.") # newly added
 
 class ResourceRequirement(BaseModel):
     role: str = Field(..., description="The role of the resource, e.g., 'Backend Developer'.")
@@ -10,6 +11,7 @@ class ResourceRequirement(BaseModel):
     skills: List[str] = Field(default_factory=list, description="List of specific skills required, e.g., ['Python', 'FastAPI'].")
 
 class AgentExtractionResponse(BaseModel):
+    request_id: Optional[str] = Field(None, description="The unique identifier for the database request if tracked statefully.") # newly added
     proposal_id: str = Field(..., description="The unique identifier for the proposal, e.g., 'PROP-001'.")
     project_name: str = Field(..., description="The name of the project extracted or generated.")
     timeline_weeks: Optional[int] = Field(None, description="The timeline of the project in weeks. If not provided by the user, leave it null for downstream calculation.")
