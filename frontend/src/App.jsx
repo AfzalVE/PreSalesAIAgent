@@ -135,14 +135,30 @@ function App() {
             element={<EditUser />}
           />
 
+          <Route
+            path="/super-admin"
+            element={<Navigate to="/super-admin-dashboard" replace />}
+          />
+
           {/* Admin Login */}
           <Route
             path="/admin/login"
             element={
-              user?.role ? (
+              user?.role === "super-admin" ? (
+                <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role ? (
                 <Navigate to="/admin" replace />
               ) : (
-                <AdminLogin />
+                <AdminLogin
+                  onLogin={({ role }) => {
+                    if (role === "super-admin") {
+                      navigate("/super-admin-dashboard");
+                    } else {
+                      navigate("/admin");
+                    }
+                  }}
+                  onCancel={() => navigate("/")}
+                />
               )
             }
           />
@@ -151,11 +167,19 @@ function App() {
           <Route
             path="/admin/sign-up"
             element={
-              user?.role ? (
+              user?.role === "super-admin" ? (
+                <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role ? (
                 <Navigate to="/admin" replace />
               ) : (
                 <AdminSignup 
-                  onLogin={() => navigate("/admin")}
+                  onLogin={({ role }) => {
+                    if (role === "super-admin") {
+                      navigate("/super-admin-dashboard");
+                    } else {
+                      navigate("/admin");
+                    }
+                  }}
                   onCancel={() => navigate("/")}
                 />
               )

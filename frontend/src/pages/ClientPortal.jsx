@@ -146,7 +146,7 @@ export default function ClientPortal() {
         payload.request_id = chatRequestId;
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/v1/ai_agent/extract-requirements", {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
