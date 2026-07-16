@@ -34,8 +34,8 @@ function StreamingText({ text, onComplete }) {
 }
 
 export default function NegotiationChat() {
-  const { 
-    applyNegotiationRequest, 
+  const {
+    applyNegotiationRequest,
     negotiationHistory,
     projectData,
     updateProjectData
@@ -68,7 +68,7 @@ export default function NegotiationChat() {
       const rec = new SpeechRecognition();
       rec.continuous = false;
       rec.interimResults = true;
-      
+
       rec.onresult = (event) => {
         let currentTranscript = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -76,16 +76,16 @@ export default function NegotiationChat() {
         }
         setInputPrompt(currentTranscript);
       };
-      
+
       rec.onerror = (e) => {
         console.error(e);
         setIsRecording(false);
       };
-      
+
       rec.onend = () => {
         setIsRecording(false);
       };
-      
+
       setRecognition(rec);
     }
   }, []);
@@ -95,7 +95,7 @@ export default function NegotiationChat() {
       alert("Speech recognition not supported in this browser.");
       return;
     }
-    
+
     if (isRecording) {
       recognition.stop();
       setIsRecording(false);
@@ -191,7 +191,7 @@ export default function NegotiationChat() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto font-sans">
       {/* Conversation Thread */}
       <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[460px]">
-        
+
         {/* Terminal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
@@ -206,7 +206,7 @@ export default function NegotiationChat() {
           {messages.map((msg) => {
             const isLatest = messages[messages.length - 1].id === msg.id;
             const shouldStream = msg.sender === 'ai' && msg.id !== 'init' && isLatest && !completedStreams[msg.id];
-            
+
             return (
               <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} items-start gap-2.5`}>
                 {msg.sender === 'ai' && (
@@ -215,11 +215,10 @@ export default function NegotiationChat() {
                   </div>
                 )}
                 <div className="max-w-[80%] flex flex-col">
-                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm border ${
-                    msg.sender === 'user'
-                      ? 'bg-neutral-900 text-white font-medium rounded-tr-none border-transparent'
-                      : 'bg-primary/5 text-neutral-800 rounded-tl-none border-primary/10'
-                  }`}>
+                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm border ${msg.sender === 'user'
+                    ? 'bg-neutral-900 text-white font-medium rounded-tr-none border-transparent'
+                    : 'bg-primary/5 text-neutral-800 rounded-tl-none border-primary/10'
+                    }`}>
                     {shouldStream ? (
                       <StreamingText
                         text={msg.text}
@@ -271,7 +270,7 @@ export default function NegotiationChat() {
           </div>
 
           {/* Form input */}
-          <form 
+          <form
             onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
             className="flex items-center space-x-2 border border-neutral-200/80 rounded-2xl p-1.5 bg-[#fcfdfe] focus-within:bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 shadow-inner transition-all duration-200"
           >
@@ -283,17 +282,16 @@ export default function NegotiationChat() {
               disabled={isProcessing}
               className="flex-1 bg-transparent py-2.5 px-4 text-xs border-none focus:border-none outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 text-neutral-800 disabled:opacity-50 placeholder-neutral-400 font-medium"
             />
-            
+
             {/* Mic voice input simulator */}
             <button
               type="button"
               disabled={isProcessing}
               onClick={toggleMic}
-              className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-40 relative ${
-                isRecording 
-                  ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200' 
-                  : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
-              }`}
+              className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-40 relative ${isRecording
+                ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200'
+                : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                }`}
               title="Speak to Broker"
             >
               {isRecording && (
