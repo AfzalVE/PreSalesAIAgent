@@ -57,6 +57,7 @@ export default function NegotiationChat() {
 
   const [recognition, setRecognition] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [chatRequestId, setChatRequestId] = useState(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -127,14 +128,12 @@ export default function NegotiationChat() {
     ]);
 
     try {
-      const payload = {
-        user_request: text,
-        current_budget: projectData.budget || 0,
-        current_timeline: projectData.timeline || "TBD",
-        current_tech_stack: projectData.techStack || []
-      };
+      const payload = { text };
+      if (chatRequestId) {
+        payload.request_id = chatRequestId;
+      }
 
-      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/negotiate", {
+      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -143,27 +142,37 @@ export default function NegotiationChat() {
       if (!response.ok) {
         throw new Error(data.detail || "Failed to process request");
       }
-
-      // Update store with new negotiated parameters if successful
-      if (data.success) {
-        updateProjectData({
-          budget: data.new_budget,
-          timeline: data.new_timeline,
-          techStack: data.new_tech_stack
-        });
+      
+      if (data.request_id) {
+        setChatRequestId(data.request_id);
       }
 
+      // Update store with merged parameters
+      updateProjectData({
+        budget: data.client_budget !== null ? data.client_budget : projectData.budget,
+        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline,
+        techStack: data.resource_requirements ? data.resource_requirements.flatMap(r => r.skills) : projectData.techStack
+      });
+
       const aiMessageId = generateMessageId("ai");
+      
+      let reply = "I've extracted your requirements and updated the project scope.";
+      if (data.follow_up_message) {
+        reply = data.follow_up_message;
+      }
+      
+      if (data.is_ready_for_proposal) {
+        reply += "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals dashboard in a few moments.";
+      }
 
       setMessages(prev => [
         ...prev,
         {
           id: aiMessageId,
           sender: "ai",
-          text: data.response_message,
+          text: reply,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          success: data.success,
-          warning: data.success ? undefined : data.error_message
+          success: true
         }
       ]);
     } catch (err) {

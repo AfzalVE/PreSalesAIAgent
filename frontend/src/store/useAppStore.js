@@ -56,6 +56,9 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  isDemoReady: false,
+  setIsDemoReady: (ready) => set({ isDemoReady: ready }),
+
   // Proposals & Stages
   proposalStages: { ...MOCK_PROPOSAL_STAGES },
   selectedProposalStage: 'growth', // 'mvp' | 'growth' | 'enterprise'

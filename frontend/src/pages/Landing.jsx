@@ -26,6 +26,7 @@ import Dock from "../components/common/Dock";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
 import AdminLogin from "./AdminLogin";
+import { ThreeDot } from "react-loading-indicators";
 
 const countryCodes = [
   "US +1",
@@ -244,7 +245,7 @@ export default function Landing({ onAdminClick }) {
                 ? "/admin"
                 : "/client-portal";
           navigate(targetPath);
-        }, 1400);
+        }, 500);
         return;
       }
 
@@ -257,7 +258,7 @@ export default function Landing({ onAdminClick }) {
         setOtpStatus("");
         setOtpCode("");
         startOtpResendTimer();
-      }, 1200);
+      }, 400);
     } catch (err) {
       setOtpStatus("");
       setError(err.message);
@@ -302,7 +303,7 @@ export default function Landing({ onAdminClick }) {
             isVerified: true,
           });
           navigate('/client-portal');
-        }, 1400);
+        }, 500);
         return;
       }
 
@@ -315,7 +316,7 @@ export default function Landing({ onAdminClick }) {
         setOtpStatus("");
         setOtpCode("");
         startOtpResendTimer();
-      }, 1200);
+      }, 400);
     } catch (err) {
       setOtpStatus("");
       setError(err.message);
@@ -380,7 +381,7 @@ export default function Landing({ onAdminClick }) {
                 : "/client-portal";
           navigate(targetPath);
         }
-      }, 1400);
+      }, 500);
     } catch (err) {
       setOtpStatus("error");
       setError(err.message || "Invalid OTP code.");
@@ -1848,10 +1849,12 @@ export default function Landing({ onAdminClick }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/75 backdrop-blur-md p-6 text-center rounded-xl"
+                    className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/70 backdrop-blur-lg rounded-xl sm:rounded-3xl"
                   >
-                    <div className="loader mb-4 mx-auto"></div>
-                    <p className="font-body-md text-sm font-bold text-[#514b82] max-w-[280px]">
+                    <div className="mb-4">
+                      <ThreeDot variant="pulsate" color="#006b5d" size="medium" text="" textColor="" />
+                    </div>
+                    <p className="font-headline-md text-navy-accent font-bold text-lg text-center px-6">
                       {floatingLoader.text ||
                         (otpStatus === "verifying"
                           ? view === "otp"
