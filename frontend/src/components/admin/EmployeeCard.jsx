@@ -52,37 +52,36 @@ export default function EmployeeCard({ employee, onManage }) {
       </div>
 
       {/* Bench Details Bottom Panel */}
-      <div className="pt-4 border-t border-neutral-100/80 flex items-center justify-between text-[11px] font-semibold">
-        <div className="flex items-center">
-          {isAvailable ? (
-            <CheckCircle2 size={12} className="text-brand-500 mr-1" />
-          ) : (
-            <AlertCircle size={12} className="text-amber-500 mr-1" />
+      <div className="pt-4 border-t border-neutral-100/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center">
+            {isAvailable ? (
+              <CheckCircle2 size={12} className="text-brand-500 mr-1" />
+            ) : (
+              <AlertCircle size={12} className="text-amber-500 mr-1" />
+            )}
+            <span className={isAvailable ? "text-brand-700" : "text-amber-700"}>
+              {employee.availability}
+            </span>
+          </div>
+          {employee.benchStatus && (
+            <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-bold uppercase tracking-wider">
+              On Bench
+            </span>
           )}
-          <span className={isAvailable ? "text-brand-700" : "text-amber-700"}>
-            {employee.availability}
-          </span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          {onManage ? (
+        <div className="flex items-center space-x-3">
+          <span className="text-neutral-500 font-medium">
+            Allocated: <strong className="text-neutral-800 font-bold">{employee.currentAllocation}%</strong>
+          </span>
+          {onManage && (
             <button
               onClick={() => onManage(employee)}
-              className="text-xs font-bold text-brand-500 hover:text-brand-600 transition-colors"
+              className="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-lg border border-brand-200/60 shadow-sm"
             >
-              Manage Resource →
+              Manage →
             </button>
-          ) : (
-            <>
-              {employee.benchStatus && (
-                <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-bold uppercase">
-                  On Bench
-                </span>
-              )}
-              <span className="text-neutral-400">
-                Allocated: <strong className="text-neutral-800">{employee.currentAllocation}%</strong>
-              </span>
-            </>
           )}
         </div>
       </div>
