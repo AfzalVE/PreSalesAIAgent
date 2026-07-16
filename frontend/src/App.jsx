@@ -69,7 +69,7 @@ function App() {
 
           {/* Admin Routes */}
           <Route 
-            path="/admin" 
+            path="/admin/*" 
             element={
               user?.role ? (
                 <AdminPortalRoute>
@@ -84,10 +84,10 @@ function App() {
             path="/admin/login" 
             element={
               user?.role ? (
-                <Navigate to="/admin" replace />
+                <Navigate to="/admin/dashboard" replace />
               ) : (
                 <AdminLogin 
-                  onLogin={() => navigate('/admin')} 
+                  onLogin={() => navigate('/admin/dashboard')} 
                   onCancel={() => navigate('/')} 
                 />
               )

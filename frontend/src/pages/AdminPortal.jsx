@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Users,
@@ -34,8 +35,28 @@ export default function AdminPortal() {
     verifyUserOnBackend,
   } = useAppStore();
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // Navigation tabs: "dashboard" | "proposals" | "staff" | "users" | "otplogs"
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const ADMIN_PATHS = {
+    "/admin/dashboard": "dashboard",
+    "/admin/proposal-console": "proposals",
+    "/admin/bench-management": "staff",
+    "/admin/users-catalog": "users",
+    "/admin/otp": "otplogs"
+  };
+
+  useEffect(() => {
+    const tab = ADMIN_PATHS[location.pathname];
+    if (tab) {
+      setActiveTab(tab);
+    } else if (location.pathname === "/admin" || location.pathname === "/admin/") {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (fetchAdminData) {
@@ -132,7 +153,7 @@ export default function AdminPortal() {
           {/* Sub-tab Navigation */}
           <div className="flex flex-wrap space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-2xl text-xs font-semibold self-start sm:self-center">
             <button
-              onClick={() => setActiveTab("dashboard")}
+              onClick={() => navigate("/admin/dashboard")}
               className={`px-4 py-2 rounded-xl transition-all duration-200 ${
                 activeTab === "dashboard"
                   ? "bg-white text-neutral-900 shadow-sm"
@@ -142,7 +163,7 @@ export default function AdminPortal() {
               Dashboard
             </button>
             <button
-              onClick={() => setActiveTab("proposals")}
+              onClick={() => navigate("/admin/proposal-console")}
               className={`px-4 py-2 rounded-xl transition-all duration-200 ${
                 activeTab === "proposals"
                   ? "bg-white text-neutral-900 shadow-sm"
@@ -152,7 +173,7 @@ export default function AdminPortal() {
               Proposals Console
             </button>
             <button
-              onClick={() => setActiveTab("staff")}
+              onClick={() => navigate("/admin/bench-management")}
               className={`px-4 py-2 rounded-xl transition-all duration-200 ${
                 activeTab === "staff"
                   ? "bg-white text-neutral-900 shadow-sm"
@@ -162,7 +183,7 @@ export default function AdminPortal() {
               Bench Management
             </button>
             <button
-              onClick={() => setActiveTab("users")}
+              onClick={() => navigate("/admin/users-catalog")}
               className={`px-4 py-2 rounded-xl transition-all duration-200 ${
                 activeTab === "users"
                   ? "bg-white text-neutral-900 shadow-sm"
@@ -172,7 +193,7 @@ export default function AdminPortal() {
               Users Catalog
             </button>
             <button
-              onClick={() => setActiveTab("otplogs")}
+              onClick={() => navigate("/admin/otp")}
               className={`px-4 py-2 rounded-xl transition-all duration-200 ${
                 activeTab === "otplogs"
                   ? "bg-white text-neutral-900 shadow-sm"
@@ -641,7 +662,7 @@ export default function AdminPortal() {
                     Scope Features
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    {selectedProposal.features.map((feat, idx) => (
+                    {(selectedProposal.features || []).map((feat, idx) => (
                       <div
                         key={idx}
                         className="flex items-center space-x-2 p-2 bg-neutral-50 rounded-xl border border-neutral-100"
@@ -774,7 +795,7 @@ export default function AdminPortal() {
                     Negotiation Logs
                   </label>
                   <div className="space-y-2">
-                    {selectedProposal.versions.map((v, idx) => (
+                    {(selectedProposal.versions || []).map((v, idx) => (
                       <div
                         key={idx}
                         className="p-3 bg-neutral-50 border border-neutral-100 rounded-xl text-xs flex justify-between"
