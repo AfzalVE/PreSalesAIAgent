@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Users,
@@ -22,10 +22,26 @@ import MetricCard from "../components/common/MetricCard";
 import SkillTag from "../components/common/SkillTag";
 
 export default function AdminPortal() {
-  const { employees, adminProposals, updateEmployee } = useAppStore();
+  const {
+    employees = [],
+    adminProposals = [],
+    usersList = [],
+    otpLogs = [],
+    dashboardStats,
+    fetchAdminData,
+    updateEmployeeOnBackend,
+    toggleUserStatusOnBackend,
+    verifyUserOnBackend,
+  } = useAppStore();
 
   // Navigation tabs: "dashboard" | "proposals" | "staff" | "users" | "otplogs"
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  useEffect(() => {
+    if (fetchAdminData) {
+      fetchAdminData();
+    }
+  }, [fetchAdminData, activeTab]);
 
   // Filtering states for Staff Bench Tab
   const [filterMode, setFilterMode] = useState("all"); // "all" | "bench" | "allocated"
@@ -43,69 +59,12 @@ export default function AdminPortal() {
   const [editSkills, setEditSkills] = useState([]);
   const [editBenchStatus, setEditBenchStatus] = useState(false);
 
-  // Mock list of Admin users
-  const [usersList, setUsersList] = useState([
-    {
-      name: "Alex Rivera",
-      email: "alex@zenith.com",
-      role: "Owner",
-      company: "Zenith Brands Ltd",
-      status: "Active",
-      verificationStatus: "Verified",
-      proposalHistory: ["Zenith Retail Portal"],
-    },
-    {
-      name: "Sarah Chen",
-      email: "sarah@zenith.com",
-      role: "Admin",
-      company: "Zenith Brands Ltd",
-      status: "Active",
-      verificationStatus: "Verified",
-      proposalHistory: [],
-    },
-    {
-      name: "Elena Rostova",
-      email: "elena@corp.com",
-      role: "Manager",
-      company: "Acme Corp",
-      status: "Active",
-      verificationStatus: "Pending",
-      proposalHistory: ["Acme Enterprise ERP"],
-    },
-  ]);
 
-  // Mock OTP Log history
-  const otpLogs = [
-    {
-      user: "Alex Rivera",
-      email: "alex@zenith.com",
-      purpose: "Login Authentication",
-      verified: "Yes",
-      attempts: 1,
-      expiryTime: "10:35 AM",
-    },
-    {
-      user: "Elena Rostova",
-      email: "elena@corp.com",
-      purpose: "Account Registration",
-      verified: "Yes",
-      attempts: 2,
-      expiryTime: "10:28 AM",
-    },
-    {
-      user: "Guest User",
-      email: "guest@sandbox.com",
-      purpose: "Forgot Password Reset",
-      verified: "No",
-      attempts: 3,
-      expiryTime: "10:15 AM",
-    },
-  ];
 
   // Filtered employees for display
   const filteredEmployees = employees.filter((emp) => {
     if (filterMode === "bench" && !emp.benchStatus) return false;
-    if (filterMode === "allocated" && emp.currentAllocation < 100) return false;
+    if (filterMode === "allocated" && (emp.benchStatus || emp.currentAllocation <= 0)) return false;
     if (selectedSkill && !emp.skills.includes(selectedSkill)) return false;
     return true;
   });
@@ -121,13 +80,15 @@ export default function AdminPortal() {
 
   const handleSaveEmployee = () => {
     if (!selectedEmployee) return;
-    updateEmployee(selectedEmployee.id, {
-      availability: editAvailability,
-      currentAllocation: editAllocation,
-      availableHours: parseInt(editHours, 10) || 0,
-      skills: editSkills,
-      benchStatus: editBenchStatus,
-    });
+    if (updateEmployeeOnBackend) {
+      updateEmployeeOnBackend(selectedEmployee.id, {
+        availability: editAvailability,
+        currentAllocation: editAllocation,
+        availableHours: parseInt(editHours, 10) || 0,
+        skills: editSkills,
+        benchStatus: editBenchStatus,
+      });
+    }
     setSelectedEmployee(null);
   };
 
@@ -140,21 +101,15 @@ export default function AdminPortal() {
   };
 
   const toggleUserStatus = (email) => {
-    setUsersList(
-      usersList.map((u) =>
-        u.email === email
-          ? { ...u, status: u.status === "Active" ? "Deactivated" : "Active" }
-          : u,
-      ),
-    );
+    if (toggleUserStatusOnBackend) {
+      toggleUserStatusOnBackend(email);
+    }
   };
 
   const verifyUserManually = (email) => {
-    setUsersList(
-      usersList.map((u) =>
-        u.email === email ? { ...u, verificationStatus: "Verified" } : u,
-      ),
-    );
+    if (verifyUserOnBackend) {
+      verifyUserOnBackend(email);
+    }
   };
 
   return (
@@ -236,32 +191,32 @@ export default function AdminPortal() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <MetricCard
                 title="Total Proposals Processed"
-                value="142"
-                subtext="Up 12% this cycle"
+                value={dashboardStats?.totalProposalsProcessed ?? "..."}
+                subtext={dashboardStats?.totalProposalsSubtext ?? "Syncing live pipeline..."}
                 icon={BarChart3}
                 colorClass="text-brand-500"
                 delay={0}
               />
               <MetricCard
                 title="Resource Utilization Rate"
-                value="82.5%"
-                subtext="18 engineers currently active"
+                value={dashboardStats?.resourceUtilizationRate ?? "..."}
+                subtext={dashboardStats?.resourceUtilizationSubtext ?? "Syncing live resources..."}
                 icon={Users}
                 colorClass="text-brand-500"
                 delay={0.1}
               />
               <MetricCard
                 title="Proposal Conversion Efficiency"
-                value="69.0%"
-                subtext="Industry average: 44%"
+                value={dashboardStats?.proposalConversionEfficiency ?? "..."}
+                subtext={dashboardStats?.proposalConversionSubtext ?? "Syncing conversion metrics..."}
                 icon={Cpu}
                 colorClass="text-brand-500"
                 delay={0.2}
               />
               <MetricCard
                 title="Global Bench Allocation"
-                value="25%"
-                subtext="6 resources available on request"
+                value={dashboardStats?.globalBenchAllocation ?? "..."}
+                subtext={dashboardStats?.globalBenchSubtext ?? "Syncing bench status..."}
                 icon={Layers}
                 colorClass="text-brand-500"
                 delay={0.3}
@@ -269,7 +224,10 @@ export default function AdminPortal() {
             </div>
 
             {/* Recharts Analytics Heatmaps Section */}
-            <ResourceHeatmap />
+            <ResourceHeatmap
+              monthlyRevenue={dashboardStats?.monthlyRevenue}
+              skillDistribution={dashboardStats?.skillDistribution}
+            />
           </div>
         )}
 
@@ -307,7 +265,7 @@ export default function AdminPortal() {
                           {prop.clientName}
                         </td>
                         <td className="py-4 font-bold text-brand-600">
-                          ${prop.budget.toLocaleString()}
+                          ${Number(prop.budget || 0).toLocaleString()}
                         </td>
                         <td className="py-4 text-neutral-500 font-medium">
                           {prop.timeline}

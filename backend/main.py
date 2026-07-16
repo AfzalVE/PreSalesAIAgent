@@ -8,13 +8,14 @@ import app.models  # Ensures all models are registered
 
 # Routers (Uncomment as modules are created)
 from app.api.v1.auth.auth_router import router as auth_router
-# from app.api.v1.users.user_router import router as user_router
-# from app.api.v1.employees.employee_router import router as employee_router
+from app.api.v1.users.user_router import router as user_router
+from app.api.v1.employees.employee_router import router as employee_router
 # from app.api.v1.proposal_requests.proposal_request_router import router as proposal_request_router
 from fastapi.staticfiles import StaticFiles
 from app.api.v1.resource_allocation.resource_router import router as resource_router
 from app.api.v1.proposals.proposal_router import router as proposal_router
 from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
+from app.api.v1.admin.admin_router import router as admin_router
 
 
 
@@ -64,11 +65,14 @@ app = FastAPI(
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -100,13 +104,14 @@ async def health():
 # ----------------------------
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
-# app.include_router(user_router, prefix="/api/v1/users", tags=["Users"])
-# app.include_router(employee_router, prefix="/api/v1/employees", tags=["Employees"])
+app.include_router(user_router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(employee_router, prefix="/api/v1/employees", tags=["Employees"])
 # app.include_router(proposal_request_router, prefix="/api/v1/proposal-requests", tags=["Proposal Requests"])
 # app.include_router(cost_router, prefix="/api/v1/cost-estimation", tags=["Cost Estimation"])
 app.include_router(resource_router, prefix="/api/v1/resource-allocation", tags=["Resource Allocation"])
 app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
 app.include_router(ai_agent_router, prefix="/api/v1/ai-agent", tags=["AI Agent"])
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin Studio"])
 
 # Mount static folder for proposals
 import os

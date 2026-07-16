@@ -25,7 +25,7 @@ export default function RequirementsSummary() {
     try {
       const res = await generateProposalsFromBackend();
       if (res.success) {
-        navigate('/compare'); // Navigate to Proposal Comparison Page
+        navigate("/compare"); // Navigate to Proposal Comparison Page
       } else {
         alert("Failed to generate proposals: " + res.error);
       }
@@ -45,7 +45,7 @@ export default function RequirementsSummary() {
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate("/onboarding")}
               className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
             >
               <ArrowLeft size={14} />

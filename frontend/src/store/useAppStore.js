@@ -15,8 +15,11 @@ const INITIAL_PROJECT_DATA = {
 
 export const useAppStore = create((set, get) => ({
   // Admin Data Management
-  employees: [...MOCK_EMPLOYEES],
-  adminProposals: [...MOCK_ADMIN_PROPOSALS],
+  employees: [],
+  adminProposals: [],
+  usersList: [],
+  otpLogs: [],
+  dashboardStats: null,
 
   updateEmployee: (empId, updatedFields) => set((state) => ({
     employees: state.employees.map(emp => emp.id === empId ? { ...emp, ...updatedFields } : emp)
@@ -59,7 +62,13 @@ export const useAppStore = create((set, get) => ({
   negotiationError: '',
 
   // Actions
-  setUser: (userData) => set({ user: userData }),
+  setUser: (userData) => {
+    set({ user: userData });
+    const r = String(userData?.role || '').toLowerCase();
+    if (r === 'super-admin' || r === 'admin' || r === 'manager') {
+      get().fetchAdminData();
+    }
+  },
   setActiveStep: (step) => set({ activeStep: step }),
 
   updateProjectData: (data) => set((state) => {
@@ -207,6 +216,83 @@ export const useAppStore = create((set, get) => ({
       }));
       return { success: true, docx_url: "#" };
     }
+  },
+
+  fetchAdminData: async () => {
+    const safeFetch = async (url) => {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.error(`[useAppStore] Error fetching ${url}:`, e);
+      }
+      return null;
+    };
+
+    safeFetch("http://localhost:8000/api/v1/admin/dashboard-stats").then((statsData) => {
+      if (statsData !== null) set({ dashboardStats: statsData });
+    });
+    safeFetch("http://localhost:8000/api/v1/proposals/all").then((propsData) => {
+      if (propsData !== null) set({ adminProposals: propsData });
+    });
+    safeFetch("http://localhost:8000/api/v1/employees").then((empsData) => {
+      if (empsData !== null) set({ employees: empsData });
+    });
+    safeFetch("http://localhost:8000/api/v1/users").then((usersData) => {
+      if (usersData !== null) set({ usersList: usersData });
+    });
+    safeFetch("http://localhost:8000/api/v1/admin/otp-logs").then((logsData) => {
+      if (logsData !== null) set({ otpLogs: logsData });
+    });
+
+    return { success: true };
+  },
+
+  updateEmployeeOnBackend: async (empId, updatedFields) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/employees/${empId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedFields)
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        return { success: true };
+      }
+    } catch (e) {
+      console.error("Failed to update employee on backend:", e);
+    }
+    return { success: false };
+  },
+
+  toggleUserStatusOnBackend: async (email) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/users/${email}/toggle-status`, {
+        method: "PUT"
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        return { success: true };
+      }
+    } catch (e) {
+      console.error("Failed to toggle user status on backend:", e);
+    }
+    return { success: false };
+  },
+
+  verifyUserOnBackend: async (email) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/users/${email}/verify`, {
+        method: "PUT"
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        return { success: true };
+      }
+    } catch (e) {
+      console.error("Failed to verify user on backend:", e);
+    }
+    return { success: false };
   },
 
   resetStore: () => set({

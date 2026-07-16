@@ -4,14 +4,15 @@ import { MOCK_ANALYTICS } from '../../mock/mockData';
 
 Chart.register(...registerables);
 
-export default function ResourceHeatmap() {
+export default function ResourceHeatmap({ monthlyRevenue: propMonthly, skillDistribution: propSkill }) {
   const barChartRef = useRef(null);
   const pieChartRef = useRef(null);
   
   const barInstance = useRef(null);
   const pieInstance = useRef(null);
 
-  const { monthlyRevenue, skillDistribution } = MOCK_ANALYTICS;
+  const monthlyRevenue = propMonthly || [];
+  const skillDistribution = propSkill || [];
 
   useEffect(() => {
     if (barChartRef.current) {
@@ -43,6 +44,20 @@ export default function ResourceHeatmap() {
               labels: {
                 color: '#71717a',
                 font: { family: 'Inter', size: 11, weight: '500' }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.datasetIndex === 0) {
+                    label += '$' + Number(context.raw || 0).toLocaleString();
+                  } else {
+                    label += context.raw;
+                  }
+                  return label;
+                }
               }
             }
           },
