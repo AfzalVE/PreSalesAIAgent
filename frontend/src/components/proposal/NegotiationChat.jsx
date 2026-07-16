@@ -36,7 +36,9 @@ function StreamingText({ text, onComplete }) {
 export default function NegotiationChat() {
   const { 
     applyNegotiationRequest, 
-    negotiationHistory
+    negotiationHistory,
+    projectData,
+    updateProjectData
   } = useAppStore();
 
   const [inputPrompt, setInputPrompt] = useState("");
@@ -125,17 +127,32 @@ export default function NegotiationChat() {
     ]);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+      const payload = {
+        user_request: text,
+        current_budget: projectData.budget || 0,
+        current_timeline: projectData.timeline || "TBD",
+        current_tech_stack: projectData.techStack || []
+      };
+
+      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/negotiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text })
+        body: JSON.stringify(payload)
       });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || "Failed to process request");
       }
 
-      const result = applyNegotiationRequest(text);
+      // Update store with new negotiated parameters if successful
+      if (data.success) {
+        updateProjectData({
+          budget: data.new_budget,
+          timeline: data.new_timeline,
+          techStack: data.new_tech_stack
+        });
+      }
+
       const aiMessageId = generateMessageId("ai");
 
       setMessages(prev => [
@@ -143,10 +160,10 @@ export default function NegotiationChat() {
         {
           id: aiMessageId,
           sender: "ai",
-          text: data.follow_up_message || result.text,
+          text: data.response_message,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          success: result.success,
-          warning: result.success ? undefined : result.error
+          success: data.success,
+          warning: data.success ? undefined : data.error_message
         }
       ]);
     } catch (err) {
