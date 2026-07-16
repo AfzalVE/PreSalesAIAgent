@@ -66,7 +66,7 @@ export default function ProposalComparison() {
     <div className="space-y-12">
       
       {/* 1. Evolution Slider Milestones */}
-      <div className="max-w-3xl mx-auto bg-white border border-neutral-200/80 rounded-2xl p-8 shadow-soft relative overflow-hidden">
+      <div className="max-w-3xl mx-auto bg-white border border-neutral-200/80 rounded-2xl p-5 sm:p-8 shadow-soft relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-brand-400 via-brand-500 to-wise-blue" />
         
         <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider text-center mb-6">Select Product Development Path</h3>

@@ -55,7 +55,7 @@ export default function EditUser() {
         </div>
 
         {/* Edit Form Card */}
-        <div className="bg-white border border-neutral-200/80 rounded-3xl p-8 shadow-soft relative overflow-hidden">
+        <div className="bg-white border border-neutral-200/80 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-soft relative overflow-hidden">
           <div className="flex items-center space-x-4 pb-6 border-b border-neutral-100">
             <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center font-bold text-brand-600 text-xl flex-shrink-0">
               {(formData.name || "U").charAt(0)}
@@ -171,17 +171,17 @@ export default function EditUser() {
               </div>
             )}
 
-            <div className="pt-5 border-t border-neutral-200/80 flex items-center justify-end gap-3 mt-8">
+            <div className="pt-5 border-t border-neutral-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mt-8">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="px-6 py-2.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-sm transition-all shadow-sm"
+                className="px-6 py-2.5 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-700 font-semibold text-sm transition-all shadow-sm w-full sm:w-auto text-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex h-11 px-8 items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px gap-2 shadow-sm"
+                className="flex h-11 px-8 w-full sm:w-auto items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px gap-2 shadow-sm"
               >
                 <Save size={16} className="text-primary" />
                 Save Changes

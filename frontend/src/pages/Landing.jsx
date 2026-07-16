@@ -13,6 +13,10 @@ import {
   DollarSign,
   Eye,
   EyeOff,
+  Lock,
+  Cpu,
+  Layers,
+  Activity,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { useNavigate } from "react-router-dom";
@@ -113,6 +117,8 @@ export default function Landing({ onAdminClick }) {
   const [otpResendTimer, setOtpResendTimer] = useState(0);
   const [otpStatus, setOtpStatus] = useState(""); // "" | "verifying" | "success" | "error"
   const [pendingToken, setPendingToken] = useState("");
+  const [verifiedUserData, setVerifiedUserData] = useState(null);
+  const [floatingLoader, setFloatingLoader] = useState({ active: false, text: "" });
 
   const [error, setError] = useState("");
 
@@ -221,7 +227,9 @@ export default function Landing({ onAdminClick }) {
 
       if (data.otp_required === false) {
         setOtpStatus("success");
+        setFloatingLoader({ active: true, text: "Authentication Confirmed! Launching Workspace..." });
         setTimeout(() => {
+          setFloatingLoader({ active: false, text: "" });
           setUser({
             emailOrPhone: data.email,
             fullName: data.full_name,
@@ -229,23 +237,27 @@ export default function Landing({ onAdminClick }) {
             role: data.role,
             isVerified: true,
           });
-          if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
-            navigate("/super-admin-dashboard");
-          } else if (data.role === "admin") {
-            navigate("/admin");
-          } else {
-            navigate("/onboarding");
-          }
-        }, 1000);
+          const targetPath =
+            data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")
+              ? "/super-admin-dashboard"
+              : data.role === "admin"
+              ? "/admin"
+              : "/client-portal";
+          navigate(targetPath);
+        }, 1400);
         return;
       }
 
       setPendingToken(data.pending_token);
       setOtpPurpose("login");
-      setView("otp");
-      setOtpStatus("");
-      setOtpCode("");
-      startOtpResendTimer();
+      setFloatingLoader({ active: true, text: "Dispatching Security Verification Code..." });
+      setTimeout(() => {
+        setFloatingLoader({ active: false, text: "" });
+        setView("otp");
+        setOtpStatus("");
+        setOtpCode("");
+        startOtpResendTimer();
+      }, 1200);
     } catch (err) {
       setOtpStatus("");
       setError(err.message);
@@ -279,7 +291,9 @@ export default function Landing({ onAdminClick }) {
 
       if (data.otp_required === false) {
         setOtpStatus("success");
+        setFloatingLoader({ active: true, text: "Registration Successful! Launching Workspace..." });
         setTimeout(() => {
+          setFloatingLoader({ active: false, text: "" });
           setUser({
             emailOrPhone: data.email,
             fullName: data.full_name,
@@ -287,17 +301,21 @@ export default function Landing({ onAdminClick }) {
             role: data.role,
             isVerified: true,
           });
-          navigate('/onboarding');
-        }, 1000);
+          navigate('/client-portal');
+        }, 1400);
         return;
       }
 
       setPendingToken(data.pending_token);
       setOtpPurpose("register");
-      setView("otp");
-      setOtpStatus("");
-      setOtpCode("");
-      startOtpResendTimer();
+      setFloatingLoader({ active: true, text: "Dispatching Security Verification Code..." });
+      setTimeout(() => {
+        setFloatingLoader({ active: false, text: "" });
+        setView("otp");
+        setOtpStatus("");
+        setOtpCode("");
+        startOtpResendTimer();
+      }, 1200);
     } catch (err) {
       setOtpStatus("");
       setError(err.message);
@@ -339,7 +357,9 @@ export default function Landing({ onAdminClick }) {
         throw new Error(data.detail || "Invalid OTP code.");
       }
       setOtpStatus("success");
+      setFloatingLoader({ active: true, text: "Security Verified! Initializing Workspace..." });
       setTimeout(() => {
+        setFloatingLoader({ active: false, text: "" });
         if (otpPurpose === "forgot") {
           setView("reset-password");
           setOtpStatus("");
@@ -352,15 +372,15 @@ export default function Landing({ onAdminClick }) {
             role: data.role,
             isVerified: true,
           });
-          if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
-            navigate("/super-admin-dashboard");
-          } else if (data.role === "admin") {
-            navigate("/admin");
-          } else {
-            navigate("/onboarding");
-          }
+          const targetPath =
+            data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")
+              ? "/super-admin-dashboard"
+              : data.role === "admin"
+              ? "/admin"
+              : "/client-portal";
+          navigate(targetPath);
         }
-      }, 1000)
+      }, 1400);
     } catch (err) {
       setOtpStatus("error");
       setError(err.message || "Invalid OTP code.");
@@ -385,7 +405,13 @@ export default function Landing({ onAdminClick }) {
   // Open auth modal helpers
   const triggerAuthFlow = (initialView = "entrance") => {
     if (user?.isVerified) {
-      navigate('/onboarding');
+      if (user.role === "super-admin" || user.emailOrPhone?.toLowerCase().includes("superadmin")) {
+        navigate("/super-admin-dashboard");
+      } else if (user.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/client-portal");
+      }
       return;
     }
     setError("");
@@ -537,9 +563,9 @@ export default function Landing({ onAdminClick }) {
 
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm">
-        <div className="flex justify-between items-center px-6 md:px-margin-desktop py-4 max-w-container-max mx-auto">
+        <div className="flex flex-wrap justify-between items-center px-4 sm:px-6 md:px-margin-desktop py-3 sm:py-4 max-w-container-max mx-auto gap-3">
           <div
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer flex-shrink-0"
             onClick={() => {
               setActiveNav("platform");
               window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -548,9 +574,9 @@ export default function Landing({ onAdminClick }) {
             <img
               src="/ve.png"
               alt="Pre Sales Platform"
-              className="h-9 w-auto object-contain"
+              className="h-8 sm:h-9 w-auto object-contain"
             />
-            <span className="font-display-lg text-2xl text-navy-accent font-extrabold tracking-tight">
+            <span className="font-display-lg text-lg sm:text-2xl text-navy-accent font-extrabold tracking-tight">
               Pre Sales Platform
             </span>
           </div>
@@ -592,15 +618,29 @@ export default function Landing({ onAdminClick }) {
               About
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-2 sm:gap-3 justify-end ml-auto">
             {user?.isVerified ? (
               <>
-                <span className="text-xs font-semibold text-navy-accent bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200">
+                <span className="text-xs font-semibold text-navy-accent bg-neutral-100 px-2.5 sm:px-3 py-1.5 rounded-lg border border-neutral-200 truncate max-w-[150px] sm:max-w-none">
                   {user.fullName || user.emailOrPhone}
                 </span>
                 <button
+                  onClick={() => {
+                    if (user.role === "super-admin" || user.emailOrPhone?.toLowerCase().includes("superadmin")) {
+                      navigate("/super-admin-dashboard");
+                    } else if (user.role === "admin") {
+                      navigate("/admin");
+                    } else {
+                      navigate("/client-portal");
+                    }
+                  }}
+                  className="bg-primary-container text-navy-accent px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-button-text shadow-sm hover:shadow-md transition-all font-semibold text-xs cursor-pointer whitespace-nowrap"
+                >
+                  Client Dashboard
+                </button>
+                <button
                   onClick={resetStore}
-                  className="border border-red-200 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-button-text hover:bg-red-100 transition-all font-semibold text-xs shadow-sm hover:shadow-md cursor-pointer"
+                  className="border border-red-200 bg-red-50 text-red-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-button-text hover:bg-red-100 transition-all font-semibold text-xs shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap"
                 >
                   Logout
                 </button>
@@ -609,13 +649,13 @@ export default function Landing({ onAdminClick }) {
               <>
                 <button
                   onClick={() => navigate("/admin/login")}
-                  className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm cursor-pointer"
+                  className="border border-outline/30 bg-white/50 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-xs sm:text-sm cursor-pointer whitespace-nowrap"
                 >
                   Admin Login
                 </button>
                 <button
                   onClick={() => triggerAuthFlow("register")}
-                  className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm cursor-pointer"
+                  className="bg-primary-container text-navy-accent px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-xs sm:text-sm cursor-pointer whitespace-nowrap"
                 >
                   Get Started
                 </button>
@@ -1801,6 +1841,30 @@ export default function Landing({ onAdminClick }) {
                 <X size={20} />
               </button>
 
+              {/* Floating Pill Loader Overlay with Blur Background */}
+              <AnimatePresence>
+                {(floatingLoader.active || otpStatus === "verifying" || otpStatus === "success") && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/75 backdrop-blur-md p-6 text-center rounded-xl"
+                  >
+                    <div className="loader mb-4 mx-auto"></div>
+                    <p className="font-body-md text-sm font-bold text-[#514b82] max-w-[280px]">
+                      {floatingLoader.text ||
+                        (otpStatus === "verifying"
+                          ? view === "otp"
+                            ? "Verifying security code..."
+                            : "Authenticating securely..."
+                          : otpStatus === "success"
+                          ? "Security verification successful!"
+                          : "Please wait...")}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <AnimatePresence mode="wait">
                 {/* 1. ENTRANCE GATE */}
                 {view === "entrance" && (
@@ -1947,11 +2011,13 @@ export default function Landing({ onAdminClick }) {
                         </p>
                       )}
 
+
                       <button
                         type="submit"
-                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
+                        disabled={otpStatus === "verifying"}
+                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px disabled:cursor-not-allowed disabled:bg-[#e5e5e5] disabled:text-[#a8a8aa]"
                       >
-                        Authenticate
+                        {otpStatus === "verifying" ? "Authenticating..." : "Authenticate"}
                       </button>
                       <div className="mt-4 text-center font-body-md text-xs text-[#5a5a5c]">
                         Don't have an account?{" "}
@@ -2104,11 +2170,13 @@ export default function Landing({ onAdminClick }) {
                         </p>
                       )}
 
+
                       <button
                         type="submit"
-                        className="mt-2.5 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-bold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
+                        disabled={otpStatus === "verifying"}
+                        className="mt-2.5 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-bold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px disabled:cursor-not-allowed disabled:bg-[#e5e5e5] disabled:text-[#a8a8aa]"
                       >
-                        Sign Up
+                        {otpStatus === "verifying" ? "Signing Up..." : "Sign Up"}
                       </button>
                       <div className="mt-3 text-center font-body-md text-xs font-medium text-[#5a5a5c]">
                         Already have an account?{" "}
@@ -2204,19 +2272,6 @@ export default function Landing({ onAdminClick }) {
                         )}
                       </div>
 
-                      {otpStatus === "verifying" && (
-                        <div className="flex items-center justify-center space-x-2 py-2 font-body-md text-sm font-medium text-[#006b5d]">
-                          <RefreshCw size={14} className="animate-spin" />
-                          <span>Verifying securely...</span>
-                        </div>
-                      )}
-
-                      {otpStatus === "success" && (
-                        <div className="flex items-center justify-center space-x-2 py-2 font-body-md text-sm font-semibold text-[#00b48a]">
-                          <Check size={14} strokeWidth={3} />
-                          <span>Security verification successful!</span>
-                        </div>
-                      )}
 
                       {error && (
                         <p className="text-center font-body-md text-sm font-semibold text-[#d45656]">

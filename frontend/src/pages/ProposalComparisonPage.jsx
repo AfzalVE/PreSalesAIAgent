@@ -28,7 +28,7 @@ export default function ProposalComparisonPage() {
 
         {/* Wise Editorial Typography Header */}
         <div className="text-center space-y-3">
-          <h2 className="text-4xl md:text-6xl font-black font-display tracking-tight text-neutral-900 leading-none">
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-black font-display tracking-tight text-neutral-900 leading-none">
             Three Ways We Could Build This
           </h2>
           <p className="text-sm sm:text-base text-neutral-500 max-w-2xl mx-auto font-medium">

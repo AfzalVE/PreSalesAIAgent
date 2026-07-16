@@ -33,7 +33,7 @@ export default function ProposalPreviewPage() {
 
         {/* Header Title */}
         <div className="text-center space-y-3">
-          <h2 className="text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black font-display tracking-tight text-neutral-900 leading-none">
             Your Generated Proposal
           </h2>
           <p className="text-sm text-neutral-500 max-w-xl mx-auto leading-relaxed font-medium">
