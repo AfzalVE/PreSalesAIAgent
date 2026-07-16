@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { PlusCircle, Send, Trash2, Eye, Filter, RefreshCw, X, Mic, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
@@ -246,39 +247,40 @@ export default function ClientPortal() {
           </div>
         </div>
 
-        {/* Dashboard Navigation Tabs & Inline Logout */}
-        <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl font-button-text text-xs sm:text-sm font-medium self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "overview" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
+        {/* Dashboard Navigation Tabs */}
+        <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-fit gap-1 sm:gap-2 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl font-button-text text-xs sm:text-sm font-medium self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
+          {[
+            { id: "overview", label: "Overview" },
+            { id: "requests", label: "Proposal Requests" },
+            { id: "chat", label: "AI Assistant Chat" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                activeTab === tab.id ? "text-neutral-900 font-bold" : "text-neutral-500 hover:text-neutral-900"
               }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("requests")}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "requests" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
-              }`}
-          >
-            Proposal Requests
-          </button>
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={`px-3 sm:px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === "chat" ? 'bg-white text-neutral-900 shadow-sm font-bold' : 'text-neutral-500 hover:text-neutral-900'
-              }`}
-          >
-            AI Assistant Chat
-          </button>
+            >
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="client-portal-active-tab"
+                  className="absolute inset-0 bg-white rounded-xl shadow-sm border border-neutral-200/50"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10">{tab.label}</span>
+            </button>
+          ))}
 
           {/* Logout Option Inline exactly matching Admin / Super Admin portals */}
-          <button
+          {/* <button
             onClick={handleLogout}
             title="Sign out of Client Portal"
             className="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-auto"
           >
             <LogOut size={14} className="text-red-500 flex-shrink-0" />
             <span>Logout</span>
-          </button>
+          </button> */}
         </div>
 
         {/* 1. OVERVIEW VIEW */}
