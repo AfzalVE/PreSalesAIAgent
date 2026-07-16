@@ -229,7 +229,13 @@ export default function Landing({ onAdminClick }) {
             role: data.role,
             isVerified: true,
           });
-          navigate('/onboarding');
+          if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
+            navigate("/super-admin-dashboard");
+          } else if (data.role === "admin") {
+            navigate("/admin");
+          } else {
+            navigate("/onboarding");
+          }
         }, 1000);
         return;
       }
@@ -346,7 +352,13 @@ export default function Landing({ onAdminClick }) {
               role: data.role,
               isVerified: true,
             });
-            navigate('/onboarding');
+            if (data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")) {
+              navigate("/super-admin-dashboard");
+            } else if (data.role === "admin") {
+              navigate("/admin");
+            } else {
+              navigate("/onboarding");
+            }
           }
         }, 1000);
       } catch (err) {
@@ -596,7 +608,7 @@ export default function Landing({ onAdminClick }) {
               ) : (
                 <>
                   <button
-                    onClick={() => navigate("/admin/sign-up")}
+                    onClick={() => navigate("/admin/login")}
                     className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm cursor-pointer"
                   >
                     Admin Login
@@ -1761,19 +1773,17 @@ export default function Landing({ onAdminClick }) {
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.2 }}
                 className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register" || view === "otp"
-                  ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
-                  : "max-w-md rounded-3xl p-8 text-left"
+                  ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10 max-h-[90vh] overflow-y-auto"
+                  : "max-w-md rounded-3xl p-8 text-left max-h-[90vh] overflow-y-auto"
                   }`}
               >
                 {/* Close Button */}
-                {view !== "register" && (
-                  <button
-                    onClick={() => setShowAuthModal(false)}
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors z-20"
-                  >
-                    <X size={18} />
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowAuthModal(false)}
+                  className="absolute top-5 right-5 p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors z-20 cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
 
                 <AnimatePresence mode="wait">
                   {/* 1. ENTRANCE GATE */}
@@ -1879,12 +1889,12 @@ export default function Landing({ onAdminClick }) {
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                              className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                             />
                             <button
                               type="button"
                               onClick={() => setShowLoginPassword(!showLoginPassword)}
-                              className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                              className="absolute right-3 inset-y-0 flex items-center text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
                             >
                               {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -1953,18 +1963,18 @@ export default function Landing({ onAdminClick }) {
                       exit={{ opacity: 0, y: -10 }}
                       className="font-sans"
                     >
-                      <div className="text-center mb-8">
-                        <h3 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">
+                      <div className="text-center mb-5">
+                        <h3 className="font-headline-md text-2xl font-bold text-[#0a0a0a]">
                           Get In Touch
                         </h3>
-                        <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
+                        <p className="mt-1 font-body-md text-sm text-[#5a5a5c]">
                           Join the network for sovereign enterprise management.
                         </p>
                       </div>
 
-                      <form onSubmit={handleRegisterSubmit} className="space-y-5">
+                      <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
                         <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                             Full Name
                           </label>
                           <input
@@ -1973,12 +1983,12 @@ export default function Landing({ onAdminClick }) {
                             value={regFullName}
                             onChange={(e) => setRegFullName(e.target.value)}
                             placeholder="John Doe"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                            className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                             Work Email
                           </label>
                           <input
@@ -1987,33 +1997,32 @@ export default function Landing({ onAdminClick }) {
                             value={regEmail}
                             onChange={(e) => setRegEmail(e.target.value)}
                             placeholder="name@company.com"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                            className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                            Company Name
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                            Company Name <span className="text-neutral-400 font-normal lowercase">(optional)</span>
                           </label>
                           <input
                             type="text"
-                            required
                             value={regCompanyName}
                             onChange={(e) => setRegCompanyName(e.target.value)}
                             placeholder="Acme Corp"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                            className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                             Phone Number
                           </label>
-                          <div className="flex h-11 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
+                          <div className="flex h-10 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
                             <select
                               value={regCountryCode}
                               onChange={(e) => setRegCountryCode(e.target.value)}
-                              className="w-[104px] shrink-0 border-0 border-r border-[#e5e5e5] bg-[#f7f7f7] px-3 font-body-md text-sm font-medium text-[#0a0a0a] outline-none focus:ring-0"
+                              className="w-[104px] shrink-0 border-0 border-r border-[#e5e5e5] bg-[#f7f7f7] px-2.5 font-body-md text-sm font-semibold text-[#0a0a0a] outline-none focus:ring-0"
                             >
                               {countryCodes.map((country) => (
                                 <option key={country} value={country}>
@@ -2027,13 +2036,13 @@ export default function Landing({ onAdminClick }) {
                               value={regPhone}
                               onChange={(e) => setRegPhone(e.target.value)}
                               placeholder="(555) 000-0000"
-                              className="min-w-0 flex-1 border-0 bg-transparent px-4 font-body-md text-base text-[#0a0a0a] outline-none placeholder:text-[#a8a8aa] focus:ring-0"
+                              className="min-w-0 flex-1 border-0 bg-transparent px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none placeholder:text-[#a8a8aa] placeholder:font-normal focus:ring-0"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
                             Password
                           </label>
                           <div className="relative">
@@ -2043,30 +2052,30 @@ export default function Landing({ onAdminClick }) {
                               value={regPassword}
                               onChange={(e) => setRegPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                              className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white pl-3.5 pr-9 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                             />
                             <button
                               type="button"
                               onClick={() => setShowRegPassword(!showRegPassword)}
-                              className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                              className="absolute right-2.5 inset-y-0 flex items-center text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
                             >
                               {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
                           </div>
                         </div>
 
-                        <label className="flex h-14 cursor-pointer items-center rounded-md border border-[#e5e5e5] bg-white px-4">
+                        <label className="flex h-11 cursor-pointer items-center rounded-md border border-[#e5e5e5] bg-white px-3.5">
                           <input
                             type="checkbox"
                             checked={isNotRobot}
                             onChange={(e) => setIsNotRobot(e.target.checked)}
                             className="h-4 w-4 rounded border-[#cfd5dc] text-[#14e1d0] focus:ring-[#14e1d0]"
                           />
-                          <span className="ml-3 font-body-md text-sm font-medium text-[#0a0a0a]">
+                          <span className="ml-3 font-body-md text-sm font-semibold text-[#0a0a0a]">
                             I'm not a robot
                           </span>
-                          <div className="ml-auto flex flex-col items-center font-label-caps text-[8px] font-semibold uppercase leading-tight text-[#888888]">
-                            <span className="material-symbols-outlined text-[18px] text-[#888888]">
+                          <div className="ml-auto flex flex-col items-center font-label-caps text-[9px] font-bold uppercase leading-tight text-[#888888]">
+                            <span className="material-symbols-outlined text-[16px] text-[#888888]">
                               cached
                             </span>
                             Recaptcha
@@ -2074,18 +2083,18 @@ export default function Landing({ onAdminClick }) {
                         </label>
 
                         {error && (
-                          <p className="text-[10px] font-bold text-red-500">
+                          <p className="text-xs font-bold text-red-500">
                             {error}
                           </p>
                         )}
 
                         <button
                           type="submit"
-                          className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
+                          className="mt-2.5 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-bold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                         >
                           Sign Up
                         </button>
-                        <div className="mt-4 text-center font-body-md text-xs text-[#5a5a5c]">
+                        <div className="mt-3 text-center font-body-md text-xs font-medium text-[#5a5a5c]">
                           Already have an account?{" "}
                           <button
                             type="button"
@@ -2093,7 +2102,7 @@ export default function Landing({ onAdminClick }) {
                               setError("");
                               setView("login");
                             }}
-                            className="font-semibold text-primary hover:underline"
+                            className="font-bold text-primary hover:underline"
                           >
                             Login
                           </button>
@@ -2403,7 +2412,7 @@ export default function Landing({ onAdminClick }) {
               isActive: activeNav === "admin",
               onClick: () => {
                 setActiveNav("admin");
-                navigate("/admin/sign-up");
+                navigate("/admin/login");
               },
             },
           ]}

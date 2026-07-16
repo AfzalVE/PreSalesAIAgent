@@ -311,6 +311,8 @@ export const useAppStore = create((set, get) => ({
 
   resetStore: () => {
     localStorage.removeItem("user_session");
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("auth_token");
     set({
       user: { emailOrPhone: '', isVerified: false },
       activeStep: 0,
