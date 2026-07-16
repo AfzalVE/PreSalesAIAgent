@@ -57,36 +57,63 @@ export default function ClientPortal() {
     }
   }, []);
 
-  // Mock list of client's proposal requests
-  const [requestsList, setRequestsList] = useState([
-    {
-      id: "req-1",
-      name: "Zenith Retail Portal",
-      domain: "E-Commerce",
-      budget: 85000,
-      timeline: "12 Weeks",
-      status: "Approved",
-      createdDate: "14 Jul 2026",
-      tech: "React, Node.js, PostgreSQL",
-      desc: "Premium boutique storefront with AI sizing recommendations.",
-      transcript: "User: We want a high end retail storefront... System: Extracting sizing recommendations..."
-    },
-    {
-      id: "req-2",
-      name: "Fintech Vault Dashboard",
-      domain: "Finance",
-      budget: 120000,
-      timeline: "16 Weeks",
-      status: "Draft",
-      createdDate: "15 Jul 2026",
-      tech: "Next.js, Go, Redis",
-      desc: "Secure vault dashboard for corporate accounts.",
-      transcript: ""
+  // List of client's proposal requests dynamically fetched from PostgreSQL
+  const [requestsList, setRequestsList] = useState([]);
+  const { adminProposals, user } = useAppStore(); // Load existing admin-curated proposals for review
+
+  const fetchClientData = async () => {
+    try {
+      const currentUser = useAppStore.getState().user;
+      const currentUserEmail = (currentUser?.email || currentUser?.emailOrPhone || "").trim();
+      const currentUserId = (currentUser?.id || currentUser?.user_id || "").trim();
+
+      const queryParams = new URLSearchParams();
+      if (currentUserEmail) {
+        queryParams.append("user_email", currentUserEmail);
+      } else if (currentUserId) {
+        queryParams.append("user_id", currentUserId);
+      }
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+
+      // 1. Fetch Proposal Requests from database for THIS logged-in user
+      const reqsRes = await fetch(`http://127.0.0.1:8000/api/v1/proposal-requests${queryString}`);
+      if (reqsRes.ok) {
+        const reqsData = await reqsRes.json();
+        const formattedReqs = reqsData.map(req => ({
+          id: req.id,
+          name: req.project_name || "Untitled Project",
+          domain: req.business_domain || "Enterprise",
+          budget: Number(req.budget) || 0,
+          timeline: req.timeline || "12 Weeks",
+          status: req.status === "COMPLETED" ? "Approved" : (req.status === "PROCESSING" ? "Processing" : "Draft"),
+          createdDate: req.created_at ? new Date(req.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          tech: Array.isArray(req.preferred_technology) ? req.preferred_technology.join(', ') : (req.preferred_technology || "React, Node.js, PostgreSQL"),
+          desc: req.project_description || "Project scope under evaluation.",
+          transcript: req.extracted_json ? JSON.stringify(req.extracted_json) : "",
+          conversationsCount: req.conversations_count || 0
+        }));
+        setRequestsList(formattedReqs);
+      }
+
+      // 2. Fetch Proposals from database for THIS logged-in user
+      const propsRes = await fetch(`http://127.0.0.1:8000/api/v1/proposals/all${queryString}`);
+      if (propsRes.ok) {
+        const propsData = await propsRes.json();
+        if (propsData && Array.isArray(propsData)) {
+          const filteredProps = currentUserEmail
+            ? propsData.filter(p => !p.clientEmail || p.clientEmail.toLowerCase() === currentUserEmail.toLowerCase())
+            : propsData;
+          useAppStore.setState({ adminProposals: filteredProps });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch client portal data from database:", err);
     }
-  ]);
+  };
 
-  const { adminProposals } = useAppStore(); // Load existing admin-curated proposals for review
-
+  useEffect(() => {
+    fetchClientData();
+  }, []);
 
   const handleRestart = () => {
     resetStore();
@@ -98,22 +125,63 @@ export default function ClientPortal() {
     navigate('/');
   };
 
-  const handleCreateRequest = (e) => {
+  const handleCreateRequest = async (e) => {
     e.preventDefault();
-    const newReq = {
-      id: `req-${Date.now()}`,
-      name: newProjName,
-      domain: newProjDomain,
+    const currentUser = useAppStore.getState().user;
+    const currentUserEmail = (currentUser?.email || currentUser?.emailOrPhone || "").trim();
+    const currentUserId = (currentUser?.id || currentUser?.user_id || "").trim();
+
+    const payload = {
+      project_name: newProjName || "New Proposal Request",
+      project_description: newProjDesc || "Project scope under evaluation.",
+      business_domain: newProjDomain || "Enterprise",
+      preferred_technology: newProjTech ? newProjTech.split(",").map(t => t.trim()) : [],
       budget: parseInt(newProjBudget, 10) || 50000,
       timeline: newProjTimeline || "10 Weeks",
-      status: "Draft",
-      createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      tech: newProjTech,
-      desc: newProjDesc,
-      transcript: "Manual request entry."
+      user_email: currentUserEmail,
+      user_id: currentUserId
     };
 
-    setRequestsList([newReq, ...requestsList]);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/proposal-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        await fetchClientData();
+      } else {
+        const newReq = {
+          id: `req-${Date.now()}`,
+          name: newProjName,
+          domain: newProjDomain,
+          budget: parseInt(newProjBudget, 10) || 50000,
+          timeline: newProjTimeline || "10 Weeks",
+          status: "Draft",
+          createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          tech: newProjTech,
+          desc: newProjDesc,
+          transcript: "Manual request entry."
+        };
+        setRequestsList([newReq, ...requestsList]);
+      }
+    } catch (err) {
+      console.error("Error creating request in database:", err);
+      const newReq = {
+        id: `req-${Date.now()}`,
+        name: newProjName,
+        domain: newProjDomain,
+        budget: parseInt(newProjBudget, 10) || 50000,
+        timeline: newProjTimeline || "10 Weeks",
+        status: "Draft",
+        createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        tech: newProjTech,
+        desc: newProjDesc,
+        transcript: "Manual request entry."
+      };
+      setRequestsList([newReq, ...requestsList]);
+    }
+
     updateProjectData({
       name: newProjName,
       domain: newProjDomain,
@@ -132,8 +200,38 @@ export default function ClientPortal() {
     setShowCreateModal(false);
   };
 
-  const handleDeleteRequest = (id) => {
-    setRequestsList(requestsList.filter(r => r.id !== id));
+  const handleDeleteRequest = async (id) => {
+    try {
+      await fetch(`http://127.0.0.1:8000/api/v1/proposal-requests/${id}`, {
+        method: "DELETE"
+      });
+      setRequestsList(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error("Error deleting request from database:", err);
+      setRequestsList(prev => prev.filter(r => r.id !== id));
+    }
+  };
+
+  const handleSelectChatRequest = async (req) => {
+    setChatRequestId(req.id);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/proposal-requests/${req.id}/conversations`);
+      if (res.ok) {
+        const convos = await res.json();
+        if (convos && convos.length > 0) {
+          setChatLog(convos.map(c => ({
+            sender: c.sender === "client" || c.sender === "user" ? "user" : "ai",
+            text: c.text
+          })));
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Error loading chat history from database:", err);
+    }
+    setChatLog([
+      { sender: "ai", text: `Loaded project context for "${req.name}". How can I help adjust the budget, timeline, or scope today?` }
+    ]);
   };
 
   const handleSendMessage = async (e) => {
@@ -162,7 +260,7 @@ export default function ClientPortal() {
         setChatRequestId(data.request_id);
       }
 
-      let reply = "I've extracted your requirements and updated the project scope.";
+      let reply = "I've extracted your requirements and updated the project scope in the database.";
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
@@ -174,6 +272,8 @@ export default function ClientPortal() {
         budget: data.client_budget || projectData.budget,
         timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline
       });
+
+      await fetchClientData(); // Refresh overview statistics and proposals list from database
 
     } catch (err) {
       setChatLog(prev => [...prev, { sender: "ai", text: "Error connecting to AI service." }]);
@@ -196,6 +296,21 @@ export default function ClientPortal() {
       setIsRecordingVoice(true);
     }
   };
+
+  const clientProposals = (adminProposals || []).filter(prop => {
+    if (!user || !user.isVerified) return true;
+    const uEmail = (user.email || user.emailOrPhone || "").toLowerCase().trim();
+    const uId = (user.id || user.user_id || "").toString().trim();
+    if (!prop.clientEmail && !prop.clientId) return true;
+    if (uEmail && prop.clientEmail && prop.clientEmail.toLowerCase() === uEmail) return true;
+    if (uId && prop.clientId && prop.clientId.toString() === uId) return true;
+    return false;
+  });
+
+  const totalRequestsCount = requestsList.length;
+  const approvedCount = requestsList.filter(r => r.status === "Approved" || r.status === "COMPLETED").length + clientProposals.filter(p => p.status === "Approved" || p.status === "Completed").length;
+  const pendingCount = Math.max(0, totalRequestsCount - requestsList.filter(r => r.status === "Approved" || r.status === "COMPLETED").length) + clientProposals.filter(p => p.status !== "Approved" && p.status !== "Completed").length;
+  const totalEstimatedBudget = requestsList.reduce((sum, r) => sum + (Number(r.budget) || 0), 0) + clientProposals.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] overflow-hidden py-12 px-4 bg-surface">
@@ -271,16 +386,6 @@ export default function ClientPortal() {
               <span className="relative z-10">{tab.label}</span>
             </button>
           ))}
-
-          {/* Logout Option Inline exactly matching Admin / Super Admin portals */}
-          {/* <button
-            onClick={handleLogout}
-            title="Sign out of Client Portal"
-            className="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-auto"
-          >
-            <LogOut size={14} className="text-red-500 flex-shrink-0" />
-            <span>Logout</span>
-          </button> */}
         </div>
 
         {/* 1. OVERVIEW VIEW */}
@@ -290,25 +395,25 @@ export default function ClientPortal() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <AnimatedCard className="p-6">
                 <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Active Requests</span>
-                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">3</span>
-                <p className="font-body-md text-sm text-on-surface-variant mt-2">Scoping verified via voice</p>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">{totalRequestsCount}</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Scoping & proposals in progress</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
                 <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Pending Proposals</span>
-                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">2</span>
-                <p className="font-body-md text-sm text-on-surface-variant mt-2">Under broker review</p>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">{pendingCount}</span>
+                <p className="font-body-md text-sm text-on-surface-variant mt-2">Under broker & client review</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
                 <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Approved Proposals</span>
-                <span className="font-display-lg text-3xl font-semibold text-primary mt-1 block">1</span>
+                <span className="font-display-lg text-3xl font-semibold text-primary mt-1 block">{approvedCount}</span>
                 <p className="font-body-md text-sm text-on-surface-variant mt-2">Contract locked & signed</p>
               </AnimatedCard>
 
               <AnimatedCard className="p-6">
                 <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block">Total Estimated Budget</span>
-                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">$205,000</span>
+                <span className="font-display-lg text-3xl font-semibold text-navy-accent mt-1 block">${totalEstimatedBudget.toLocaleString()}</span>
                 <p className="font-body-md text-sm text-on-surface-variant mt-2">Consolidated project cost</p>
               </AnimatedCard>
             </div>
@@ -333,7 +438,7 @@ export default function ClientPortal() {
                     <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container" />
                     <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant bg-neutral-100 px-2 py-0.5 rounded">Completed</span>
                     <h4 className="font-body-md text-base font-semibold text-navy-accent mt-1">2. Proposal Negotiation & Balancing</h4>
-                    <p className="font-body-md text-sm text-on-surface-variant mt-0.5">Budget holds at ${activeProposal.budget.toLocaleString()} for {activeProposal.timeline}</p>
+                    <p className="font-body-md text-sm text-on-surface-variant mt-0.5">Budget holds at ${Number((activeProposal && activeProposal.budget) || 0).toLocaleString()} for {activeProposal ? activeProposal.timeline : "12 Weeks"}</p>
                   </div>
                 </div>
               </div>
@@ -344,36 +449,40 @@ export default function ClientPortal() {
                   Your Proposals Directory
                 </h3>
                 <div className="space-y-3">
-                  {adminProposals.map((prop) => (
-                    <div key={prop.id} className="p-4 bg-neutral-50 border border-neutral-100 rounded-xl space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="font-body-md text-sm font-semibold text-navy-accent block">{prop.projectName}</span>
-                          <span className="font-body-md text-sm text-on-surface-variant">{prop.timeline} • {prop.techStack.join(', ')}</span>
+                  {(!clientProposals || clientProposals.length === 0) ? (
+                    <p className="font-body-md text-sm text-on-surface-variant italic py-4">No proposals generated yet. Submit a request to begin scoring & estimation.</p>
+                  ) : (
+                    clientProposals.map((prop) => (
+                      <div key={prop.id} className="p-4 bg-neutral-50 border border-neutral-100 rounded-xl space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-body-md text-sm font-semibold text-navy-accent block">{prop.projectName}</span>
+                            <span className="font-body-md text-sm text-on-surface-variant">{prop.timeline} • {Array.isArray(prop.techStack) ? prop.techStack.join(', ') : (prop.techStack || 'Modern Stack')}</span>
+                          </div>
+                          <span className="font-body-md text-sm font-semibold text-primary">${Number(prop.budget || 0).toLocaleString()}</span>
                         </div>
-                        <span className="font-body-md text-sm font-semibold text-primary">${prop.budget.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60 font-body-md text-sm font-semibold">
-                        <span className={`px-2 py-0.5 rounded ${prop.status === 'Approved' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {prop.status}
-                        </span>
-                        <div className="space-x-2">
-                          <button
-                            onClick={() => alert(`Reviewing proposal: ${prop.projectName}`)}
-                            className="text-primary hover:underline"
-                          >
-                            View Specs
-                          </button>
-                          <button
-                            onClick={() => alert(`Downloading final package for ${prop.projectName}`)}
-                            className="text-neutral-700 hover:underline"
-                          >
-                            Download PDF
-                          </button>
+                        <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60 font-body-md text-sm font-semibold">
+                          <span className={`px-2 py-0.5 rounded ${prop.status === 'Approved' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {prop.status}
+                          </span>
+                          <div className="space-x-2">
+                            <button
+                              onClick={() => alert(`Reviewing proposal: ${prop.projectName}`)}
+                              className="text-primary hover:underline"
+                            >
+                              View Specs
+                            </button>
+                            <button
+                              onClick={() => alert(`Downloading final package for ${prop.projectName}`)}
+                              className="text-neutral-700 hover:underline"
+                            >
+                              Download PDF
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -419,7 +528,7 @@ export default function ClientPortal() {
                         <tr key={req.id} className="hover:bg-neutral-50/50 transition-colors">
                           <td className="py-4 font-semibold text-navy-accent">{req.name}</td>
                           <td className="py-4 text-neutral-500 font-medium">{req.domain}</td>
-                          <td className="py-4 font-semibold text-navy-accent">${req.budget.toLocaleString()}</td>
+                          <td className="py-4 font-semibold text-navy-accent">${Number(req.budget || 0).toLocaleString()}</td>
                           <td className="py-4 text-neutral-500 font-medium">{req.timeline}</td>
                           <td className="py-4">
                             <span className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${req.status === "Approved" ? "bg-primary-container/40 text-primary border border-primary-container" : "bg-neutral-100 text-neutral-500"
@@ -472,16 +581,13 @@ export default function ClientPortal() {
                 {requestsList.map((req) => (
                   <button
                     key={req.id}
-                    onClick={() => {
-                      setChatLog(prev => [...prev, {
-                        sender: "ai",
-                        text: `Loaded details for: "${req.name}". Let's discuss scope items.`
-                      }]);
-                    }}
-                    className="w-full p-3.5 rounded-xl border border-neutral-100 text-left hover:bg-neutral-50/50 transition-all duration-200"
+                    onClick={() => handleSelectChatRequest(req)}
+                    className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${
+                      chatRequestId === req.id ? 'border-primary bg-primary-container/20 ring-1 ring-primary' : 'border-neutral-100'
+                    }`}
                   >
                     <span className="font-body-md text-sm font-semibold text-navy-accent block">{req.name}</span>
-                    <span className="font-body-md text-sm text-on-surface-variant mt-0.5 block">{req.domain} • ${req.budget.toLocaleString()}</span>
+                    <span className="font-body-md text-sm text-on-surface-variant mt-0.5 block">{req.domain} • ${Number(req.budget || 0).toLocaleString()}</span>
                   </button>
                 ))}
               </div>
@@ -697,7 +803,7 @@ export default function ClientPortal() {
                 </div>
                 <div>
                   <span className="font-label-caps text-on-surface-variant block font-semibold uppercase text-[11px] tracking-[0.05em]">Target Budget</span>
-                  <span className="text-neutral-800 font-semibold">${selectedRequest.budget.toLocaleString()}</span>
+                  <span className="text-neutral-800 font-semibold">${Number(selectedRequest.budget || 0).toLocaleString()}</span>
                 </div>
               </div>
 

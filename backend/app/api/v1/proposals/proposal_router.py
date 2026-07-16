@@ -35,8 +35,12 @@ from app.services.proposals.proposal_service import get_all_proposals_service, g
 
 @router.get("", summary="List all proposals for Proposals Console")
 @router.get("/all", summary="List all proposals for Proposals Console")
-async def get_all_proposals(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
-    return get_all_proposals_service(db)
+async def get_all_proposals(
+    user_email: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    return get_all_proposals_service(db, user_email=user_email, user_id=user_id)
 
 @router.get("/{proposal_id}", summary="Get a single proposal by ID with full details")
 async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
