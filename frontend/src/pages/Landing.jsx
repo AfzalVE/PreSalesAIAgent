@@ -74,9 +74,10 @@ const Counter = ({
 };
 
 export default function Landing({ onAdminClick }) {
-  const { user, setUser } = useAppStore();
+  const { user, setUser, resetStore } = useAppStore();
   const navigate = useNavigate();
 
+  const [activeNav, setActiveNav] = useState("platform");
   // Single entrance validation
   const [entranceInput, setEntranceInput] = useState("");
   const [isValidEntrance, setIsValidEntrance] = useState(false);
@@ -91,6 +92,7 @@ export default function Landing({ onAdminClick }) {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Register Form
   const [regFullName, setRegFullName] = useState("");
@@ -247,55 +249,54 @@ export default function Landing({ onAdminClick }) {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
-      if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
-        setError("Please complete all fields and confirm you are not a robot.");
+      setError("Please complete all fields and confirm you are not a robot.");
+      return;
+    }
+    setError("");
+    setOtpStatus("verifying");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: regEmail,
+          password: regPassword,
+          full_name: regFullName,
+          phone: regCountryCode + " " + regPhone,
+          company_name: regCompanyName
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Registration failed.");
+      }
+
+      if (data.otp_required === false) {
+        setOtpStatus("success");
+        setTimeout(() => {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          navigate('/onboarding');
+        }, 1000);
         return;
       }
-      setError("");
-      setOtpStatus("verifying");
-      try {
-        const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: regEmail,
-            password: regPassword,
-            full_name: regFullName,
-            phone: regCountryCode + " " + regPhone,
-            company_name: regCompanyName
-          })
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Registration failed.");
-        }
 
-        if (data.otp_required === false) {
-          setOtpStatus("success");
-          setTimeout(() => {
-            setUser({
-              emailOrPhone: data.email,
-              fullName: data.full_name,
-              companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
-              role: data.role,
-              isVerified: true,
-            });
-            navigate('/onboarding');
-          }, 1000);
-          return;
-        }
-
-        setPendingToken(data.pending_token);
-        setOtpPurpose("register");
-        setView("otp");
-        setOtpStatus("");
-        setOtpCode("");
-        startOtpResendTimer();
-      } catch (err) {
-        setOtpStatus("");
-        setError(err.message);
-      }
-    };
+      setPendingToken(data.pending_token);
+      setOtpPurpose("register");
+      setView("otp");
+      setOtpStatus("");
+      setOtpCode("");
+      startOtpResendTimer();
+    } catch (err) {
+      setOtpStatus("");
+      setError(err.message);
+    }
+  };
 
     const handleForgotSubmit = (e) => {
       e.preventDefault();
@@ -580,18 +581,34 @@ export default function Landing({ onAdminClick }) {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/admin/sign-up")}
-                className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
-              >
-                Admin Login
-              </button>
-              <button
-                onClick={() => triggerAuthFlow("register")}
-                className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm"
-              >
-                Get Started
-              </button>
+              {user?.isVerified ? (
+                <>
+                  <span className="text-xs font-semibold text-navy-accent bg-neutral-100 px-3 py-1.5 rounded-lg border border-neutral-200">
+                    {user.fullName || user.emailOrPhone}
+                  </span>
+                  <button
+                    onClick={resetStore}
+                    className="border border-red-200 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-button-text hover:bg-red-100 transition-all font-semibold text-xs shadow-sm hover:shadow-md cursor-pointer"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate("/admin/sign-up")}
+                    className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm cursor-pointer"
+                  >
+                    Admin Login
+                  </button>
+                  <button
+                    onClick={() => triggerAuthFlow("register")}
+                    className="bg-primary-container text-navy-accent px-6 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all font-bold text-sm cursor-pointer"
+                  >
+                    Get Started
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </nav>
@@ -1990,20 +2007,6 @@ export default function Landing({ onAdminClick }) {
 
                         <div>
                           <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                            Password
-                          </label>
-                          <input
-                            type="password"
-                            required
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                             Phone Number
                           </label>
                           <div className="flex h-11 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
@@ -2410,5 +2413,4 @@ export default function Landing({ onAdminClick }) {
         />
       </div>
     );
-  }
 }
