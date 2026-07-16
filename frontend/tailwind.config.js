@@ -57,8 +57,17 @@ export default {
         "secondary-container": "#dae2fd",
         "outline-variant": "#b9cac5",
         "surface-bright": "#f8f9ff",
-        "on-tertiary": "#ffffff",
         "navy-accent": "#0F172A",
+        brand: {
+          50: "#eaf8f6",
+          100: "#d1f1ec",
+          200: "#a3e3d8",
+          300: "#5fcbb8",
+          400: "#2fd6bc",
+          500: "#006b5d",
+          600: "#00584b",
+          700: "#00463b",
+        },
       },
       borderRadius: {
         DEFAULT: "0.25rem",
