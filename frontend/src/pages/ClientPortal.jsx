@@ -114,7 +114,7 @@ export default function ClientPortal() {
       budget: parseInt(newProjBudget, 10),
       timeline: newProjTimeline,
     });
-    
+
     // Reset form fields
     setNewProjName("");
     setNewProjDesc("");
@@ -146,20 +146,20 @@ export default function ClientPortal() {
         body: JSON.stringify({ text: userText })
       });
       const data = await res.json();
-      
+
       let reply = "I've extracted your requirements and updated the project scope.";
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
-      
+
       setChatLog(prev => [...prev, { sender: "ai", text: reply }]);
-      
+
       updateProjectData({
         name: data.project_name || projectData.name,
         budget: data.client_budget || projectData.budget,
         timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline
       });
-      
+
     } catch (err) {
       setChatLog(prev => [...prev, { sender: "ai", text: "Error connecting to AI service." }]);
     } finally {
@@ -172,7 +172,7 @@ export default function ClientPortal() {
       alert("Speech recognition not supported in this browser.");
       return;
     }
-    
+
     if (isRecordingVoice) {
       recognition.stop();
       setIsRecordingVoice(false);
@@ -195,7 +195,7 @@ export default function ClientPortal() {
       </div>
 
       <div className="max-w-7xl mx-auto space-y-10 relative z-10">
-        
+
         {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-outline-variant/30">
           <div className="flex items-center gap-4">
@@ -228,25 +228,22 @@ export default function ClientPortal() {
         <div className="flex space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-full font-button-text text-sm font-medium w-fit">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-              activeTab === "overview" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
-            }`}
+            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "overview" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+              }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab("requests")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-              activeTab === "requests" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
-            }`}
+            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "requests" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+              }`}
           >
             Proposal Requests
           </button>
           <button
             onClick={() => setActiveTab("chat")}
-            className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-              activeTab === "chat" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
-            }`}
+            className={`px-4 py-2 rounded-xl transition-all duration-200 ${activeTab === "chat" ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900'
+              }`}
           >
             AI Assistant Chat
           </button>
@@ -289,7 +286,7 @@ export default function ClientPortal() {
                 <h3 className="font-headline-md text-lg font-semibold text-navy-accent pb-3 border-b border-neutral-100">
                   Active Build Status Tracker
                 </h3>
-                
+
                 <div className="relative pl-6 border-l border-neutral-100 space-y-6">
                   <div className="relative">
                     <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container" />
@@ -297,7 +294,7 @@ export default function ClientPortal() {
                     <h4 className="font-body-md text-base font-semibold text-navy-accent mt-1">1. Intake Modeling & Discovery</h4>
                     <p className="font-body-md text-sm text-on-surface-variant mt-0.5">Specifications extracted: {projectData.name || "Zenith Retail Portal"}</p>
                   </div>
-                  
+
                   <div className="relative">
                     <div className="absolute -left-[31px] top-0 w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container" />
                     <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant bg-neutral-100 px-2 py-0.5 rounded">Completed</span>
@@ -391,9 +388,8 @@ export default function ClientPortal() {
                           <td className="py-4 font-semibold text-navy-accent">${req.budget.toLocaleString()}</td>
                           <td className="py-4 text-neutral-500 font-medium">{req.timeline}</td>
                           <td className="py-4">
-                            <span className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${
-                              req.status === "Approved" ? "bg-primary-container/40 text-primary border border-primary-container" : "bg-neutral-100 text-neutral-500"
-                            }`}>
+                            <span className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${req.status === "Approved" ? "bg-primary-container/40 text-primary border border-primary-container" : "bg-neutral-100 text-neutral-500"
+                              }`}>
                               {req.status}
                             </span>
                           </td>
@@ -468,9 +464,8 @@ export default function ClientPortal() {
               <div className="flex-1 overflow-y-auto my-4 space-y-4 max-h-[250px]">
                 {chatLog.map((msg, idx) => (
                   <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${
-                      msg.sender === 'user' ? 'bg-neutral-900 text-white rounded-tr-none' : 'bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none'
-                    }`}>
+                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-neutral-900 text-white rounded-tr-none' : 'bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none'
+                      }`}>
                       {msg.text}
                     </div>
                   </div>
@@ -486,8 +481,8 @@ export default function ClientPortal() {
 
               {/* Action buttons & form input */}
               <div className="space-y-4 pt-3 border-t border-neutral-100">
-                <form 
-                  onSubmit={handleSendMessage} 
+                <form
+                  onSubmit={handleSendMessage}
                   className="flex items-center space-x-2 border border-neutral-200/80 rounded-2xl p-1.5 bg-[#fcfdfe] focus-within:bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 shadow-inner transition-all duration-200"
                 >
                   <input
@@ -497,16 +492,15 @@ export default function ClientPortal() {
                     placeholder="Refine proposal parameters here..."
                     className="flex-1 bg-transparent py-2.5 px-4 text-xs border-none focus:border-none outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 text-neutral-800 disabled:opacity-50 placeholder-neutral-400 font-medium"
                   />
-                  
+
                   {/* Mic voice input simulator */}
                   <button
                     type="button"
                     onClick={toggleVoiceRecording}
-                    className={`p-2.5 rounded-xl transition-all duration-200 relative ${
-                      isRecordingVoice 
-                        ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200' 
+                    className={`p-2.5 rounded-xl transition-all duration-200 relative ${isRecordingVoice
+                        ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200'
                         : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
-                    }`}
+                      }`}
                     title="Speak to Broker"
                   >
                     {isRecordingVoice && (

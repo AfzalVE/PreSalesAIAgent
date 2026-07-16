@@ -264,6 +264,19 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                     <div>admin@corp.com</div>
                   </div>
                 </div>
+
+                <div className="pt-2 text-center">
+                  <p className="font-body-md text-sm text-[#5a5a5c]">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => window.location.href = "/admin/sign-up"}
+                      className="text-primary font-bold hover:underline ml-1"
+                    >
+                      Sign up here
+                    </button>
+                  </p>
+                </div>
               </form>
             </div>
           </motion.div>

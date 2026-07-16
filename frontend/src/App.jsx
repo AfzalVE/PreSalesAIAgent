@@ -136,7 +136,18 @@ function App() {
           />
 
           {/* Admin Login */}
+          <Route
+            path="/admin/login"
+            element={
+              user?.role ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <AdminLogin />
+              )
+            }
+          />
 
+          {/* Admin Sign-up */}
           <Route
             path="/admin/sign-up"
             element={
@@ -158,10 +169,10 @@ function App() {
             element={
               user?.role ? (
                 <AdminPortalRoute>
-                  <AdminSignup />
+                  <AdminPortal />
                 </AdminPortalRoute>
               ) : (
-                <Navigate to="/admin/sign-up" replace />
+                <Navigate to="/admin/login" replace />
               )
             }
           />
