@@ -14,6 +14,7 @@ export default function VoiceRecorder({ onComplete }) {
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [recognition, setRecognition] = useState(null);
+  const [chatRequestId, setChatRequestId] = useState(null);
   
   const [extractedData, setExtractedData] = useState({
     name: "Pending...",
@@ -81,12 +82,21 @@ export default function VoiceRecorder({ onComplete }) {
     setIsAiThinking(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+      const payload = { text: userText };
+      if (chatRequestId) {
+        payload.request_id = chatRequestId;
+      }
+
+      const res = await fetch("http://127.0.0.1:8000/api/v1/ai_agent/extract-requirements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userText })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
+      
+      if (data.request_id) {
+        setChatRequestId(data.request_id);
+      }
       
       // Update extracted panel
       setExtractedData(prev => ({

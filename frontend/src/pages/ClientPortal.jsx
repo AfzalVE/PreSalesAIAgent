@@ -33,6 +33,7 @@ export default function ClientPortal() {
   ]);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatRequestId, setChatRequestId] = useState(null);
   const [recognition, setRecognition] = useState(null);
 
   useEffect(() => {
@@ -140,12 +141,21 @@ export default function ClientPortal() {
     setIsChatLoading(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+      const payload = { text: userText };
+      if (chatRequestId) {
+        payload.request_id = chatRequestId;
+      }
+
+      const res = await fetch("http://127.0.0.1:8000/api/v1/ai_agent/extract-requirements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userText })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
+      
+      if (data.request_id) {
+        setChatRequestId(data.request_id);
+      }
       
       let reply = "I've extracted your requirements and updated the project scope.";
       if (data.follow_up_message) {
