@@ -9,6 +9,9 @@ import {
   X,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
+import FloatingBackground from "../components/common/FloatingBackground";
+import Threads from "../components/common/Threads";
+import RotatingText from "../components/common/RotatingText";
 
 const ROLE_OPTIONS = [
   { role: "super-admin", label: "Super Admin", icon: ShieldAlert },
@@ -71,73 +74,83 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
     ROLE_OPTIONS.find((r) => r.role === role)?.icon || ShieldAlert;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-white">
-      {/* Mintlify Hero Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#87a8c8] via-[#dfe5e6] to-[#f5e9d8]" />
+    <div className="relative min-h-screen overflow-hidden bg-[#fafafa]">
+      <FloatingBackground />
+      <div className="absolute inset-0 pointer-events-none z-0 opacity-[0.15] transform-gpu">
+        <Threads
+          color={[0.0, 0.42, 0.36]}
+          amplitude={1.2}
+          distance={0.2}
+          enableMouseInteraction={true}
+        />
+      </div>
 
-      <div className="relative z-10 min-h-screen max-w-7xl mx-auto px-6 lg:px-12">
-        <div className="grid lg:grid-cols-2 gap-20 items-center min-h-screen py-16">
+      <div className="relative z-10 min-h-screen max-w-container-max mx-auto px-6 md:px-margin-desktop">
+        <div className="grid lg:grid-cols-2 gap-16 items-center min-h-screen py-16">
           {/* LEFT SIDE */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-stack-lg"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-neutral-200 bg-white">
-              <Sparkles size={14} className="text-[#00d4a4]" />
-              <span className="text-sm font-medium text-neutral-700">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-md">
+              <Sparkles size={16} className="text-primary animate-pulse" />
+              <span className="font-label-caps text-primary tracking-wider uppercase font-bold text-[11px]">
                 Internal Operations Platform
               </span>
             </div>
 
-            <div className="space-y-5">
-              <h1 className="text-5xl lg:text-7xl font-semibold tracking-[-2px] text-black leading-[0.95]">
-                Manage proposals,
-                <br />
-                teams, and delivery.
+            <div className="space-y-6">
+              <h1 className="font-display-lg text-5xl lg:text-7xl text-navy-accent leading-[1.05] text-left flex flex-col items-start font-extrabold tracking-tight">
+                <span>Manage your</span>
+                <RotatingText
+                  texts={[
+                    "Proposals",
+                    "Teams",
+                    "Delivery",
+                    "Operations"
+                  ]}
+                  mainClassName="text-primary overflow-hidden py-1 justify-start"
+                  staggerFrom="last"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "-120%" }}
+                  staggerDuration={0.025}
+                  splitLevelClassName="overflow-hidden pb-1"
+                  transition={{ type: "spring", damping: 30, stiffness: 400 }}
+                  rotationInterval={3000}
+                  splitBy="characters"
+                  auto
+                  loop
+                />
               </h1>
 
-              <p className="text-lg text-neutral-600 max-w-xl leading-relaxed">
-                Access proposal generation workflows, resource allocation,
-                project onboarding, cost estimation, and delivery planning from
-                a unified workspace.
+              <p className="font-body-lg text-on-surface-variant max-w-xl text-lg leading-relaxed text-left">
+                Access proposal generation workflows, resource allocation, project onboarding, cost estimation, and delivery planning from a unified, intelligent workspace.
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-4 pt-4">
-              <div className="bg-white border border-neutral-200 rounded-xl p-5">
-                <div className="text-2xl font-semibold text-black">500+</div>
-                <div className="text-sm text-neutral-500 mt-1">
-                  Proposals Generated
+            <div className="grid sm:grid-cols-3 gap-6 pt-6">
+              <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">500+</div>
+                <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
+                  Proposals
                 </div>
               </div>
 
-              <div className="bg-white border border-neutral-200 rounded-xl p-5">
-                <div className="text-2xl font-semibold text-black">120+</div>
-                <div className="text-sm text-neutral-500 mt-1">
-                  Active Resources
+              <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">120+</div>
+                <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
+                  Resources
                 </div>
               </div>
 
-              <div className="bg-white border border-neutral-200 rounded-xl p-5">
-                <div className="text-2xl font-semibold text-black">24/7</div>
-                <div className="text-sm text-neutral-500 mt-1">
-                  AI Assistance
+              <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">24/7</div>
+                <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
+                  AI Agents
                 </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-4">
-              <div className="px-4 py-2 rounded-full bg-white border border-neutral-200 text-sm text-neutral-700">
-                Proposal Automation
-              </div>
-
-              <div className="px-4 py-2 rounded-full bg-white border border-neutral-200 text-sm text-neutral-700">
-                Resource Matching
-              </div>
-
-              <div className="px-4 py-2 rounded-full bg-white border border-neutral-200 text-sm text-neutral-700">
-                Cost Estimation
               </div>
             </div>
           </motion.div>
@@ -146,14 +159,13 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-full max-w-md mx-auto"
+            className="w-full max-w-[430px] mx-auto bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
           >
-            <div className="bg-white border border-neutral-200 rounded-xl p-8 shadow-[0_24px_48px_-8px_rgba(0,0,0,0.12)]">
+            <div>
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-2xl font-semibold text-black">Sign in</h2>
-
-                  <p className="text-sm text-neutral-500 mt-2">
+                  <h2 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">Sign in</h2>
+                  <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
                     Access the administrative workspace.
                   </p>
                 </div>
@@ -161,16 +173,16 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                 {onCancel && (
                   <button
                     onClick={onCancel}
-                    className="h-9 w-9 rounded-full border border-neutral-200 flex items-center justify-center"
+                    className="h-9 w-9 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-100 transition-colors"
                   >
-                    <X size={16} />
+                    <X size={16} className="text-neutral-500" />
                   </button>
                 )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Email or Phone
                   </label>
 
@@ -183,19 +195,19 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                       setRole(pickInitialRoleFromEmail(v));
                     }}
                     placeholder="name@company.com"
-                    className="w-full h-11 px-4 rounded-md border border-neutral-200 bg-white focus:border-[#00d4a4] outline-none transition-colors"
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Password
                   </label>
 
                   <div className="relative">
                     <KeyRound
-                      size={16}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400"
+                      size={14}
+                      className="absolute left-3.5 top-3.5 text-[#a8a8aa]"
                     />
 
                     <input
@@ -203,20 +215,20 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter password"
-                      className="w-full h-11 pl-11 pr-4 rounded-md border border-neutral-200 bg-white focus:border-[#00d4a4] outline-none transition-colors"
+                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-10 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Role
                   </label>
 
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
-                    className="w-full h-11 px-4 rounded-md border border-neutral-200 bg-white focus:border-[#00d4a4] outline-none"
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 focus:border-2 focus:border-[#00d4a4]"
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r.role} value={r.role}>
@@ -226,27 +238,27 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                   </select>
                 </div>
 
-                {error && <div className="text-sm text-red-500">{error}</div>}
+                {error && <p className="text-[10px] font-bold text-red-500">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full h-11 rounded-full bg-black text-white text-sm font-medium flex items-center justify-center gap-2"
+                  className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                 >
                   {submitting ? (
                     "Signing in..."
                   ) : (
                     <>
                       Sign In
-                      <ArrowRight size={16} />
+                      <ArrowRight size={16} className="ml-2" />
                     </>
                   )}
                 </button>
 
                 <div className="pt-4 border-t border-neutral-100">
-                  <p className="text-xs text-neutral-500">Demo accounts:</p>
+                  <p className="font-body-md text-xs text-[#5a5a5c]">Demo accounts:</p>
 
-                  <div className="mt-2 space-y-1 text-xs text-neutral-600">
+                  <div className="mt-2 space-y-1 font-body-md text-xs text-neutral-600">
                     <div>super@corp.com</div>
                     <div>manager@corp.com</div>
                     <div>admin@corp.com</div>
