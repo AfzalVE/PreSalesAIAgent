@@ -1115,7 +1115,7 @@ export default function Landing({ onAdminClick }) {
                     Capabilities
                   </span>
                   <h2 className="font-display-lg text-4xl md:text-5xl text-navy-accent mt-4">
-                    Comprehensive Engine for technical Dokumentation.
+                    Comprehensive Engine for technical Documentation.
                   </h2>
                 </div>
                 <button
