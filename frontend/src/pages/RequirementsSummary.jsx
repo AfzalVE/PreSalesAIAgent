@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
 
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
