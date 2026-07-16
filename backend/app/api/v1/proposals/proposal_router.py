@@ -49,6 +49,36 @@ async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[
         raise HTTPException(status_code=404, detail="Proposal not found")
     return res
 
+@router.get("/{proposal_id}/export", summary="Export a proposal as a document")
+async def export_proposal(proposal_id: str, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    res = get_proposal_by_id_service(db, proposal_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+        
+    output_filepath = os.path.join(os.getcwd(), f"{proposal_id}.docx")
+    
+    # Check if docx already exists, if not generate it
+    if not os.path.exists(output_filepath):
+        create_proposal_document(
+            project_name=res["project_name"],
+            project_description=res["scope"],
+            requirements=res["assumptions"] + res["risks"],
+            preferred_technology=res["tech_stack"],
+            estimated_budget=res["estimated_cost"],
+            estimated_duration=res["estimated_duration"],
+            proposal_type=res["proposal_type"],
+            resources=res["selected_resources"],
+            tech_stack=res["tech_stack"],
+            output_filepath=output_filepath
+        )
+        
+    return FileResponse(
+        path=output_filepath, 
+        filename=f"{res['project_name']}_Proposal.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
 @router.post("/generate-demo", summary="Generate MVP and Full Proposals")
 async def generate_demo_proposals(
     payload: GenerateDemoRequest,

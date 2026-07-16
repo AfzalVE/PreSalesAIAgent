@@ -35,6 +35,27 @@ export default function ClientPortal() {
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatRequestId, setChatRequestId] = useState(null);
+  const [generatedDemos, setGeneratedDemos] = useState([]);
+  const [isDemosLoading, setIsDemosLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "demos") {
+      const fetchDemos = async () => {
+        setIsDemosLoading(true);
+        try {
+          await new Promise(r => setTimeout(r, 2000));
+          const res = await fetch("http://127.0.0.1:8000/api/v1/proposals/all");
+          const allProposals = await res.json();
+          setGeneratedDemos(allProposals.slice(-2));
+        } catch (error) {
+          console.error("Failed to fetch demos", error);
+        } finally {
+          setIsDemosLoading(false);
+        }
+      };
+      fetchDemos();
+    }
+  }, [activeTab]);
   const [recognition, setRecognition] = useState(null);
 
   useEffect(() => {
@@ -59,7 +80,7 @@ export default function ClientPortal() {
 
   // List of client's proposal requests dynamically fetched from PostgreSQL
   const [requestsList, setRequestsList] = useState([]);
-  const { adminProposals, user } = useAppStore(); // Load existing admin-curated proposals for review
+  const { adminProposals, user, isDemoReady, setIsDemoReady } = useAppStore(); // Load existing admin-curated proposals for review
 
   const fetchClientData = async () => {
     try {
@@ -264,6 +285,12 @@ export default function ClientPortal() {
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
+      
+      if (data.is_ready_for_proposal) {
+        setIsDemoReady(true);
+        setActiveTab("demos");
+        reply += "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals tab in a few moments.";
+      }
 
       setChatLog(prev => [...prev, { sender: "ai", text: reply }]);
 
@@ -367,7 +394,8 @@ export default function ClientPortal() {
           {[
             { id: "overview", label: "Overview" },
             { id: "requests", label: "Proposal Requests" },
-            { id: "chat", label: "AI Assistant Chat" }
+            { id: "chat", label: "AI Assistant Chat" },
+            ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : [])
           ].map((tab) => (
             <button
               key={tab.id}
@@ -658,6 +686,72 @@ export default function ClientPortal() {
                 </form>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 4. DEMOS VIEW */}
+        {activeTab === "demos" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <h3 className="font-headline-md text-2xl font-bold text-navy-accent">Generated Demos</h3>
+              <p className="text-sm text-neutral-500 max-w-lg">
+                Please select one of the proposed demos below. The AI has tailored these approaches based on your chat.
+              </p>
+            </div>
+
+            {isDemosLoading ? (
+              <div className="flex justify-center p-12 text-primary">
+                Loading demos...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {generatedDemos.map((demo) => (
+                  <div key={demo.id} className="bg-white border border-neutral-200/80 rounded-3xl p-6 shadow-soft flex flex-col hover:border-primary/50 transition-colors">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-primary bg-primary-container/40 px-2 py-0.5 rounded">
+                          {demo.proposal_type} Demo
+                        </span>
+                        <h4 className="font-headline-md text-lg font-bold text-navy-accent mt-2">{demo.project_name}</h4>
+                      </div>
+                      <span className="text-xl font-bold text-primary">${(demo.estimated_cost || 0).toLocaleString()}</span>
+                    </div>
+                    
+                    <div className="space-y-3 mb-6 flex-1 text-sm text-neutral-600">
+                      <div className="flex justify-between border-b border-neutral-100 pb-2">
+                        <span className="font-medium text-neutral-400">Timeline:</span>
+                        <span className="font-bold text-neutral-700">{demo.estimated_duration}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-neutral-100 pb-2">
+                        <span className="font-medium text-neutral-400">Stack:</span>
+                        <span className="font-bold text-neutral-700">{(demo.tech_stack || []).join(", ")}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-neutral-400 block mb-1">Scope:</span>
+                        <p className="bg-neutral-50 p-2 rounded-lg text-xs leading-relaxed border border-neutral-100">
+                          {demo.scope}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        window.open(`http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export`, '_blank');
+                      }}
+                      className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 shadow-md transition-all text-sm"
+                    >
+                      Select this Demo & Export PDF
+                    </button>
+                  </div>
+                ))}
+                
+                {generatedDemos.length === 0 && !isDemosLoading && (
+                  <div className="col-span-2 text-center p-12 bg-white rounded-3xl border border-dashed border-neutral-200 text-neutral-400 font-medium">
+                    No demos generated yet. Complete the chat wizard first.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

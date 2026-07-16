@@ -87,11 +87,13 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     6. If the user asks for feature recommendations or says they lack technical expertise, recommend an industry-standard feature set appropriate for the project type.
 
     7. follow_up_message must always contain a conversational response.
-        - If the user requests recommendations, provide them directly.
+        - If the user requests recommendations, provide them directly AND explicitly state the actual numerical values (budget, timeline) and specific resources you are recommending within this text.
         - Do not ask for information the user has already said they do not know.
         - Ask follow-up questions only when essential information is still required and the user has not requested recommendations.
         
-    8. FEASIBILITY & NEGOTIATION: If the user requests a change to the existing budget or timeline that is highly unrealistic (e.g., cutting budget by 70%, or a 2-week timeline for a complex app), DO NOT update the `client_budget` or `timeline_weeks` fields with the unrealistic values. Keep the existing values, and populate `follow_up_message` with a professional explanation of why that request is not feasible and what trade-offs would be required. If the request is reasonable, update the fields and use `follow_up_message` to confirm the adjustment
+    8. FEASIBILITY & NEGOTIATION: If the user requests a change to the existing budget or timeline that is highly unrealistic (e.g., cutting budget by 70%, or a 2-week timeline for a complex app), DO NOT update the `client_budget` or `timeline_weeks` fields with the unrealistic values. Keep the existing values, and populate `follow_up_message` with a professional explanation of why that request is not feasible and what trade-offs would be required. If the request is reasonable, update the fields and use `follow_up_message` to confirm the adjustment.
+    
+    9. Evaluate if you have all necessary fields (project_name, timeline_weeks, client_budget, and resource_requirements). If you have them all, set `is_ready_for_proposal` to true and let the user know in the `follow_up_message` that you are generating their proposal. Make sure to summarize the final budget, timeline, and team in the message, AND strictly start your message with: "OK, I have all the information about your project".
     
     Ensure your output strictly follows this JSON schema:
     {schema_str}
@@ -146,6 +148,16 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         # Validate against our Pydantic model
         extracted_data = AgentExtractionResponse(**extracted_dict)
         print(extracted_data)
+        
+        # Trigger autonomous generation if ready
+        if extracted_data.is_ready_for_proposal:
+            from app.services.proposal.proposal_generation_service import generate_proposals_for_request
+            try:
+                await generate_proposals_for_request(db, proposal_request.id)
+                print(f"Autonomous proposal generation triggered for {proposal_request.id}")
+            except Exception as e:
+                print(f"Failed to auto-generate proposal: {e}")
+                
         return extracted_data
         
     except ValidationError as ve:

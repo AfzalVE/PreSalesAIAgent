@@ -160,6 +160,10 @@ export default function NegotiationChat() {
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
+      
+      if (data.is_ready_for_proposal) {
+        reply += "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals dashboard in a few moments.";
+      }
 
       setMessages(prev => [
         ...prev,
