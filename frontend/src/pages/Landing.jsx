@@ -491,7 +491,7 @@ useEffect(() => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/admin/login")}
+              onClick={() => navigate("/admin/sign-up")}
               className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
             >
               Admin Login
@@ -2279,7 +2279,7 @@ useEffect(() => {
             isActive: activeNav === "admin",
             onClick: () => {
               setActiveNav("admin");
-              navigate("/admin/login");
+              navigate("/admin/sign-up");
             },
           },
         ]}
