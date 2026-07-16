@@ -11,6 +11,8 @@ import {
   Sparkles,
   ShieldCheck,
   DollarSign,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { useNavigate } from "react-router-dom";
@@ -80,19 +82,22 @@ export default function Landing({ onAdminClick }) {
   const [entranceError, setEntranceError] = useState("");
 
   // View states: "entrance" | "login" | "register" | "otp" | "forgot" | "reset-password"
-  const [view, setView] = useState("entrance");
+  const [view, setView] = useState("register");
   const [otpPurpose, setOtpPurpose] = useState("login"); // "login" | "register" | "forgot"
 
   // Login Form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // Register Form
   const [regFullName, setRegFullName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regCountryCode, setRegCountryCode] = useState("US +1");
   const [regPhone, setRegPhone] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [isNotRobot, setIsNotRobot] = useState(false);
 
   // Forgot Password
@@ -191,14 +196,18 @@ useEffect(() => {
       return;
     }
     setError("");
-    setOtpPurpose("login");
-    setView("otp");
-    startOtpResendTimer();
+    setUser({
+      emailOrPhone: email,
+      fullName: "Alex Rivera",
+      companyName: "Sovereign Enterprise",
+      isVerified: true,
+    });
+    navigate('/onboarding');
   };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (!regFullName || !regEmail || !regPhone || !isNotRobot) {
+    if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
       setError("Please complete all fields and confirm you are not a robot.");
       return;
     }
@@ -270,7 +279,7 @@ useEffect(() => {
   };
 
   // Open auth modal helpers
-  const triggerAuthFlow = (initialView = "entrance") => {
+  const triggerAuthFlow = (initialView = "register") => {
     setError("");
     setView(initialView);
     setShowAuthModal(true);
@@ -1700,72 +1709,64 @@ useEffect(() => {
                     exit={{ opacity: 0, x: 10 }}
                     className="pt-2"
                   >
-                    <div className="flex items-center space-x-2 mb-4">
-                      <button
-                        onClick={() => {
-                          setEntranceInput("");
-                          setIsValidEntrance(false);
-                          setView("entrance");
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-neutral-50 text-neutral-500 transition-colors"
-                      >
-                        <ArrowLeft size={14} />
-                      </button>
-                      <h3 className="text-lg font-bold text-neutral-900 tracking-tight">
+                    <div className="text-center mb-8">
+                      <h3 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">
                         Login to Workspace
                       </h3>
+                      <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
+                        Welcome back to the sovereign enterprise network.
+                      </p>
                     </div>
 
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
+                    <form onSubmit={handleLoginSubmit} className="space-y-5">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                          Email Address
+                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          Work Email
                         </label>
-                        <div className="relative">
-                          <Mail
-                            size={14}
-                            className="absolute left-3.5 top-3.5 text-neutral-400"
-                          />
-                          <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@company.com"
-                            className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:bg-white focus:border-primary transition-all duration-200 text-neutral-800 font-sans"
-                          />
-                        </div>
+                        <input
+                          type="email"
+                          required
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@company.com"
+                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                        />
                       </div>
 
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Password
                         </label>
                         <div className="relative">
-                          <KeyRound
-                            size={14}
-                            className="absolute left-3.5 top-3.5 text-neutral-400"
-                          />
                           <input
-                            type="password"
+                            type={showLoginPassword ? "text" : "password"}
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:bg-white focus:border-primary transition-all duration-200 text-neutral-800 font-sans"
+                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                            className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                          >
+                            {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs pt-1">
-                        <label className="flex items-center space-x-2 text-neutral-600 font-semibold cursor-pointer">
+                      <div className="flex items-center justify-between font-body-md text-sm">
+                        <label className="flex cursor-pointer items-center text-[#5a5a5c]">
                           <input
                             type="checkbox"
                             checked={rememberMe}
                             onChange={(e) => setRememberMe(e.target.checked)}
-                            className="rounded border-neutral-300 text-primary focus:ring-primary"
+                            className="h-4 w-4 rounded border-[#cfd5dc] text-[#14e1d0] focus:ring-[#14e1d0] mr-3"
                           />
-                          <span>Remember me</span>
+                          <span className="font-medium text-[#0a0a0a]">
+                            Remember me
+                          </span>
                         </label>
                         <button
                           type="button"
@@ -1773,7 +1774,7 @@ useEffect(() => {
                             setError("");
                             setView("forgot");
                           }}
-                          className="text-primary font-bold hover:underline"
+                          className="font-semibold text-[#006b5d] hover:underline"
                         >
                           Forgot password?
                         </button>
@@ -1787,11 +1788,23 @@ useEffect(() => {
 
                       <button
                         type="submit"
-                        className="w-full py-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold flex items-center justify-center transition-all duration-200 shadow-md cursor-pointer font-sans"
+                        className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                       >
                         Authenticate
-                        <ArrowRight size={14} className="ml-1.5" />
                       </button>
+                      <div className="mt-4 text-center font-body-md text-xs text-[#5a5a5c]">
+                        Don't have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError("");
+                            setView("register");
+                          }}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Sign Up
+                        </button>
+                      </div>
                     </form>
                   </motion.div>
                 )}
@@ -1870,6 +1883,29 @@ useEffect(() => {
                         </div>
                       </div>
 
+                      <div>
+                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showRegPassword ? "text" : "password"}
+                            required
+                            value={regPassword}
+                            onChange={(e) => setRegPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-4 pr-10 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPassword(!showRegPassword)}
+                            className="absolute right-3 top-3.5 text-[#a8a8aa] hover:text-[#5a5a5c] transition-colors"
+                          >
+                            {showRegPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
                       <label className="flex h-14 cursor-pointer items-center rounded-md border border-[#e5e5e5] bg-white px-4">
                         <input
                           type="checkbox"
@@ -1900,6 +1936,19 @@ useEffect(() => {
                       >
                         Sign Up
                       </button>
+                      <div className="mt-4 text-center font-body-md text-xs text-[#5a5a5c]">
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError("");
+                            setView("login");
+                          }}
+                          className="font-semibold text-primary hover:underline"
+                        >
+                          Login
+                        </button>
+                      </div>
                     </form>
                   </motion.div>
                 )}
