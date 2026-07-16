@@ -17,7 +17,7 @@ function pickInitialRoleFromEmail(email) {
   return 'admin';
 }
 
-export default function AdminLogin({ onLogin, onCancel }) {
+export default function AdminLogin({ onLogin, onCancel, isModal }) {
   const { setUser } = useAppStore();
 
   const [emailOrPhone, setEmailOrPhone] = useState('');
@@ -57,29 +57,18 @@ export default function AdminLogin({ onLogin, onCancel }) {
 
   const RoleIcon = ROLE_OPTIONS.find((r) => r.role === role)?.icon || ShieldAlert;
 
-  return (
-    <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-8 overflow-hidden">
-      <FloatingBackground />
-
-      <div className="w-full max-w-md relative z-10">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key="admin-login"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-white/80 backdrop-blur-md border border-neutral-200/80 rounded-3xl p-6 shadow-premium overflow-visible"
-          >
-            <div className="flex items-start justify-between gap-3">
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-brand-50 border border-brand-100/50 shadow-sm">
                   <Sparkles size={13} className="text-brand-500 animate-pulse" />
                   <span className="text-xs font-semibold text-brand-700 tracking-tight">Admin Portal</span>
                 </div>
-                <h1 className="text-2xl font-black font-display tracking-tight text-neutral-900">
+                <h1 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">
                   Sign in
                 </h1>
-                <p className="text-xs text-neutral-500 font-medium">{initialHint}</p>
+                <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">{initialHint}</p>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="p-2 rounded-2xl border border-neutral-100 bg-white/60">
@@ -99,7 +88,7 @@ export default function AdminLogin({ onLogin, onCancel }) {
 
             <form onSubmit={handleSubmit} className="mt-4 space-y-2.5">
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                   Email or Phone
                 </label>
                 <div className="relative">
@@ -112,37 +101,37 @@ export default function AdminLogin({ onLogin, onCancel }) {
                       setRole(pickInitialRoleFromEmail(v));
                     }}
                     placeholder="e.g. super@corp.com"
-                    className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 outline-none focus:bg-white focus:border-brand-500 transition-all duration-200"
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                     disabled={submitting}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                   Password
                 </label>
                 <div className="relative">
-                  <KeyRound size={14} className="absolute left-3.5 top-2.5 text-neutral-400" />
+                  <KeyRound size={14} className="absolute left-3.5 top-3.5 text-[#a8a8aa]" />
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl pl-10 pr-4 py-2.5 outline-none focus:bg-white focus:border-brand-500 transition-all duration-200"
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-10 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
                     disabled={submitting}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
+                <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                   Role (mock)
                 </label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full text-xs font-semibold bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 outline-none focus:bg-white focus:border-brand-500 transition-all duration-200"
+                  className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 focus:border-2 focus:border-[#00d4a4]"
                   disabled={submitting}
                 >
                   {ROLE_OPTIONS.map((r) => (
@@ -158,11 +147,31 @@ export default function AdminLogin({ onLogin, onCancel }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 px-4 rounded-full bg-teal-400 hover:bg-teal-500 active:bg-teal-600 text-gray-900 text-sm font-bold flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>{submitting ? 'SIGNING IN…' : 'SIGN IN'}</span>
               </button>
-            </form>
+      </form>
+    </>
+  );
+
+  if (isModal) {
+    return <div className="pt-2">{content}</div>;
+  }
+
+  return (
+    <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-8 overflow-hidden">
+      <FloatingBackground />
+      <div className="w-full max-w-[430px] relative z-10">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key="admin-login"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
+          >
+            {content}
           </motion.div>
         </AnimatePresence>
       </div>

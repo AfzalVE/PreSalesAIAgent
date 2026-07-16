@@ -17,7 +17,7 @@ export default function FloatingBackground() {
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="absolute top-[-10%] right-[10%] w-[45rem] h-[45rem] rounded-full bg-gradient-to-br from-[#00CD80]/8 to-[#3754db]/3 blur-[120px]"
+        className="absolute top-[-10%] right-[10%] w-[45rem] h-[45rem] rounded-full bg-gradient-to-br from-[#00CD80]/8 to-[#3754db]/3 blur-[120px] transform-gpu will-change-transform"
       />
 
       <motion.div
@@ -30,7 +30,7 @@ export default function FloatingBackground() {
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="absolute bottom-[-10%] left-[5%] w-[40rem] h-[40rem] rounded-full bg-gradient-to-tr from-[#3754db]/5 via-[#25c974]/3 to-[#00cd80]/6 blur-[100px]"
+        className="absolute bottom-[-10%] left-[5%] w-[40rem] h-[40rem] rounded-full bg-gradient-to-tr from-[#3754db]/5 via-[#25c974]/3 to-[#00cd80]/6 blur-[100px] transform-gpu will-change-transform"
       />
 
       {/* Floating Node Elements (Vector Architecture Lines) */}
