@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Check,
   KeyRound,
+  LogOut,
 } from "lucide-react";
 import { MOCK_SKILLS } from "../mock/mockData";
 import { useAppStore } from "../store/useAppStore";
@@ -33,10 +34,16 @@ export default function AdminPortal() {
     updateEmployeeOnBackend,
     toggleUserStatusOnBackend,
     verifyUserOnBackend,
+    resetStore,
   } = useAppStore();
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (resetStore) resetStore();
+    navigate("/");
+  };
 
   // Navigation tabs: "dashboard" | "proposals" | "staff" | "users" | "otplogs"
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -134,73 +141,59 @@ export default function AdminPortal() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
+    <div className="relative min-h-[calc(100vh-73px)] py-12 px-4 md:px-8 font-sans">
       <FloatingBackground />
 
       <div className="max-w-7xl mx-auto space-y-10 relative z-10">
-        {/* Wise Typography Editorial Header */}
-        <div className="pb-6 border-b border-neutral-200/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-3xl md:text-5xl font-black font-display text-neutral-900 tracking-tight leading-none">
+        {/* Editorial Header */}
+        <div className="pb-6 border-b border-neutral-200/60 flex flex-col 2xl:flex-row 2xl:items-center justify-between w-full gap-5">
+          <div className="flex-shrink-0">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display text-neutral-900 tracking-tight leading-none">
               Resource Operations Studio
             </h2>
-            <p className="text-sm text-neutral-500 mt-1 font-medium">
-              Manage corporate employee benches, resource allocations, and
-              proposal conversion charts.
+            <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium">
+              Manage corporate employee benches, resource allocations, and proposal conversion charts.
             </p>
           </div>
 
-          {/* Sub-tab Navigation */}
-          <div className="flex flex-wrap space-x-1.5 border border-neutral-200 bg-neutral-50 p-1.5 rounded-2xl text-xs font-semibold self-start sm:self-center">
+          {/* Sub-tab Navigation with Moveable Select Effect & Inline Logout */}
+          <div className="flex items-center flex-wrap sm:flex-nowrap whitespace-nowrap overflow-visible w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm">
+            {[
+              { id: "dashboard", label: "Dashboard", path: "/admin/dashboard" },
+              { id: "proposals", label: "Proposals Console", path: "/admin/proposal-console" },
+              { id: "staff", label: "Bench Management", path: "/admin/bench-management" },
+              { id: "users", label: "Users Catalog", path: "/admin/users-catalog" },
+              { id: "otplogs", label: "OTP Log Viewer", path: "/admin/otp" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => navigate(tab.path)}
+                  className={`relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-colors duration-200 z-10 cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                    isActive ? "text-navy-accent font-extrabold shadow-xs" : "text-neutral-500 hover:text-neutral-800"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="adminPortalActiveTab"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                      className="absolute inset-0 bg-primary-container rounded-xl shadow-md border border-primary/40 -z-10"
+                    />
+                  )}
+                  {tab.label}
+                </button>
+              );
+            })}
+
+            {/* Logout Option Inline in Same Tab Box exactly matching Super Admin */}
             <button
-              onClick={() => navigate("/admin/dashboard")}
-              className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                activeTab === "dashboard"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
+              onClick={handleLogout}
+              title="Sign out of Admin Portal"
+              className="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-auto sm:ml-0.5 2xl:ml-1"
             >
-              Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/admin/proposal-console")}
-              className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                activeTab === "proposals"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
-            >
-              Proposals Console
-            </button>
-            <button
-              onClick={() => navigate("/admin/bench-management")}
-              className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                activeTab === "staff"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
-            >
-              Bench Management
-            </button>
-            <button
-              onClick={() => navigate("/admin/users-catalog")}
-              className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                activeTab === "users"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
-            >
-              Users Catalog
-            </button>
-            <button
-              onClick={() => navigate("/admin/otp")}
-              className={`px-4 py-2 rounded-xl transition-all duration-200 ${
-                activeTab === "otplogs"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
-            >
-              OTP Log Viewer
+              <LogOut size={14} className="text-red-500 flex-shrink-0" />
+              <span>Logout</span>
             </button>
           </div>
         </div>

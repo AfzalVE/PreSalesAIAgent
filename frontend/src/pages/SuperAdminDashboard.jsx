@@ -245,7 +245,7 @@ export default function SuperAdminDashboard() {
 
       <div className="max-w-7xl mx-auto space-y-10 relative z-10">
         {/* Editorial Header */}
-        <div className="pb-6 border-b border-neutral-200/60 flex flex-col lg:flex-row lg:items-center justify-between w-full gap-4">
+        <div className="pb-6 border-b border-neutral-200/60 flex flex-col 2xl:flex-row 2xl:items-center justify-between w-full gap-5">
           <div className="flex-shrink-0">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display text-neutral-900 tracking-tight leading-none">
               Super Admin Control Center
@@ -256,7 +256,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Sub-tab Navigation with Moveable Select Effect & Inline Logout */}
-          <div className="inline-flex items-center flex-nowrap whitespace-nowrap overflow-x-auto max-w-full gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start lg:self-center shadow-inner relative z-10 backdrop-blur-sm">
+          <div className="flex items-center flex-wrap sm:flex-nowrap whitespace-nowrap overflow-visible w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm">
             {[
               { id: "overview", label: "Overview" },
               { id: "admins", label: `Admins (${mergedUsers.filter((u) => u.role === "Admin").length})` },
@@ -268,7 +268,7 @@ export default function SuperAdminDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative px-3.5 py-2 rounded-xl font-bold transition-colors duration-200 z-10 cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                  className={`relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-colors duration-200 z-10 cursor-pointer whitespace-nowrap flex-shrink-0 ${
                     isActive ? "text-navy-accent font-extrabold shadow-xs" : "text-neutral-500 hover:text-neutral-800"
                   }`}
                 >
@@ -288,7 +288,7 @@ export default function SuperAdminDashboard() {
             <button
               onClick={handleLogout}
               title="Sign out of Super Admin Portal"
-              className="relative px-3.5 py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-0.5"
+              className="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-all duration-200 text-red-600 hover:bg-red-100/80 hover:text-red-700 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0 ml-auto sm:ml-0.5 2xl:ml-1"
             >
               <LogOut size={14} className="text-red-500 flex-shrink-0" />
               <span>Logout</span>
