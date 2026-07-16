@@ -491,7 +491,7 @@ useEffect(() => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => triggerAuthFlow("admin")}
+              onClick={() => navigate("/admin/login")}
               className="border border-outline/30 bg-white/50 px-4 py-2.5 rounded-lg font-button-text hover:bg-white transition-all text-navy-accent font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 text-sm"
             >
               Admin Login
@@ -1654,7 +1654,7 @@ useEffect(() => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${
-                view === "register" || view === "otp" || view === "admin"
+                view === "register" || view === "otp"
                   ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
                   : "max-w-md rounded-3xl p-8 text-left"
               }`}
@@ -1727,18 +1727,6 @@ useEffect(() => {
                       to simulate existing login. Any other email triggers sign
                       up.
                     </p>
-                  </motion.div>
-                )}
-
-                {/* ADMIN LOGIN VIEW */}
-                {view === "admin" && (
-                  <motion.div
-                    key="admin"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                  >
-                    <AdminLogin isModal={true} onLogin={() => navigate('/admin/dashboard')} />
                   </motion.div>
                 )}
 
@@ -2291,7 +2279,7 @@ useEffect(() => {
             isActive: activeNav === "admin",
             onClick: () => {
               setActiveNav("admin");
-              triggerAuthFlow("admin");
+              navigate("/admin/login");
             },
           },
         ]}
