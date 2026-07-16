@@ -6,6 +6,7 @@ import Landing from './pages/Landing';
 import Onboarding from './pages/Onboarding';
 import RequirementsSummary from './pages/RequirementsSummary';
 import ProposalComparisonPage from './pages/ProposalComparisonPage';
+import ProposalPreviewPage from './pages/ProposalPreviewPage';
 import Negotiation from './pages/Negotiation';
 import FinalApproval from './pages/FinalApproval';
 import ClientPortal from './pages/ClientPortal';
@@ -13,14 +14,13 @@ import AdminPortal from './pages/AdminPortal';
 import AdminLogin from './pages/AdminLogin';
 import AdminPortalRoute from './routes/AdminPortalRoute';
 
-const STEP_PATHS = {
-  0: '/',
-  1: '/onboarding',
-  2: '/broker',
-  3: '/sign',
-  4: '/client-portal',
-  5: '/summary',
-  6: '/compare'
+const PATH_TO_STEP = {
+  '/': 0,
+  '/onboarding': 1,
+  '/broker': 2,
+  '/proposal-preview': 2,
+  '/sign': 3,
+  '/client-portal': 4
 };
 
 function App() {
@@ -31,12 +31,9 @@ function App() {
   // Sync route path to store's activeStep
   useEffect(() => {
     const path = location.pathname;
-    const step = Object.keys(STEP_PATHS).find(key => STEP_PATHS[key] === path);
-    if (step !== undefined) {
-      const stepNum = Number(step);
-      if (activeStep !== stepNum) {
-        setActiveStep(stepNum);
-      }
+    const step = PATH_TO_STEP[path];
+    if (step !== undefined && activeStep !== step) {
+      setActiveStep(step);
     }
   }, [location.pathname, activeStep, setActiveStep]);
 
@@ -63,6 +60,7 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/summary" element={<RequirementsSummary />} />
           <Route path="/compare" element={<ProposalComparisonPage />} />
+          <Route path="/proposal-preview" element={<ProposalPreviewPage />} />
           <Route path="/broker" element={<Negotiation />} />
           <Route path="/sign" element={<FinalApproval />} />
           <Route path="/client-portal" element={<ClientPortal />} />
