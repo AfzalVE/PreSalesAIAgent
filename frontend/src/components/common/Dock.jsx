@@ -1,7 +1,7 @@
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
 import { Children, cloneElement, useEffect, useMemo, useRef, useState } from 'react';
 
-function DockItem({ children, className = '', onClick, mouseX, spring, distance, magnification, baseItemSize, label }) {
+function DockItem({ children, className = '', onClick, mouseX, spring, distance, magnification, baseItemSize, label, isActive }) {
   const ref = useRef(null);
   const isHovered = useMotionValue(0);
 
@@ -36,7 +36,11 @@ function DockItem({ children, className = '', onClick, mouseX, spring, distance,
       onBlur={() => isHovered.set(0)}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className={`relative inline-flex items-center justify-center rounded-full bg-white/90 border-neutral-200/60 border shadow-sm transition-colors hover:bg-neutral-50 hover:border-brand-500/30 ${className}`}
+      className={`relative inline-flex items-center justify-center rounded-full border shadow-sm transition-colors ${
+        isActive 
+          ? "bg-primary/10 border-primary text-primary" 
+          : "bg-white/90 border-neutral-200/60 hover:bg-neutral-50 hover:border-brand-500/30"
+      } ${className}`}
       tabIndex={0}
       role="button"
       aria-haspopup="true"
@@ -77,8 +81,8 @@ function DockLabel({ children, className = '', ...rest }) {
   );
 }
 
-function DockIcon({ children, className = '' }) {
-  return <div className={`flex items-center justify-center ${className}`}>{children}</div>;
+function DockIcon({ children, className = '', isActive }) {
+  return <div className={`flex items-center justify-center ${isActive ? 'text-primary' : 'text-neutral-600'} ${className}`}>{children}</div>;
 }
 
 export default function Dock({
@@ -128,8 +132,9 @@ export default function Dock({
             magnification={magnification}
             baseItemSize={baseItemSize}
             label={item.label}
+            isActive={item.isActive}
           >
-            <DockIcon>{item.icon}</DockIcon>
+            <DockIcon isActive={item.isActive}>{item.icon}</DockIcon>
             <DockLabel>{item.label}</DockLabel>
           </DockItem>
         ))}

@@ -11,21 +11,29 @@ export default function ApprovalFlow() {
   const [activePocTab, setActivePocTab] = useState("architecture");
 
   const triggerDownload = (type) => {
-    if (type === "Proposal Document" && activeProposal.docx_url) {
-      const link = document.createElement("a");
-      link.href = `http://localhost:8001${activeProposal.docx_url}`;
-
-      link.setAttribute("download", `proposal_${activeProposal.id}.docx`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
     setDownloading(type);
     setTimeout(() => {
       setDownloading(null);
-      alert(`${type} Package generated and downloaded successfully!`);
-    }, 1500);
+      if (type === "Proposal Document") {
+        const dummyContent = `Pre-Sales Platform Proposal\n========================\nProject: ${projectData.name || "Zenith Retail Portal"}\nDomain: ${projectData.domain || "E-Commerce"}\nBudget: $${(activeProposal.budget || 0).toLocaleString()}\nTimeline: ${activeProposal.timeline || "12 Weeks"}\nTeam Size: ${(activeProposal.team || []).length} Engineers\n\nScope Description:\n${activeProposal.description || "Core requirements implementation."}\n\nFeatures:\n${(activeProposal.features || []).map(f => `- ${typeof f === 'object' ? f.name : f}`).join("\n")}`;
+        const blob = new Blob([dummyContent], { type: "text/plain" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", `Proposal_${(projectData.name || "Project").replace(/\s+/g, "_")}.txt`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const dummyPoc = `// Pre-Sales Platform Generated POC Codebase\n// Project: ${projectData.name || "Zenith Retail Portal"}\n\nexport const config = {\n  domain: "${projectData.domain || "E-Commerce"}",\n  techStack: ${JSON.stringify(activeProposal.architecture?.services || ["React", "Node.js"])},\n  database: "${activeProposal.architecture?.databases?.[0] || "PostgreSQL"}"\n};`;
+        const blob = new Blob([dummyPoc], { type: "text/javascript" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute("download", `POC_${(projectData.name || "Project").replace(/\s+/g, "_")}.js`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }, 800);
   };
 
 

@@ -110,11 +110,16 @@ export const useAppStore = create((set, get) => ({
     };
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 800); // 800ms timeout
+
       const response = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (!response.ok) throw new Error("Failed to generate proposals");
       const data = await response.json();
 

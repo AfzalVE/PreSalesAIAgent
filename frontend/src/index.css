@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: #FAFBFD;
     color: #1E2022;
@@ -28,42 +32,46 @@
 /* Floating animation keyframes */
 @keyframes float-slow {
   0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translate3d(0, 0px, 0) rotate(0deg);
   }
   50% {
-    transform: translateY(-10px) rotate(1deg);
+    transform: translate3d(0, -10px, 0) rotate(1deg);
   }
 }
 
 @keyframes float-medium {
   0%, 100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translate3d(0, 0px, 0) rotate(0deg);
   }
   50% {
-    transform: translateY(-15px) rotate(-2deg);
+    transform: translate3d(0, -15px, 0) rotate(-2deg);
   }
 }
 
 @keyframes pulse-subtle {
   0%, 100% {
     opacity: 0.8;
+    transform: scale3d(1, 1, 1);
   }
   50% {
     opacity: 1;
-    transform: scale(1.02);
+    transform: scale3d(1.02, 1.02, 1);
   }
 }
 
 .animate-float-slow {
   animation: float-slow 10s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-float-medium {
   animation: float-medium 7s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-pulse-subtle {
   animation: pulse-subtle 4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 /* Glassmorphism styling */

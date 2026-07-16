@@ -109,7 +109,7 @@ export default function Onboarding() {
     try {
       const res = await generateProposalsFromBackend();
       if (res.success) {
-        navigate('/broker');
+        navigate('/proposal-preview');
       } else {
         alert("Failed to generate proposals: " + res.error);
       }
@@ -336,14 +336,24 @@ export default function Onboarding() {
               Clear Form
             </button>
 
-            <button
-              type="submit"
-              disabled={!formName.trim() || !formDomain.trim() || !formDescription.trim()}
-              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Build Proposal & Open Broker
-              <ChevronRight size={14} />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/broker")}
+                className="px-5 py-2.5 rounded-full border border-primary text-primary hover:bg-primary/5 transition-all font-bold text-xs"
+              >
+                Skip to Broker Chat
+              </button>
+
+              <button
+                type="submit"
+                disabled={!formName.trim() || !formDomain.trim() || !formDescription.trim()}
+                className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Build Proposal & Open Broker
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
         </form>
       </div>
