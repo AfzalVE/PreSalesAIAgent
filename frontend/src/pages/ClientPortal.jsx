@@ -324,6 +324,15 @@ export default function ClientPortal() {
     }
   };
 
+  const handleNewProposal = () => {
+    navigate("/onboarding");
+  };
+
+  const handleChat = () => {
+
+    navigate("/broker");
+  };
+
   const clientProposals = (adminProposals || []).filter(prop => {
     if (!user || !user.isVerified) return true;
     const uEmail = (user.email || user.emailOrPhone || "").toLowerCase().trim();
@@ -388,12 +397,20 @@ export default function ClientPortal() {
             { id: "overview", label: "Overview" },
             { id: "requests", label: "Proposal Requests" },
             { id: "chat", label: "AI Assistant Chat" },
-            ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : [])
+            ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? "text-neutral-900 font-bold" : "text-neutral-500 hover:text-neutral-900"
+              onClick={() => {
+                if (tab.id === "chat") {
+                  navigate("/broker");
+                  return;
+                }
+                setActiveTab(tab.id);
+              }}
+              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
+                  ? "text-neutral-900 font-bold"
+                  : "text-neutral-500 hover:text-neutral-900"
                 }`}
             >
               {activeTab === tab.id && (
