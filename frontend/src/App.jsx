@@ -36,8 +36,9 @@ function App() {
       setActiveStep(step);
     }
   }, [location.pathname, activeStep, setActiveStep]);
-
-  const isAdmin = location.pathname.startsWith('/admin');
+const isAdmin =
+  location.pathname.startsWith("/admin") ||
+  location.pathname.startsWith("/super-admin"); const isAdmin = location.pathname.startsWith('/admin');
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
@@ -56,7 +57,10 @@ function App() {
       <main className="flex-grow">
         <Routes>
           {/* Public / Client Journey Routes */}
-          <Route path="/" element={<Landing onAdminClick={() => navigate('/admin/login')} />} />
+         <Route
+  path="/"
+  element={<Landing onAdminClick={() => navigate('/admin-signup')} />}
+/>
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/summary" element={<RequirementsSummary />} />
           <Route path="/compare" element={<ProposalComparisonPage />} />
@@ -78,6 +82,22 @@ function App() {
               )
             } 
           />
+          <Route
+    path="/edit-user"
+    element={<EditUser />}
+/>
+          <Route
+  path="/super-admin-dashboard"
+  element={
+    <AdminPortalRoute>
+      <SuperAdminDashboard />
+    </AdminPortalRoute>
+  }
+/>
+          <Route
+  path="/super-admin-login"
+  element={<SuperAdminLogin />}
+/>
           <Route 
             path="/admin/login" 
             element={
@@ -91,7 +111,7 @@ function App() {
               )
             } 
           />
-
+<Route path="/admin-signup" element={<AdminSignup />} />
           {/* Catch-all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
