@@ -1,22 +1,31 @@
+import { useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Cpu,
+  Clock,
+  Users,
+  ArrowUpRight,
+  Loader2,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-import { useState } from 'react';
-import { ArrowRight, Cpu, Clock, Users, ArrowUpRight, Loader2 } from 'lucide-react';
-
-import { useAppStore } from '../store/useAppStore';
-import FloatingBackground from '../components/common/FloatingBackground';
-import AnimatedCard from '../components/common/AnimatedCard';
-import SkillTag from '../components/common/SkillTag';
+import { useAppStore } from "../store/useAppStore";
+import FloatingBackground from "../components/common/FloatingBackground";
+import AnimatedCard from "../components/common/AnimatedCard";
+import SkillTag from "../components/common/SkillTag";
 
 export default function RequirementsSummary() {
-  const { projectData, setActiveStep, generateProposalsFromBackend } = useAppStore();
+  const { projectData, generateProposalsFromBackend } = useAppStore();
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleCreateProposals = async () => {
     setLoading(true);
     try {
       const res = await generateProposalsFromBackend();
       if (res.success) {
-        setActiveStep(4); // Navigate to Proposal Comparison Page
+        navigate('/compare'); // Navigate to Proposal Comparison Page
       } else {
         alert("Failed to generate proposals: " + res.error);
       }
@@ -27,23 +36,23 @@ export default function RequirementsSummary() {
     }
   };
 
-
   return (
     <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
       <FloatingBackground />
 
       <div className="max-w-5xl mx-auto space-y-10 relative z-10">
-
         {/* Header Indicator */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setActiveStep(1)}
+              onClick={() => navigate('/onboarding')}
               className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
             >
               <ArrowLeft size={14} />
             </button>
-            <span className="text-xs font-semibold text-neutral-400">Project Blueprint</span>
+            <span className="text-xs font-semibold text-neutral-400">
+              Project Blueprint
+            </span>
           </div>
         </div>
 
@@ -53,27 +62,39 @@ export default function RequirementsSummary() {
             Your Project Blueprint
           </h2>
           <p className="text-sm text-neutral-500 max-w-xl mx-auto">
-            Review the architecture framework generated from your description. Next, we will evolve this blueprint into development proposals.
+            Review the architecture framework generated from your description.
+            Next, we will evolve this blueprint into development proposals.
           </p>
         </div>
 
         {/* Dynamic flow illustration */}
         <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft text-center">
-          <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Pipeline Analysis Flow</h4>
+          <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
+            Pipeline Analysis Flow
+          </h4>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-xs font-semibold text-neutral-600">
             <div className="px-3.5 py-2 rounded-xl bg-neutral-50 border border-neutral-200/60 shadow-sm flex items-center">
               <span>1. Client Intake</span>
             </div>
-            <ArrowRight size={14} className="text-neutral-300 hidden md:block" />
+            <ArrowRight
+              size={14}
+              className="text-neutral-300 hidden md:block"
+            />
             <div className="px-3.5 py-2 rounded-xl bg-neutral-50 border border-neutral-200/60 shadow-sm flex items-center">
               <span>2. Semantic AI Analysis</span>
             </div>
-            <ArrowRight size={14} className="text-neutral-300 hidden md:block" />
+            <ArrowRight
+              size={14}
+              className="text-neutral-300 hidden md:block"
+            />
             <div className="px-3.5 py-2 rounded-xl bg-brand-50 border border-brand-200 text-brand-600 shadow-sm flex items-center">
               <span>3. Resource Mapping</span>
             </div>
-            <ArrowRight size={14} className="text-neutral-300 hidden md:block" />
+            <ArrowRight
+              size={14}
+              className="text-neutral-300 hidden md:block"
+            />
             <div className="px-3.5 py-2 rounded-xl bg-neutral-50 border border-neutral-200/60 shadow-sm flex items-center">
               <span>4. Evolution Engine</span>
             </div>
@@ -85,24 +106,40 @@ export default function RequirementsSummary() {
           {/* Card 1: Core Goal & Domain */}
           <AnimatedCard className="md:col-span-2 space-y-4">
             <div>
-              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Business Target</span>
-              <h3 className="text-xl font-bold text-neutral-800 mt-1">{projectData.name || "Zenith Retail Portal"}</h3>
-              <p className="text-xs text-neutral-500 font-semibold mt-0.5">Industry: {projectData.domain || "E-Commerce"}</p>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                Business Target
+              </span>
+              <h3 className="text-xl font-bold text-neutral-800 mt-1">
+                {projectData.name || "Zenith Retail Portal"}
+              </h3>
+              <p className="text-xs text-neutral-500 font-semibold mt-0.5">
+                Industry: {projectData.domain || "E-Commerce"}
+              </p>
             </div>
             <p className="text-xs text-neutral-600 leading-relaxed">
-              {projectData.description || "Describe the core features, targeted business results, or product modules in Onboarding to start."}
+              {projectData.description ||
+                "Describe the core features, targeted business results, or product modules in Onboarding to start."}
             </p>
           </AnimatedCard>
 
           {/* Card 2: Tech Blueprint Specs */}
           <AnimatedCard className="space-y-4">
             <div>
-              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Suggested Technologies</span>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                Suggested Technologies
+              </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {(Array.isArray(projectData.techStack) && projectData.techStack.length > 0
+              {(Array.isArray(projectData.techStack) &&
+              projectData.techStack.length > 0
                 ? projectData.techStack
-                : ["React", "Node.js", "PostgreSQL", "Tailwind CSS", "OpenAI API"]
+                : [
+                    "React",
+                    "Node.js",
+                    "PostgreSQL",
+                    "Tailwind CSS",
+                    "OpenAI API",
+                  ]
               ).map((tech) => (
                 <SkillTag key={tech} skill={tech} />
               ))}
@@ -121,8 +158,12 @@ export default function RequirementsSummary() {
               <Cpu size={18} />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Complexity Rating</span>
-              <span className="text-base font-bold text-neutral-800 mt-0.5 block">{projectData.complexity || "Medium"}</span>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                Complexity Rating
+              </span>
+              <span className="text-base font-bold text-neutral-800 mt-0.5 block">
+                {projectData.complexity || "Medium"}
+              </span>
             </div>
           </div>
 
@@ -131,8 +172,12 @@ export default function RequirementsSummary() {
               <Users size={18} />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Estimated Core Team</span>
-              <span className="text-base font-bold text-neutral-800 mt-0.5 block">{projectData.estimatedTeam || 4} Members</span>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                Estimated Core Team
+              </span>
+              <span className="text-base font-bold text-neutral-800 mt-0.5 block">
+                {projectData.estimatedTeam || 4} Members
+              </span>
             </div>
           </div>
 
@@ -141,8 +186,12 @@ export default function RequirementsSummary() {
               <Clock size={18} />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Target Timeline</span>
-              <span className="text-base font-bold text-neutral-800 mt-0.5 block">{projectData.timeline || "12 Weeks"}</span>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+                Target Timeline
+              </span>
+              <span className="text-base font-bold text-neutral-800 mt-0.5 block">
+                {projectData.timeline || "12 Weeks"}
+              </span>
             </div>
           </div>
         </div>
@@ -167,9 +216,7 @@ export default function RequirementsSummary() {
             )}
           </button>
         </div>
-
       </div>
     </div>
   );
 }
-

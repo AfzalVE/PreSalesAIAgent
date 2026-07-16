@@ -164,13 +164,13 @@ export default function ApprovalFlow() {
           <div className="mt-8 space-y-2">
             <button 
               onClick={() => alert("Connecting with Proflo Delivery Team...")}
-              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-50 text-neutral-900 text-xs font-bold flex items-center justify-center transition-colors shadow-soft"
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-200/80 text-xs font-bold flex items-center justify-center transition-colors shadow-sm"
             >
               Contact Team
             </button>
             <button 
               onClick={() => alert("Redirecting to meeting scheduler...")}
-              className="w-full py-3 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-neutral-900 text-xs font-bold flex items-center justify-center transition-colors shadow-md"
+              className="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary/95 text-white text-xs font-bold flex items-center justify-center transition-colors shadow-md"
             >
               <Calendar size={14} className="mr-1.5" />
               Schedule Kickoff Call

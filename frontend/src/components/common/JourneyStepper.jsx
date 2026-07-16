@@ -1,25 +1,22 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
 
 const STEPS = [
-  { id: 0, label: "Start" },
-  { id: 1, label: "Collect" },
-  { id: 3, label: "Summary" },
-  { id: 4, label: "Compare" },
-  { id: 5, label: "Broker" },
-  { id: 6, label: "Sign" }
+  { id: 1, label: "Start", path: "/onboarding" },
+  { id: 2, label: "Broker", path: "/broker" },
+  { id: 3, label: "Sign", path: "/sign" }
 ];
 
 export default function JourneyStepper() {
   const { activeStep, setActiveStep } = useAppStore();
+  const navigate = useNavigate();
 
   const getStepStatus = (stepId) => {
-    // Collect handles step 1 (onboarding form) and step 2 (voice capture)
-    const normalizedActive = activeStep === 2 ? 1 : activeStep;
-    if (normalizedActive > stepId) return "completed";
-    if (normalizedActive === stepId) return "active";
+    if (activeStep > stepId) return "completed";
+    if (activeStep === stepId) return "active";
     return "upcoming";
   };
 
@@ -37,7 +34,7 @@ export default function JourneyStepper() {
               onClick={() => {
                 // Allow back and forward navigating if step was visited
                 if (isCompleted || isActive) {
-                  setActiveStep(step.id);
+                  navigate(step.path);
                 }
               }}
               className="flex items-center space-x-2 cursor-pointer group"

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { PlusCircle, Send, Trash2, Eye, Filter, RefreshCw, X, Mic } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 import AnimatedCard from '../components/common/AnimatedCard';
 
 export default function ClientPortal() {
-  const { activeProposal, projectData, resetStore, setActiveStep, updateProjectData } = useAppStore();
+  const { activeProposal, projectData, resetStore, updateProjectData } = useAppStore();
+  const navigate = useNavigate();
 
   // Navigation: "overview" | "requests" | "chat"
   const [activeTab, setActiveTab] = useState("overview");
@@ -86,7 +88,7 @@ export default function ClientPortal() {
 
   const handleRestart = () => {
     resetStore();
-    setActiveStep(0); // Restart journey
+    navigate('/'); // Restart journey
   };
 
   const handleCreateRequest = (e) => {
@@ -406,7 +408,7 @@ export default function ClientPortal() {
                             <button
                               onClick={() => {
                                 updateProjectData(req);
-                                setActiveStep(4); // Switch to evolve comparison
+                                navigate('/compare');
                               }}
                               className="p-1.5 rounded bg-primary-container/40 text-primary hover:bg-primary-container/70 transition-colors"
                               title="Generate Proposal"

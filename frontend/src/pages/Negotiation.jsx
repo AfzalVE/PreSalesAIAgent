@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { FileCheck2, Loader2 } from 'lucide-react';
+import { FileCheck2, Loader2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import NegotiationChat from '../components/proposal/NegotiationChat';
 import FloatingBackground from '../components/common/FloatingBackground';
 
 export default function Negotiation() {
-  const { setActiveStep, activeProposal, selectProposalFromBackend } = useAppStore();
+  const { activeProposal, selectProposalFromBackend } = useAppStore();
   const [isCompiling, setIsCompiling] = useState(false);
+  const navigate = useNavigate();
 
   const handleApproveProposal = async () => {
     setIsCompiling(true);
     try {
       const res = await selectProposalFromBackend(activeProposal.id);
       if (res.success) {
-        setActiveStep(6); // Navigate to Final Approval Page
+        navigate('/sign'); // Navigate to Final Approval Page
       } else {
         alert("Failed to finalize proposal: " + res.error);
       }
@@ -35,8 +37,8 @@ export default function Negotiation() {
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setActiveStep(4)}
-              className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
+              onClick={() => navigate('/onboarding')}
+              className="p-2 rounded-xl bg-white hover:bg-neutral-50 border border-neutral-200 text-neutral-600 hover:text-neutral-900 shadow-sm transition-colors"
             >
               <ArrowLeft size={14} />
             </button>
@@ -69,7 +71,7 @@ export default function Negotiation() {
           <button
             onClick={handleApproveProposal}
             disabled={isCompiling}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-brand-500 text-white font-semibold text-xs hover:bg-brand-600 shadow-md flex items-center justify-center transition-all duration-200 disabled:opacity-50"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/95 shadow-md flex items-center justify-center transition-all duration-200 disabled:opacity-50"
           >
             {isCompiling ? (
               <>

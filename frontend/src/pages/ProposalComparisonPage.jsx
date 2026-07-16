@@ -1,10 +1,11 @@
 import { ArrowLeft, MessageSquare, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import ProposalComparison from '../components/proposal/ProposalComparison';
 import FloatingBackground from '../components/common/FloatingBackground';
 
 export default function ProposalComparisonPage() {
-  const { setActiveStep } = useAppStore();
+  const navigate = useNavigate();
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] py-12 px-4">
@@ -16,7 +17,7 @@ export default function ProposalComparisonPage() {
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100/50 -mt-4 mb-2">
           <div className="flex items-center space-x-2">
             <button 
-              onClick={() => setActiveStep(3)}
+              onClick={() => navigate('/summary')}
               className="p-2 rounded-xl bg-neutral-50 hover:bg-neutral-100 text-neutral-500 transition-colors"
             >
               <ArrowLeft size={14} />
@@ -52,7 +53,7 @@ export default function ProposalComparisonPage() {
           </div>
 
           <button
-            onClick={() => setActiveStep(5)} // Route to Negotiation Chat Step
+            onClick={() => navigate('/broker')} // Route to Negotiation Chat Step
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-neutral-900 text-xs font-bold flex items-center justify-center transition-all duration-200"
           >
             Negotiate Scope

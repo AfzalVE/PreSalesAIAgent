@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 
@@ -55,7 +56,8 @@ const ONBOARDING_QUESTIONS = [
 ];
 
 export default function Onboarding() {
-  const { updateProjectData, setActiveStep } = useAppStore();
+  const { updateProjectData, generateProposalsFromBackend } = useAppStore();
+  const navigate = useNavigate();
 
   // Single-page form states
   const [formName, setFormName] = useState("");
@@ -73,7 +75,9 @@ export default function Onboarding() {
   const [formWorkforce, setFormWorkforce] = useState(4);
   const [customWorkforce, setCustomWorkforce] = useState("");
 
-  const handleSinglePageSubmit = (e) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleSinglePageSubmit = async (e) => {
     e.preventDefault();
     if (!formName.trim() || !formDomain.trim() || !formDescription.trim()) {
       return;
@@ -100,8 +104,35 @@ export default function Onboarding() {
       timeline: finalTimeline || "12 Weeks",
       estimatedTeam: finalWorkforce || 4
     });
-    setActiveStep(3); // Go to summary
+
+    setIsGenerating(true);
+    try {
+      const res = await generateProposalsFromBackend();
+      if (res.success) {
+        navigate('/broker');
+      } else {
+        alert("Failed to generate proposals: " + res.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error occurred while generating proposals.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
+
+  if (isGenerating) {
+    return (
+      <div className="relative min-h-[calc(100vh-73px)] flex flex-col items-center justify-center bg-[#f7f7f7]">
+        <FloatingBackground />
+        <div className="text-center space-y-4 relative z-10">
+          <Loader2 className="h-12 w-12 animate-spin text-brand-500 mx-auto" />
+          <h3 className="text-xl font-bold text-neutral-800">Generating AI Proposals...</h3>
+          <p className="text-sm text-neutral-500">Creating custom MVP, Growth, and Enterprise blueprints</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] flex items-center justify-center px-4 py-12 font-sans bg-[#f7f7f7]">
@@ -300,7 +331,7 @@ export default function Onboarding() {
                 setFormTimeline("12 Weeks");
                 setFormWorkforce(4);
               }}
-              className="px-4 py-2 text-xs font-semibold text-[#5a5a5c] hover:text-[#0a0a0a] transition-colors"
+              className="px-5 py-2.5 rounded-full border border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 transition-all font-bold text-xs"
             >
               Clear Form
             </button>
@@ -308,9 +339,9 @@ export default function Onboarding() {
             <button
               type="submit"
               disabled={!formName.trim() || !formDomain.trim() || !formDescription.trim()}
-              className="px-6 py-2.5 rounded-full bg-[#00d4a4] hover:bg-[#00b48a] text-[#0a0a0a] font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Build Proposal Summary
+              Build Proposal & Open Broker
               <ChevronRight size={14} />
             </button>
           </div>

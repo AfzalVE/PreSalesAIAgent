@@ -13,6 +13,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
+import { useNavigate } from "react-router-dom";
 import CardSwap, { Card } from "../components/common/CardSwap";
 import FlowingMenu from "../components/common/FlowingMenu";
 import Dock from "../components/common/Dock";
@@ -70,7 +71,8 @@ const Counter = ({
 };
 
 export default function Landing({ onAdminClick }) {
-  const { setUser, setActiveStep } = useAppStore();
+  const { setUser } = useAppStore();
+  const navigate = useNavigate();
 
   // Single entrance validation
   const [entranceInput, setEntranceInput] = useState("");
@@ -242,7 +244,7 @@ useEffect(() => {
               companyName: "Sovereign Enterprise",
               isVerified: true,
             });
-            setActiveStep(1); // Proceed to Onboarding
+            navigate('/onboarding');
           }
         }, 1000);
       } else {
