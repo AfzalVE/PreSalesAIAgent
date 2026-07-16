@@ -26,10 +26,14 @@ export const useAppStore = create((set, get) => ({
   })),
 
   // User Authentication
-  user: {
-    emailOrPhone: '',
-    isVerified: false
-  },
+  user: (() => {
+    try {
+      const saved = localStorage.getItem("user_session");
+      return saved ? JSON.parse(saved) : { emailOrPhone: '', isVerified: false };
+    } catch {
+      return { emailOrPhone: '', isVerified: false };
+    }
+  })(),
 
   // Navigation & Guided Steps
   // Steps: 0: Landing, 1: Onboarding, 2: Voice, 3: Summary, 4: Evolution, 5: Negotiation, 6: Approval
@@ -64,6 +68,11 @@ export const useAppStore = create((set, get) => ({
   // Actions
   setUser: (userData) => {
     set({ user: userData });
+    if (userData) {
+      localStorage.setItem("user_session", JSON.stringify(userData));
+    } else {
+      localStorage.removeItem("user_session");
+    }
     const r = String(userData?.role || '').toLowerCase();
     if (r === 'super-admin' || r === 'admin' || r === 'manager') {
       get().fetchAdminData();
@@ -300,15 +309,18 @@ export const useAppStore = create((set, get) => ({
     return { success: false };
   },
 
-  resetStore: () => set({
-    user: { emailOrPhone: '', isVerified: false },
-    activeStep: 0,
-    projectData: { ...INITIAL_PROJECT_DATA },
-    selectedProposalStage: 'growth',
-    activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
-    negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
-    negotiationError: ''
-  }),
+  resetStore: () => {
+    localStorage.removeItem("user_session");
+    set({
+      user: { emailOrPhone: '', isVerified: false },
+      activeStep: 0,
+      projectData: { ...INITIAL_PROJECT_DATA },
+      selectedProposalStage: 'growth',
+      activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
+      negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
+      negotiationError: ''
+    });
+  },
 
 
 

@@ -1,77 +1,52 @@
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  KeyRound,
-  ShieldAlert,
-  UserCheck,
-  Sparkles,
-  ArrowRight,
-  X,
-} from "lucide-react";
-import { useAppStore } from "../store/useAppStore";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { UserPlus, Sparkles, ArrowRight, X } from "lucide-react";
 import FloatingBackground from "../components/common/FloatingBackground";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
 
-const ROLE_OPTIONS = [
-  { role: "super-admin", label: "Super Admin", icon: ShieldAlert },
-  { role: "admin", label: "Admin", icon: UserCheck },
-  { role: "manager", label: "Manager", icon: UserCheck },
-];
+export default function AdminSignup({ onCancel, isModal }) {
+  const navigate = useNavigate();
 
-function pickInitialRoleFromEmail(email) {
-  const e = (email || "").toLowerCase();
-  if (
-    e.includes("super") ||
-    e.includes("root") ||
-    e.includes("owner") ||
-    e.includes("admin")
-  )
-    return "super-admin";
-  if (e.includes("manager") || e.includes("mgr")) return "manager";
-  return "admin";
-}
-
-export default function AdminLogin({ onLogin, onCancel, isModal }) {
-  const { setUser } = useAppStore();
-
-  const [emailOrPhone, setEmailOrPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin");
-  const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "admin",
+  });
+  
   const [submitting, setSubmitting] = useState(false);
 
-  const initialHint = useMemo(() => {
-    return "Use any credentials (mock). Try: super@corp.com, manager@corp.com";
-  }, []);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // If Super Admin is selected, redirect to Super Admin Login
+    if (name === "role" && value === "super-admin") {
+      navigate("/super-admin-login");
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!emailOrPhone || !password) {
-      setError("Please enter email/phone and password.");
-      return;
-    }
 
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 650));
 
-    const inferredRole = pickInitialRoleFromEmail(emailOrPhone);
-    const effectiveRole = role || inferredRole;
+    console.log(formData);
 
-    setUser({
-      emailOrPhone,
-      isVerified: true,
-      role: effectiveRole,
-    });
+    // TODO: Call Backend Signup API here
 
+    alert("Registration Successful!\nPlease wait for Super Admin Approval.");
     setSubmitting(false);
-    onLogin({ role: effectiveRole, emailOrPhone });
+    navigate("/admin/login");
   };
-
-  const RoleIcon =
-    ROLE_OPTIONS.find((r) => r.role === role)?.icon || ShieldAlert;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#fafafa]">
@@ -92,7 +67,7 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-stack-lg"
+            className="space-y-stack-lg hidden lg:block"
           >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-md">
               <Sparkles size={16} className="text-primary animate-pulse" />
@@ -103,7 +78,7 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
 
             <div className="space-y-6">
               <h1 className="font-display-lg text-5xl lg:text-7xl text-navy-accent leading-[1.05] text-left flex flex-col items-start font-extrabold tracking-tight">
-                <span>Manage your</span>
+                <span>Manage our</span>
                 <RotatingText
                   texts={[
                     "Proposals",
@@ -127,7 +102,7 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
               </h1>
 
               <p className="font-body-lg text-on-surface-variant max-w-xl text-lg leading-relaxed text-left">
-                Access proposal generation workflows, resource allocation, project onboarding, cost estimation, and delivery planning from a unified, intelligent workspace.
+                Register as an administrator to manage proposals, oversee resources, and accelerate your digital delivery operations.
               </p>
             </div>
 
@@ -159,14 +134,14 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-full max-w-[430px] mx-auto bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
+            className="w-full max-w-[480px] mx-auto bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
           >
             <div>
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">Sign in</h2>
+                  <h2 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">Register Admin</h2>
                   <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                    Access the administrative workspace.
+                    Create your workspace account.
                   </p>
                 </div>
 
@@ -181,21 +156,34 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
+                
                 <div>
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                    Email or Phone
+                    Full Name
                   </label>
-
                   <input
                     type="text"
-                    value={emailOrPhone}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEmailOrPhone(v);
-                      setRole(pickInitialRoleFromEmail(v));
-                    }}
-                    placeholder="name@company.com"
+                    name="full_name"
+                    placeholder="John Doe"
+                    value={formData.full_name}
+                    onChange={handleChange}
                     className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="name@company.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                    required
                   />
                 </div>
 
@@ -203,77 +191,57 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Password
                   </label>
-
-                  <div className="relative">
-                    <KeyRound
-                      size={14}
-                      className="absolute left-3.5 top-3.5 text-[#a8a8aa]"
-                    />
-
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-10 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
-                    />
-                  </div>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                    required
+                  />
                 </div>
 
                 <div>
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Role
                   </label>
-
                   <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
                     className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 focus:border-2 focus:border-[#00d4a4]"
                   >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.role} value={r.role}>
-                        {r.label}
-                      </option>
-                    ))}
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="super-admin">Super Admin</option>
                   </select>
                 </div>
-
-                {error && <p className="text-[10px] font-bold text-red-500">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
+                  className="mt-6 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                 >
                   {submitting ? (
-                    "Signing in..."
+                    "Registering..."
                   ) : (
                     <>
-                      Sign In
+                      Create Account
                       <ArrowRight size={16} className="ml-2" />
                     </>
                   )}
                 </button>
 
-                <div className="pt-4 border-t border-neutral-100">
-                  <p className="font-body-md text-xs text-[#5a5a5c]">Demo accounts:</p>
-
-                  <div className="mt-2 space-y-1 font-body-md text-xs text-neutral-600">
-                    <div>super@corp.com</div>
-                    <div>manager@corp.com</div>
-                    <div>admin@corp.com</div>
-                  </div>
-                </div>
-
-                <div className="pt-2 text-center">
+                <div className="pt-5 text-center">
                   <p className="font-body-md text-sm text-[#5a5a5c]">
-                    Don't have an account?{" "}
+                    Already have an account?{" "}
                     <button
                       type="button"
-                      onClick={() => window.location.href = "/admin/sign-up"}
+                      onClick={() => navigate("/admin/login")}
                       className="text-primary font-bold hover:underline ml-1"
                     >
-                      Sign up here
+                      Log in here
                     </button>
                   </p>
                 </div>

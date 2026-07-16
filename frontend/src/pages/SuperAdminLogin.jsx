@@ -1,77 +1,51 @@
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  KeyRound,
-  ShieldAlert,
-  UserCheck,
-  Sparkles,
-  ArrowRight,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ShieldAlert, Sparkles, ArrowRight, Mail, Lock, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import FloatingBackground from "../components/common/FloatingBackground";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
 
-const ROLE_OPTIONS = [
-  { role: "super-admin", label: "Super Admin", icon: ShieldAlert },
-  { role: "admin", label: "Admin", icon: UserCheck },
-  { role: "manager", label: "Manager", icon: UserCheck },
-];
-
-function pickInitialRoleFromEmail(email) {
-  const e = (email || "").toLowerCase();
-  if (
-    e.includes("super") ||
-    e.includes("root") ||
-    e.includes("owner") ||
-    e.includes("admin")
-  )
-    return "super-admin";
-  if (e.includes("manager") || e.includes("mgr")) return "manager";
-  return "admin";
-}
-
-export default function AdminLogin({ onLogin, onCancel, isModal }) {
+export default function SuperAdminLogin() {
+  const navigate = useNavigate();
   const { setUser } = useAppStore();
 
-  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("admin");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const initialHint = useMemo(() => {
-    return "Use any credentials (mock). Try: super@corp.com, manager@corp.com";
-  }, []);
+  // Hardcoded credentials
+  const SUPER_ADMIN_EMAIL = "superadmin@ve.com";
+  const SUPER_ADMIN_PASSWORD = "Super@123";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!emailOrPhone || !password) {
-      setError("Please enter email/phone and password.");
+    if (!email || !password) {
+      setError("Please enter email and password.");
       return;
     }
 
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 650));
 
-    const inferredRole = pickInitialRoleFromEmail(emailOrPhone);
-    const effectiveRole = role || inferredRole;
+    if (email === SUPER_ADMIN_EMAIL && password === SUPER_ADMIN_PASSWORD) {
+      const loggedInUser = {
+        emailOrPhone: email,
+        role: "super-admin",
+        isVerified: true,
+      };
 
-    setUser({
-      emailOrPhone,
-      isVerified: true,
-      role: effectiveRole,
-    });
-
-    setSubmitting(false);
-    onLogin({ role: effectiveRole, emailOrPhone });
+      setUser(loggedInUser);
+      navigate("/super-admin-dashboard");
+    } else {
+      setError("Invalid Super Admin Email or Password");
+      setSubmitting(false);
+    }
   };
-
-  const RoleIcon =
-    ROLE_OPTIONS.find((r) => r.role === role)?.icon || ShieldAlert;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#fafafa]">
@@ -92,24 +66,24 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="space-y-stack-lg"
+            className="space-y-stack-lg hidden lg:block"
           >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-md">
               <Sparkles size={16} className="text-primary animate-pulse" />
               <span className="font-label-caps text-primary tracking-wider uppercase font-bold text-[11px]">
-                Internal Operations Platform
+                Master Control Platform
               </span>
             </div>
 
             <div className="space-y-6">
               <h1 className="font-display-lg text-5xl lg:text-7xl text-navy-accent leading-[1.05] text-left flex flex-col items-start font-extrabold tracking-tight">
-                <span>Manage your</span>
+                <span>Govern your</span>
                 <RotatingText
                   texts={[
-                    "Proposals",
-                    "Teams",
-                    "Delivery",
-                    "Operations"
+                    "Workspaces",
+                    "Security",
+                    "System",
+                    "Permissions"
                   ]}
                   mainClassName="text-primary overflow-hidden py-1 justify-start"
                   staggerFrom="last"
@@ -127,29 +101,29 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
               </h1>
 
               <p className="font-body-lg text-on-surface-variant max-w-xl text-lg leading-relaxed text-left">
-                Access proposal generation workflows, resource allocation, project onboarding, cost estimation, and delivery planning from a unified, intelligent workspace.
+                Access root controls, configure system-wide parameters, and oversee the entire digital delivery ecosystem.
               </p>
             </div>
 
             <div className="grid sm:grid-cols-3 gap-6 pt-6">
               <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
-                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">500+</div>
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">100%</div>
                 <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
-                  Proposals
+                  Uptime
                 </div>
               </div>
 
               <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
-                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">120+</div>
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">256-bit</div>
                 <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
-                  Resources
+                  Encryption
                 </div>
               </div>
 
               <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-6 shadow-xl shadow-primary/5 hover:-translate-y-1 transition-transform duration-300">
-                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">24/7</div>
+                <div className="text-3xl font-extrabold text-navy-accent font-display tracking-tight">Zero</div>
                 <div className="text-xs font-bold text-on-surface-variant mt-2 font-label-caps uppercase tracking-wider">
-                  AI Agents
+                  Breaches
                 </div>
               </div>
             </div>
@@ -164,39 +138,42 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
             <div>
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">Sign in</h2>
+                  <h2 className="font-headline-md text-2xl font-semibold text-[#0a0a0a]">Super Admin</h2>
                   <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                    Access the administrative workspace.
+                    Secure access to the master workspace.
                   </p>
                 </div>
-
-                {onCancel && (
-                  <button
-                    onClick={onCancel}
-                    className="h-9 w-9 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-100 transition-colors"
-                  >
-                    <X size={16} className="text-neutral-500" />
-                  </button>
-                )}
+                
+                <button
+                  onClick={() => navigate("/admin/login")}
+                  className="h-9 w-9 rounded-full border border-neutral-200 flex items-center justify-center hover:bg-neutral-100 transition-colors"
+                  title="Return to Admin Login"
+                >
+                  <X size={16} className="text-neutral-500" />
+                </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                    Email or Phone
+                    Email
                   </label>
 
-                  <input
-                    type="text"
-                    value={emailOrPhone}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEmailOrPhone(v);
-                      setRole(pickInitialRoleFromEmail(v));
-                    }}
-                    placeholder="name@company.com"
-                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
-                  />
+                  <div className="relative mt-2">
+                    <Mail
+                      size={16}
+                      className="absolute left-4 top-[14px] text-[#a8a8aa]"
+                    />
+
+                    <input
+                      type="email"
+                      placeholder="superadmin@ve.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-11 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -204,41 +181,28 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                     Password
                   </label>
 
-                  <div className="relative">
-                    <KeyRound
-                      size={14}
-                      className="absolute left-3.5 top-3.5 text-[#a8a8aa]"
+                  <div className="relative mt-2">
+                    <Lock
+                      size={16}
+                      className="absolute left-4 top-[14px] text-[#a8a8aa]"
                     />
 
                     <input
                       type="password"
+                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter password"
-                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-10 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white pl-11 pr-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                      required
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                    Role
-                  </label>
-
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 focus:border-2 focus:border-[#00d4a4]"
-                  >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.role} value={r.role}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {error && <p className="text-[10px] font-bold text-red-500">{error}</p>}
+                {error && (
+                  <p className="text-[10px] font-bold text-red-500 text-center">
+                    {error}
+                  </p>
+                )}
 
                 <button
                   type="submit"
@@ -246,35 +210,24 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
                   className="mt-2 flex h-11 w-full items-center justify-center rounded-full bg-primary-container font-button-text text-sm font-semibold uppercase text-navy-accent transition-all duration-200 hover:shadow-md active:translate-y-px"
                 >
                   {submitting ? (
-                    "Signing in..."
+                    "Authenticating..."
                   ) : (
                     <>
-                      Sign In
+                      Authenticate
                       <ArrowRight size={16} className="ml-2" />
                     </>
                   )}
                 </button>
 
-                <div className="pt-4 border-t border-neutral-100">
-                  <p className="font-body-md text-xs text-[#5a5a5c]">Demo accounts:</p>
-
-                  <div className="mt-2 space-y-1 font-body-md text-xs text-neutral-600">
-                    <div>super@corp.com</div>
-                    <div>manager@corp.com</div>
-                    <div>admin@corp.com</div>
-                  </div>
-                </div>
-
-                <div className="pt-2 text-center">
-                  <p className="font-body-md text-sm text-[#5a5a5c]">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => window.location.href = "/admin/sign-up"}
-                      className="text-primary font-bold hover:underline ml-1"
-                    >
-                      Sign up here
-                    </button>
+                <div className="mt-8 border-t border-neutral-100 pt-6 text-center">
+                  <p className="font-label-caps text-[10px] tracking-wider text-neutral-400 uppercase mb-3">
+                    Demo Credentials
+                  </p>
+                  <p className="font-body-md text-xs text-neutral-600">
+                    Email: <span className="text-primary font-bold ml-1">superadmin@ve.com</span>
+                  </p>
+                  <p className="font-body-md text-xs text-neutral-600 mt-1">
+                    Password: <span className="text-primary font-bold ml-1">Super@123</span>
                   </p>
                 </div>
               </form>
