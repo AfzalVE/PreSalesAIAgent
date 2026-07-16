@@ -12,7 +12,7 @@ from app.models.proposal_request import ProposalRequest
 from app.models.final_proposal import FinalProposal
 from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
-from app.services.proposal.docx_generator import generate_proposal_docx
+from app.services.proposal.proposal_generation_service import create_proposal_document
 
 router = APIRouter()
 
@@ -124,21 +124,21 @@ async def select_proposal(
         output_filepath = os.path.join(static_dir, docx_filename)
         
         # Structure payload for docx generation
-        proposal_dict = {
-            "project_name": proposal.proposal_request.project_name if proposal.proposal_request else "AI Custom Product Development",
-            "proposal_type": proposal.proposal_type.value,
-            "tech_stack": proposal.tech_stack,
-            "estimated_cost": float(proposal.estimated_cost),
-            "estimated_duration": proposal.estimated_duration,
-            "scope": proposal.scope,
-            "assumptions": proposal.assumptions,
-            "risks": proposal.risks,
-            "timeline_phases": proposal.timeline_phases or [],
-            "selected_resources": proposal.selected_resources
-        }
-        
-        generate_proposal_docx(proposal_dict, output_filepath)
-        
+        request = proposal.proposal_request
+
+        proposal_data = create_proposal_document(
+            project_name=request.project_name,
+            project_description=request.project_description,
+            requirements=request.project_description,   # Replace with the correct field if you have one
+            preferred_technology=request.preferred_technology,
+            estimated_budget=float(proposal.estimated_cost),
+            estimated_duration=proposal.estimated_duration,
+            proposal_type=proposal.proposal_type.value,
+            resources=proposal.selected_resources,
+            tech_stack=proposal.tech_stack,
+            output_filepath=output_filepath,
+        )
+                
         doc_url = f"/static/proposals/{docx_filename}"
         
         if not final_proposal:

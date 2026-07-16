@@ -40,9 +40,9 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
     # Styles Setup
     style_normal = doc.styles['Normal']
     font = style_normal.font
-    font.name = 'Arial'
-    font.size = Pt(10.5)
-    font.color.rgb = RGBColor(51, 51, 51) # Charcoal
+    font.name = 'Calibri'
+    font.size = Pt(11)
+    font.color.rgb = RGBColor(30, 41, 59) # Slate Blue/Charcoal
 
     # Title Page / Document Header
     p_title = doc.add_paragraph()
@@ -50,17 +50,17 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
     run_title_tag = p_title.add_run("PROOF OF CONCEPT (POC) & DEVELOPMENT PROPOSAL\n")
     run_title_tag.font.size = Pt(12)
     run_title_tag.font.bold = True
-    run_title_tag.font.color.rgb = RGBColor(12, 60, 96) # Dark Navy
+    run_title_tag.font.color.rgb = RGBColor(30, 58, 138) # Dark Navy
 
     run_title = p_title.add_run(proposal_data.get("project_name", "AI System Development").upper() + "\n")
     run_title.font.size = Pt(22)
     run_title.font.bold = True
-    run_title.font.color.rgb = RGBColor(12, 60, 96)
+    run_title.font.color.rgb = RGBColor(30, 58, 138)
 
     run_subtitle = p_title.add_run("Custom Software Engineering and Implementation Blueprint\n")
     run_subtitle.font.size = Pt(14)
     run_subtitle.font.italic = True
-    run_subtitle.font.color.rgb = RGBColor(128, 128, 128)
+    run_subtitle.font.color.rgb = RGBColor(100, 116, 139) # Slate Gray
 
     p_meta = doc.add_paragraph()
     p_meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -78,32 +78,72 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
         run = heading.add_run(text)
         run.font.bold = True
         if level == 1:
-            run.font.size = Pt(16)
-            run.font.color.rgb = RGBColor(12, 60, 96)
-            # Add subtle bottom border style spacing
+            run.font.size = Pt(15)
+            run.font.color.rgb = RGBColor(30, 58, 138)
             heading.paragraph_format.space_before = Pt(18)
-            heading.paragraph_format.space_after = Pt(8)
+            heading.paragraph_format.space_after = Pt(6)
         else:
-            run.font.size = Pt(13)
-            run.font.color.rgb = RGBColor(12, 60, 96)
+            run.font.size = Pt(12)
+            run.font.color.rgb = RGBColor(30, 58, 138)
             heading.paragraph_format.space_before = Pt(12)
             heading.paragraph_format.space_after = Pt(4)
         return heading
 
+    # Helper to add paragraph or native list bullet
+    def add_custom_paragraphs(text_content):
+        if not text_content:
+            return
+        if isinstance(text_content, list):
+            lines = text_content
+        elif isinstance(text_content, str):
+            lines = text_content.split("\n")
+        else:
+            lines = [str(text_content)]
+
+        for line in lines:
+            if not line:
+                continue
+            line = str(line).strip()
+            if not line:
+                continue
+            if line.startswith("-") or line.startswith("•") or line.startswith("*"):
+                clean_line = line.lstrip("-•* ").strip()
+                if clean_line:
+                    doc.add_paragraph(clean_line, style='List Bullet')
+            else:
+                doc.add_paragraph(line)
+
     # 1. Executive Summary
     add_styled_heading("1. Executive Summary")
-    doc.add_paragraph(
-        f"This development proposal outlines the technical specifications, scope, resource planning, and timeline milestones "
-        f"for the '{proposal_data.get('project_name')}' project. Our approach balances cutting-edge engineering with "
-        f"speed-to-market methodologies to deliver a premium, robust digital solution."
-    )
+    exec_summary = proposal_data.get("executive_summary")
+    if exec_summary:
+        add_custom_paragraphs(exec_summary)
+    else:
+        doc.add_paragraph(
+            f"This development proposal outlines the technical specifications, scope, resource planning, and timeline milestones "
+            f"for the '{proposal_data.get('project_name')}' project. Our approach balances cutting-edge engineering with "
+            f"speed-to-market methodologies to deliver a premium, robust digital solution."
+        )
 
     # 2. Scope & Proposed Solution
     add_styled_heading("2. Proposed Solution & Scope")
-    doc.add_paragraph(proposal_data.get("scope", "Detailed implementation scope and architectural integration plans."))
+    scope_text = proposal_data.get("scope")
+    if scope_text:
+        add_custom_paragraphs(scope_text)
+    else:
+        doc.add_paragraph("Detailed implementation scope and architectural integration plans.")
 
-    # 3. Technology Stack
-    add_styled_heading("3. Proposed Technology Stack")
+    # 3. Estimated Budget & Cost Structure
+    add_styled_heading("3. Estimated Budget & Cost Structure")
+    cost_val = proposal_data.get('estimated_cost', 0.0)
+    doc.add_paragraph(
+        f"The total estimated cost for this custom software development solution is ${cost_val:,.2f} USD. "
+        f"This includes full engineering resources, quality assurance testing, architecture design, and final deployment setup. "
+        f"The detailed cost breakdown is aligned with the technical roles and allocated task hours detailed in Section 7."
+    )
+
+    # 4. Technology Stack
+    add_styled_heading("4. Proposed Technology Stack")
     tech_stack = proposal_data.get("tech_stack") or {}
     
     # Create Table 2: Tech Stack
@@ -116,7 +156,7 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
     for cell in hdr_cells:
         cell.paragraphs[0].runs[0].font.bold = True
         cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
-        set_cell_background(cell, "0C3C60")
+        set_cell_background(cell, "1E3A8A")
         set_cell_margins(cell)
 
     for layer, tech in tech_stack.items():
@@ -129,8 +169,8 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
 
     doc.add_paragraph() # Spacer
 
-    # 4. Project Development Plan & Timeline Milestones
-    add_styled_heading("4. Development Plan & Timeline")
+    # 5. Project Development Plan & Timeline Milestones
+    add_styled_heading("5. Development Plan & Timeline")
     doc.add_paragraph(
         f"The development cycle is projected at {proposal_data.get('estimated_duration')}. "
         f"Following the structure of our standard Proof of Concept delivery pipeline, the specific deliverables and timeline phases are detailed below:"
@@ -148,7 +188,7 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
         for cell in hdr_cells:
             cell.paragraphs[0].runs[0].font.bold = True
             cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
-            set_cell_background(cell, "0C3C60")
+            set_cell_background(cell, "1E3A8A")
             set_cell_margins(cell)
 
         for phase in timeline_phases:
@@ -161,17 +201,25 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
 
     doc.add_paragraph() # Spacer
 
-    # 5. Assumptions & Key Risks
-    add_styled_heading("5. Assumptions & Key Risks")
+    # 6. Assumptions & Key Risks
+    add_styled_heading("6. Assumptions & Key Risks")
     
     add_styled_heading("Assumptions", level=2)
-    doc.add_paragraph(proposal_data.get("assumptions") or "No technical assumptions listed.")
+    assumptions_text = proposal_data.get("assumptions")
+    if assumptions_text:
+        add_custom_paragraphs(assumptions_text)
+    else:
+        doc.add_paragraph("No technical assumptions listed.")
 
     add_styled_heading("Risks & Mitigation", level=2)
-    doc.add_paragraph(proposal_data.get("risks") or "No project risks listed.")
+    risks_text = proposal_data.get("risks")
+    if risks_text:
+        add_custom_paragraphs(risks_text)
+    else:
+        doc.add_paragraph("No project risks listed.")
 
-    # 6. Selected Resources Allocation
-    add_styled_heading("6. Allocated Technical Resources")
+    # 7. Selected Resources Allocation
+    add_styled_heading("7. Allocated Technical Resources")
     selected_resources = proposal_data.get("selected_resources", {}).get("resources", [])
     
     if selected_resources:
@@ -184,7 +232,7 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
         for cell in hdr_cells:
             cell.paragraphs[0].runs[0].font.bold = True
             cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
-            set_cell_background(cell, "0C3C60")
+            set_cell_background(cell, "1E3A8A")
             set_cell_margins(cell)
 
         for res in selected_resources:

@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.models.proposal import Proposal, ProposalType, ProposalStatus
 from app.models.proposal_request import ProposalRequest, CommunicationType, ProposalRequestStatus
 from app.models.resource_allocation import ResourceAllocation
+from app.services.proposal.generate_poc import generate_poc
+from app.services.proposal.docx_generator import generate_proposal_docx
 from app.services.resource.cost_estimation import match_resources
 
 # Initialize the OpenAI client asynchronously, pointing to Groq's API
@@ -273,3 +275,37 @@ async def generate_proposals_for_request(
             }
         ]
     }
+
+
+
+
+def create_proposal_document(
+    project_name,
+    project_description,
+    requirements,
+    preferred_technology,
+    estimated_budget,
+    estimated_duration,
+    proposal_type,
+    resources,
+    tech_stack,
+    output_filepath,
+):
+    proposal = generate_poc(
+        project_name=project_name,
+        project_description=project_description,
+        requirements=requirements,
+        preferred_technology=preferred_technology,
+        estimated_budget=estimated_budget,
+        estimated_duration=estimated_duration,
+        proposal_type=proposal_type,
+        resources=resources,
+        tech_stack=tech_stack,
+    )
+
+    generate_proposal_docx(
+        proposal_data=proposal,
+        output_filepath=output_filepath,
+    )
+
+    return proposal

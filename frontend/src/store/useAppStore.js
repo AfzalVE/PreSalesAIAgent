@@ -64,6 +64,11 @@ export const useAppStore = create((set, get) => ({
   activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
   negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
   negotiationError: '',
+  jsonPocs: {
+    extraction: null,
+    matching: null,
+    generation: null
+  },
 
   // Actions
   setUser: (userData) => {
@@ -120,7 +125,7 @@ export const useAppStore = create((set, get) => ({
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 800); // 800ms timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
       const response = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
         method: "POST",
@@ -190,16 +195,210 @@ export const useAppStore = create((set, get) => ({
       });
       return { success: true };
     } catch (e) {
-      console.warn("Backend proposal generation failed, falling back to mock data:", e);
-      const mockStages = { ...store.proposalStages };
-      mockStages.growth.budget = store.projectData.budget || mockStages.growth.budget;
-      mockStages.growth.timeline = store.projectData.timeline || mockStages.growth.timeline;
+      console.error("Backend proposal generation failed:", e);
+      return { success: false, error: e.message || "Failed to generate proposals from backend." };
+    }
+  },
+
+  matchResourcesFromBackend: async () => {
+    const store = get();
+    const timelineNum = parseInt(store.projectData.timeline) || 12;
+    const payload = {
+      project_name: store.projectData.name,
+      timeline_weeks: timelineNum,
+      client_budget: store.projectData.budget || 75000,
+      company_static_cost: 100.0,
+      resource_requirements: [
+        {
+          role: "Senior Backend Engineer",
+          count: 1,
+          minimum_experience: 3,
+          skills: store.projectData.techStack.length > 0 ? store.projectData.techStack : ["Python", "FastAPI"]
+        },
+        {
+          role: "Senior Frontend Engineer",
+          count: 1,
+          minimum_experience: 3,
+          skills: store.projectData.techStack.length > 0 ? store.projectData.techStack : ["React"]
+        }
+      ]
+    };
+
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error("Failed to match resources");
+      const data = await response.json();
+
+      const teamMapped = (data.selected_resources || []).map(r => ({
+        name: r.name,
+        role: r.role,
+        hourly_cost: r.hourly_cost,
+        allocated_hours: r.allocated_hours,
+        estimated_cost: r.estimated_cost
+      }));
+
+      const updatedGrowth = {
+        ...store.proposalStages.growth,
+        budget: data.total_project_cost,
+        timeline: `${timelineNum} Weeks`,
+        teamSize: teamMapped.length,
+        team: teamMapped,
+        description: `Custom proposal matched dynamically from active bench employees for ${store.projectData.name}.`,
+      };
+
       set({
-        proposalStages: mockStages,
-        activeProposal: mockStages.growth,
+        proposalStages: {
+          ...store.proposalStages,
+          growth: updatedGrowth
+        },
+        activeProposal: updatedGrowth,
         selectedProposalStage: 'growth'
       });
+
+      return { success: true, data: data };
+    } catch (e) {
+      console.error("Resource matching API failed:", e);
+      return { success: false, error: e.message || "Failed to call resource matching API." };
+    }
+  },
+
+  runOnboardingPipeline: async () => {
+    const store = get();
+
+    // Concatenate details into a single prompt for extract-requirements
+    const extractionText = `Project Name: ${store.projectData.name}
+Business Domain: ${store.projectData.domain}
+Description: ${store.projectData.description}
+Preferred Tech Stack: ${(store.projectData.techStack || []).join(', ')}
+Budget: ${store.projectData.budget}
+Timeline: ${store.projectData.timeline}`;
+
+    try {
+      // 1. Call ai-agent/extract-requirements
+      const extractionResponse = await fetch("http://localhost:8000/api/v1/ai-agent/extract-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: extractionText })
+      });
+      if (!extractionResponse.ok) throw new Error("Failed to extract requirements");
+      const extractionData = await extractionResponse.json();
+
+      set((state) => ({
+        jsonPocs: {
+          ...state.jsonPocs,
+          extraction: extractionData
+        }
+      }));
+
+      // 2. Call resource-allocation/match with the returned data (do NOT send default values!)
+      const matchingPayload = {
+        proposal_id: extractionData.proposal_id,
+        project_name: extractionData.project_name,
+        timeline_weeks: extractionData.timeline_weeks,
+        client_budget: extractionData.client_budget,
+        resource_requirements: extractionData.resource_requirements || []
+      };
+
+      const matchingResponse = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(matchingPayload)
+      });
+      if (!matchingResponse.ok) throw new Error("Failed to match resources");
+      const matchingData = await matchingResponse.json();
+
+      set((state) => ({
+        jsonPocs: {
+          ...state.jsonPocs,
+          matching: matchingData
+        }
+      }));
+
+      // 3. Call proposals/generate-demo
+      const generationPayload = {
+        project_name: extractionData.project_name,
+        project_description: store.projectData.description,
+        business_domain: extractionData.business_domain || store.projectData.domain,
+        preferred_technology: store.projectData.techStack,
+        budget: extractionData.client_budget || store.projectData.budget,
+        timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline
+      };
+
+      const generationResponse = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(generationPayload)
+      });
+      if (!generationResponse.ok) throw new Error("Failed to generate demo proposals");
+      const generationData = await generationResponse.json();
+
+      set((state) => ({
+        jsonPocs: {
+          ...state.jsonPocs,
+          generation: generationData
+        }
+      }));
+
+      // 4. Update the local proposal stages and activeProposal
+      const mvpProposal = generationData.proposals.find(p => p.proposal_type === "MVP");
+      const fullProposal = generationData.proposals.find(p => p.proposal_type === "FULL");
+
+      const formatProposal = (p, label, descOverride) => {
+        const teamMapped = (p.selected_resources?.resources || []).map(r => ({
+          name: r.name,
+          role: r.role,
+          hourly_cost: r.hourly_cost,
+          allocated_hours: r.allocated_hours,
+          estimated_cost: r.estimated_cost
+        }));
+
+        return {
+          id: p.id,
+          label: label,
+          description: descOverride || p.scope,
+          timeline: p.estimated_duration,
+          budget: p.estimated_cost,
+          teamSize: teamMapped.length,
+          team: teamMapped,
+          features: [
+            { name: "Core Scope & Deliverables", status: "active", desc: p.scope },
+            { name: "Key Assumptions", status: "active", desc: p.assumptions },
+            { name: "Risk Mitigation", status: "active", desc: p.risks }
+          ],
+          architecture: {
+            client: "Web Application Client",
+            apiGateway: "RESTful API Layer",
+            services: [Object.values(p.tech_stack).join(", ")],
+            databases: [p.tech_stack.db || "PostgreSQL"]
+          },
+          timeline_phases: p.timeline_phases || []
+        };
+      };
+
+      const proposalStages = {
+        mvp: formatProposal(mvpProposal, "MVP Launch", "Lean implementation focusing on core functionalities."),
+        growth: formatProposal(fullProposal, "Growth Engine", "Full product release with complete architecture and integrations."),
+        enterprise: {
+          ...formatProposal(fullProposal, "Enterprise Scale", "Scalable multi-region deployment with enterprise SLAs and auditing."),
+          budget: Math.round(fullProposal.estimated_cost * 1.3),
+          timeline: `${Math.round(parseInt(fullProposal.estimated_duration) * 1.4)} Weeks`
+        }
+      };
+
+      set({
+        proposalStages,
+        activeProposal: proposalStages.growth,
+        selectedProposalStage: 'growth'
+      });
+
       return { success: true };
+    } catch (e) {
+      console.error("Onboarding Pipeline failed:", e);
+      return { success: false, error: e.message || "Pipeline execution failed." };
     }
   },
 
@@ -311,8 +510,6 @@ export const useAppStore = create((set, get) => ({
 
   resetStore: () => {
     localStorage.removeItem("user_session");
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("auth_token");
     set({
       user: { emailOrPhone: '', isVerified: false },
       activeStep: 0,

@@ -128,6 +128,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         
         # Validate against our Pydantic model
         extracted_data = AgentExtractionResponse(**extracted_dict)
+        print(extracted_data)
         return extracted_data
         
     except ValidationError as ve:
@@ -180,6 +181,7 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
         extracted_dict = json.loads(response_content)
         
         negotiation_data = NegotiationResponse(**extracted_dict)
+        print(negotiation_data)
         return negotiation_data
         
     except ValidationError as ve:
