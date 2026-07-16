@@ -266,7 +266,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
-  runOnboardingPipeline: async () => {
+  generateProposalsFromBackend: async () => {
     const store = get();
 
     // Concatenate details into a single prompt for extract-requirements
@@ -286,6 +286,7 @@ Timeline: ${store.projectData.timeline}`;
       });
       if (!extractionResponse.ok) throw new Error("Failed to extract requirements");
       const extractionData = await extractionResponse.json();
+      console.log("Extraction Data:", extractionData);
 
       set((state) => ({
         jsonPocs: {
@@ -310,6 +311,7 @@ Timeline: ${store.projectData.timeline}`;
       });
       if (!matchingResponse.ok) throw new Error("Failed to match resources");
       const matchingData = await matchingResponse.json();
+      console.log("Matching Data:", matchingData);
 
       set((state) => ({
         jsonPocs: {
@@ -335,6 +337,7 @@ Timeline: ${store.projectData.timeline}`;
       });
       if (!generationResponse.ok) throw new Error("Failed to generate demo proposals");
       const generationData = await generationResponse.json();
+      console.log("Generation Data:", generationData);
 
       set((state) => ({
         jsonPocs: {
@@ -343,56 +346,23 @@ Timeline: ${store.projectData.timeline}`;
         }
       }));
 
-      // 4. Update the local proposal stages and activeProposal
+      // 4. Update activeProposal with raw backend data
       const mvpProposal = generationData.proposals.find(p => p.proposal_type === "MVP");
       const fullProposal = generationData.proposals.find(p => p.proposal_type === "FULL");
 
-      const formatProposal = (p, label, descOverride) => {
-        const teamMapped = (p.selected_resources?.resources || []).map(r => ({
-          name: r.name,
-          role: r.role,
-          hourly_cost: r.hourly_cost,
-          allocated_hours: r.allocated_hours,
-          estimated_cost: r.estimated_cost
-        }));
-
-        return {
-          id: p.id,
-          label: label,
-          description: descOverride || p.scope,
-          timeline: p.estimated_duration,
-          budget: p.estimated_cost,
-          teamSize: teamMapped.length,
-          team: teamMapped,
-          features: [
-            { name: "Core Scope & Deliverables", status: "active", desc: p.scope },
-            { name: "Key Assumptions", status: "active", desc: p.assumptions },
-            { name: "Risk Mitigation", status: "active", desc: p.risks }
-          ],
-          architecture: {
-            client: "Web Application Client",
-            apiGateway: "RESTful API Layer",
-            services: [Object.values(p.tech_stack).join(", ")],
-            databases: [p.tech_stack.db || "PostgreSQL"]
-          },
-          timeline_phases: p.timeline_phases || []
-        };
-      };
-
-      const proposalStages = {
-        mvp: formatProposal(mvpProposal, "MVP Launch", "Lean implementation focusing on core functionalities."),
-        growth: formatProposal(fullProposal, "Growth Engine", "Full product release with complete architecture and integrations."),
-        enterprise: {
-          ...formatProposal(fullProposal, "Enterprise Scale", "Scalable multi-region deployment with enterprise SLAs and auditing."),
-          budget: Math.round(fullProposal.estimated_cost * 1.3),
-          timeline: `${Math.round(parseInt(fullProposal.estimated_duration) * 1.4)} Weeks`
-        }
+      const rawProposal = {
+        inferred_project_name: generationData.project_name,
+        inferred_business_domain: generationData.business_domain,
+        inferred_project_description: generationData.project_description,
+        inferred_preferred_technology: generationData.preferred_technology,
+        inferred_budget: generationData.budget,
+        inferred_timeline: generationData.timeline,
+        mvp: mvpProposal,
+        full: fullProposal
       };
 
       set({
-        proposalStages,
-        activeProposal: proposalStages.growth,
-        selectedProposalStage: 'growth'
+        activeProposal: rawProposal
       });
 
       return { success: true };
