@@ -31,29 +31,19 @@ class GenerateDemoRequest(BaseModel):
     budget: Optional[float] = Field(None, description="Budget Goals")
     timeline: Optional[str] = Field(None, description="Timeline Expectation")
 
+from app.services.proposals.proposal_service import get_all_proposals_service, get_proposal_by_id_service
+
 @router.get("", summary="List all proposals for Proposals Console")
 @router.get("/all", summary="List all proposals for Proposals Console")
 async def get_all_proposals(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
-    proposals = db.query(Proposal).options(
-        joinedload(Proposal.proposal_request).joinedload(ProposalRequest.client)
-    ).order_by(Proposal.created_at.desc()).all()
-    result = []
-    for prop in proposals:
-        p_name = prop.proposal_request.project_name if prop.proposal_request else "Custom AI Solution"
-        c_name = prop.proposal_request.client.company_name if (prop.proposal_request and prop.proposal_request.client) else "Acme Corp"
-        status_str = prop.status.value if hasattr(prop.status, 'value') else str(prop.status)
-        type_str = prop.proposal_type.value if hasattr(prop.proposal_type, 'value') else str(prop.proposal_type)
-        
-        result.append({
-            "id": str(prop.id),
-            "projectName": f"{p_name} ({type_str})",
-            "clientName": c_name,
-            "budget": float(prop.estimated_cost or 0),
-            "timeline": prop.estimated_duration or "12 Weeks",
-            "status": status_str.capitalize() if status_str else "Generated",
-            "proposalType": type_str
-        })
-    return result
+    return get_all_proposals_service(db)
+
+@router.get("/{proposal_id}", summary="Get a single proposal by ID with full details")
+async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    res = get_proposal_by_id_service(db, proposal_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return res
 
 @router.post("/generate-demo", summary="Generate MVP and Full Proposals")
 async def generate_demo_proposals(

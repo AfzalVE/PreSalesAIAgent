@@ -584,8 +584,8 @@ export default function AdminPortal() {
                     Proposal Generation History
                   </span>
                   <div className="space-y-2">
-                    {selectedUser.proposalHistory.length > 0 ? (
-                      selectedUser.proposalHistory.map((p, idx) => (
+                    {(selectedUser.proposalHistory || []).length > 0 ? (
+                      (selectedUser.proposalHistory || []).map((p, idx) => (
                         <div
                           key={idx}
                           className="p-2.5 bg-neutral-50 border border-neutral-100 rounded-xl"
@@ -633,7 +633,7 @@ export default function AdminPortal() {
                   </h3>
                   <p className="text-xs text-neutral-500 font-semibold mt-0.5">
                     Client: {selectedProposal.clientName} •{" "}
-                    {selectedProposal.industry}
+                    {selectedProposal.industry || "Technology & Services"}
                   </p>
                 </div>
 
@@ -643,7 +643,7 @@ export default function AdminPortal() {
                       Current Budget
                     </label>
                     <span className="text-base font-bold text-brand-600">
-                      ${selectedProposal.budget.toLocaleString()}
+                      ${Number(selectedProposal.budget || 0).toLocaleString()}
                     </span>
                   </div>
                   <div>
@@ -651,7 +651,7 @@ export default function AdminPortal() {
                       Timeline
                     </label>
                     <span className="text-base font-bold text-neutral-800">
-                      {selectedProposal.timeline}
+                      {selectedProposal.timeline || "12 Weeks"}
                     </span>
                   </div>
                 </div>
@@ -705,7 +705,7 @@ export default function AdminPortal() {
                   <div className="space-y-2">
                     {(selectedProposal.team || []).map((member, mIdx) => {
                       const matchingStaff = employees.filter((emp) =>
-                        emp.skills.some((sk) =>
+                        (emp.skills || []).some((sk) =>
                           (selectedProposal.techStack || []).includes(sk),
                         ),
                       );
