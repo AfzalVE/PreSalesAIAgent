@@ -70,11 +70,28 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Here are the rules:
     1. Merge any new information from the user's message with the existing data.
     2. Extract the `project_name`. If none is apparent, create a generic but descriptive one.
-    3. Extract `timeline_weeks`. If none is mentioned by the user and none exists, LEAVE IT NULL. Do not invent a timeline.
-    4. Extract `client_budget`. If none is mentioned by the user and none exists, LEAVE IT NULL. Do not invent a budget.
-    5. Extract `resource_requirements`. If the user mentions them, use them. If none are mentioned and none exist, LEAVE IT NULL.
-    6. Generate a `proposal_id` (e.g. "PROP-001" or a random unique identifier) if one is not clearly specified in the existing data.
-    7. `follow_up_message`: If ANY of budget, timeline, or resource_requirements are still missing after merging, you must populate this field to ask the user a follow-up question (e.g., "Do you have a specific budget or timeline in mind for this?"). If they provided everything, leave it null.
+    3. Extract timeline_weeks.
+        - If the user specifies one, use it.
+        - If the user asks for a recommendation, estimate a realistic timeline based on the project scope and populate timeline_weeks.
+        - Otherwise leave it null.
+
+    4. Extract client_budget.
+        - If the user specifies one, use it.
+        - If the user asks for a recommendation, estimate a realistic budget based on the project scope and populate client_budget.
+        - Otherwise leave it null.
+
+    5. Extract or recommend resource_requirements.
+        - If the user specifies them, use them.
+        - If the user asks for recommendations, suggest an appropriate team.
+
+    6. If the user asks for feature recommendations or says they lack technical expertise, recommend an industry-standard feature set appropriate for the project type.
+
+    7. follow_up_message must always contain a conversational response.
+        - If the user requests recommendations, provide them directly.
+        - Do not ask for information the user has already said they do not know.
+        - Ask follow-up questions only when essential information is still required and the user has not requested recommendations.
+        
+    8. FEASIBILITY & NEGOTIATION: If the user requests a change to the existing budget or timeline that is highly unrealistic (e.g., cutting budget by 70%, or a 2-week timeline for a complex app), DO NOT update the `client_budget` or `timeline_weeks` fields with the unrealistic values. Keep the existing values, and populate `follow_up_message` with a professional explanation of why that request is not feasible and what trade-offs would be required. If the request is reasonable, update the fields and use `follow_up_message` to confirm the adjustment
     
     Ensure your output strictly follows this JSON schema:
     {schema_str}

@@ -17,7 +17,7 @@ class AgentExtractionResponse(BaseModel):
     timeline_weeks: Optional[int] = Field(None, description="The timeline of the project in weeks. If not provided by the user, leave it null for downstream calculation.")
     client_budget: Optional[float] = Field(None, description="The budget of the client in USD. If not provided, leave it null for downstream calculation.")
     resource_requirements: Optional[List[ResourceRequirement]] = Field(None, description="The list of resources required for the project. If not provided, leave it null for downstream calculation.")
-    follow_up_message: Optional[str] = Field(None, description="A message to ask the user follow-up questions if budget, timeline, or resources were missing and had to be suggested. Leave null if everything was provided.")
+    follow_up_message: str = Field(..., description="Your conversational response to the user. Must ALWAYS be populated. Use this to ask for missing details, provide recommendations, answer questions, or explain feasibility rejections.")
 
 class NegotiationInput(BaseModel):
     user_request: str = Field(..., description="The user's negotiation request (e.g. 'lower budget by 20%').")
