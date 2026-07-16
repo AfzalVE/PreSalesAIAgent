@@ -36,7 +36,7 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
     if not user:
         import uuid
         default_role = allowed_roles[0] if allowed_roles else UserRole.CLIENT
-        default_name = credentials.email.split('@')[0].capitalize()
+        default_name = credentials.full_name or credentials.email.split('@')[0].capitalize()
         user = User(
             id=uuid.uuid4(),
             email=credentials.email,
@@ -44,7 +44,9 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
             password_hash=get_password_hash(credentials.password),
             role=default_role,
             is_verified=False,
-            is_verification_required=True
+            is_verification_required=True,
+            phone=credentials.phone,
+            company_name=credentials.company_name,
         )
         db.add(user)
         db.commit()
@@ -64,11 +66,20 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid password",
             )
+        # Directly generate access token, no OTP!
+        access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+        return OTPRequiredResponse(
+            otp_required=False,
+            access_token=access_token,
+            user_id=user.id,
+            full_name=user.full_name,
+            email=user.email,
+            role=user.role
+        )
     else:
         # User is not verified - set the password from this request
         user.password_hash = get_password_hash(credentials.password)
         db.commit()
-
 
     otp_code = generate_otp()
     otp_record = EmailOTP(
@@ -87,9 +98,12 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
         print(f"[SMTP WARNING] Failed to send OTP email: {e}")
         print(f"[DEVELOPMENT ONLY] OTP code for {user.email} is: {otp_code}")
 
-
     pending_token = create_pending_token(str(user.id))
-    return OTPRequiredResponse(pending_token=pending_token)
+    return OTPRequiredResponse(
+        otp_required=True,
+        pending_token=pending_token,
+        message="OTP sent to your registered email"
+    )
 
 
 def verify_login_otp(db: Session, payload: OTPVerifyRequest) -> LoginResponse:

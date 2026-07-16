@@ -52,17 +52,17 @@ const Counter = ({
         animationFrame = requestAnimationFrame(animate);
         return;
       }
-      
+
       const percentage = Math.min(progress / duration, 1);
       const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
-      
+
       setCount(end * easeOut);
-      
+
       if (percentage < 1) {
         animationFrame = requestAnimationFrame(animate);
       }
     };
-    
+
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
   }, [end, duration, delay, start]);
@@ -71,7 +71,7 @@ const Counter = ({
 };
 
 export default function Landing({ onAdminClick }) {
-  const { setUser } = useAppStore();
+  const { user, setUser } = useAppStore();
   const navigate = useNavigate();
 
   // Single entrance validation
@@ -93,6 +93,8 @@ export default function Landing({ onAdminClick }) {
   const [regEmail, setRegEmail] = useState("");
   const [regCountryCode, setRegCountryCode] = useState("US +1");
   const [regPhone, setRegPhone] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regCompanyName, setRegCompanyName] = useState("");
   const [isNotRobot, setIsNotRobot] = useState(false);
 
   // Forgot Password
@@ -104,34 +106,35 @@ export default function Landing({ onAdminClick }) {
   const [otpCode, setOtpCode] = useState("");
   const [otpResendTimer, setOtpResendTimer] = useState(0);
   const [otpStatus, setOtpStatus] = useState(""); // "" | "verifying" | "success" | "error"
+  const [pendingToken, setPendingToken] = useState("");
 
   const [error, setError] = useState("");
 
   // Modal display state
   const [showAuthModal, setShowAuthModal] = useState(false);
-const statsRef = useRef(null);
+  const statsRef = useRef(null);
 
-const [startCounter, setStartCounter] = useState(false);
+  const [startCounter, setStartCounter] = useState(false);
 
-useEffect(() => {
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      if (entry.isIntersecting) {
-        setStartCounter(true);
-        observer.disconnect();
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStartCounter(true);
+          observer.disconnect();
+        }
+      },
+      {
+        threshold: 0.3,
       }
-    },
-    {
-      threshold: 0.3,
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
     }
-  );
 
-  if (statsRef.current) {
-    observer.observe(statsRef.current);
-  }
-
-  return () => observer.disconnect();
-}, []);
+    return () => observer.disconnect();
+  }, []);
   const validateEntrance = (value) => {
     setEntranceInput(value);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -152,19 +155,26 @@ useEffect(() => {
     }
   };
 
-  const handleEntranceContinue = () => {
+  const handleEntranceContinue = async () => {
     if (!isValidEntrance) return;
     setError("");
 
-    // If it's a test email, go to login. Else, go to registration.
-    if (
-      entranceInput.includes("acme") ||
-      entranceInput.includes("hello") ||
-      entranceInput.includes("admin")
-    ) {
-      setEmail(entranceInput);
-      setView("login");
-    } else {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/auth/check-email?email=${encodeURIComponent(entranceInput)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to check email status");
+      }
+
+      if (data.exists && data.is_verified) {
+        setEmail(entranceInput);
+        setView("login");
+      } else {
+        setRegEmail(entranceInput);
+        setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
+        setView("register");
+      }
+    } catch (err) {
       setRegEmail(entranceInput);
       setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
       setView("register");
@@ -184,28 +194,102 @@ useEffect(() => {
     }, 1000);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
     }
     setError("");
-    setOtpPurpose("login");
-    setView("otp");
-    startOtpResendTimer();
+    setOtpStatus("verifying");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Authentication failed.");
+      }
+
+      if (data.otp_required === false) {
+        setOtpStatus("success");
+        setTimeout(() => {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          navigate('/onboarding');
+        }, 1000);
+        return;
+      }
+
+      setPendingToken(data.pending_token);
+      setOtpPurpose("login");
+      setView("otp");
+      setOtpStatus("");
+      setOtpCode("");
+      startOtpResendTimer();
+    } catch (err) {
+      setOtpStatus("");
+      setError(err.message);
+    }
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!regFullName || !regEmail || !regPhone || !isNotRobot) {
+    if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
       setError("Please complete all fields and confirm you are not a robot.");
       return;
     }
     setError("");
-    setOtpPurpose("register");
-    setView("otp");
-    startOtpResendTimer();
+    setOtpStatus("verifying");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: regEmail,
+          password: regPassword,
+          full_name: regFullName,
+          phone: regCountryCode + " " + regPhone,
+          company_name: regCompanyName
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Registration failed.");
+      }
+
+      if (data.otp_required === false) {
+        setOtpStatus("success");
+        setTimeout(() => {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          navigate('/onboarding');
+        }, 1000);
+        return;
+      }
+
+      setPendingToken(data.pending_token);
+      setOtpPurpose("register");
+      setView("otp");
+      setOtpStatus("");
+      setOtpCode("");
+      startOtpResendTimer();
+    } catch (err) {
+      setOtpStatus("");
+      setError(err.message);
+    }
   };
 
   const handleForgotSubmit = (e) => {
@@ -220,7 +304,7 @@ useEffect(() => {
     startOtpResendTimer();
   };
 
-  const handleOtpVerify = (e) => {
+  const handleOtpVerify = async (e) => {
     e.preventDefault();
     if (otpCode.length < 4) {
       setError("Please enter a valid OTP code.");
@@ -229,29 +313,40 @@ useEffect(() => {
     setError("");
     setOtpStatus("verifying");
 
-    setTimeout(() => {
-      if (otpCode === "1234") {
-        setOtpStatus("success");
-        setTimeout(() => {
-          if (otpPurpose === "forgot") {
-            setView("reset-password");
-            setOtpStatus("");
-            setOtpCode("");
-          } else {
-            setUser({
-              emailOrPhone: email || regEmail,
-              fullName: regFullName || "Alex Rivera",
-              companyName: "Sovereign Enterprise",
-              isVerified: true,
-            });
-            navigate('/onboarding');
-          }
-        }, 1000);
-      } else {
-        setOtpStatus("error");
-        setError("Invalid OTP code. Use test code: 1234");
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pending_token: pendingToken,
+          otp: otpCode
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Invalid OTP code.");
       }
-    }, 1200);
+      setOtpStatus("success");
+      setTimeout(() => {
+        if (otpPurpose === "forgot") {
+          setView("reset-password");
+          setOtpStatus("");
+          setOtpCode("");
+        } else {
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+          });
+          navigate('/onboarding');
+        }
+      }, 1000);
+    } catch (err) {
+      setOtpStatus("error");
+      setError(err.message || "Invalid OTP code.");
+    }
   };
 
   const handleResetPassword = (e) => {
@@ -271,6 +366,10 @@ useEffect(() => {
 
   // Open auth modal helpers
   const triggerAuthFlow = (initialView = "entrance") => {
+    if (user?.isVerified) {
+      navigate('/onboarding');
+      return;
+    }
     setError("");
     setView(initialView);
     setShowAuthModal(true);
@@ -645,34 +744,34 @@ useEffect(() => {
         </section>
 
         {/* Stats Section */}
-       <section
-  ref={statsRef}
-  className="bg-navy-accent py-20 relative overflow-hidden"
->
+        <section
+          ref={statsRef}
+          className="bg-navy-accent py-20 relative overflow-hidden"
+        >
           <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none bg-grid"></div>
           <div className="max-w-container-max mx-auto px-6 md:px-margin-desktop grid grid-cols-2 lg:grid-cols-4 gap-12 relative z-10 text-center">
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-      <Counter
-    end={500}
-    suffix="+"
-    duration={2600}
-    delay={0}
-    start={startCounter}
-/>        </p>
+                <Counter
+                  end={500}
+                  suffix="+"
+                  duration={2600}
+                  delay={0}
+                  start={startCounter}
+                />        </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Projects Delivered
               </p>
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-             <Counter
-    end={120}
-    suffix="+"
-    duration={3400}
-    delay={300}
-    start={startCounter}
-/>
+                <Counter
+                  end={120}
+                  suffix="+"
+                  duration={3400}
+                  delay={300}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Specialist Models
@@ -680,13 +779,13 @@ useEffect(() => {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-               <Counter
-    end={98}
-    suffix="%"
-    duration={4200}
-    delay={600}
-    start={startCounter}
-/>
+                <Counter
+                  end={98}
+                  suffix="%"
+                  duration={4200}
+                  delay={600}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Customer Retention
@@ -694,15 +793,15 @@ useEffect(() => {
             </div>
             <div className="space-y-2">
               <p className="text-5xl md:text-6xl font-extrabold text-primary-container">
-             <Counter
-    end={2.4}
-    prefix="$"
-    suffix="B"
-    decimals={1}
-    duration={5200}
-    delay={900}
-    start={startCounter}
-/>
+                <Counter
+                  end={2.4}
+                  prefix="$"
+                  suffix="B"
+                  decimals={1}
+                  duration={5200}
+                  delay={900}
+                  start={startCounter}
+                />
               </p>
               <p className="font-label-caps text-white/50 text-xs tracking-widest uppercase">
                 Pipeline Value
@@ -1614,11 +1713,10 @@ useEffect(() => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${
-                view === "register" || view === "otp"
+              className={`relative w-full bg-white border border-neutral-200 shadow-2xl z-10 overflow-hidden ${view === "register" || view === "otp"
                   ? "max-w-[430px] rounded-xl px-6 py-8 text-left sm:px-10 sm:py-10"
                   : "max-w-md rounded-3xl p-8 text-left"
-              }`}
+                }`}
             >
               {/* Close Button */}
               {view !== "register" && (
@@ -1664,11 +1762,10 @@ useEffect(() => {
                       <button
                         onClick={handleEntranceContinue}
                         disabled={!isValidEntrance}
-                        className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-200 ${
-                          isValidEntrance
+                        className={`h-9 px-4 rounded-xl text-xs font-bold flex items-center justify-center transition-all duration-200 ${isValidEntrance
                             ? "bg-primary text-white hover:bg-primary/90 shadow-md cursor-pointer"
                             : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                        }`}
+                          }`}
                       >
                         Continue
                         <ArrowRight size={13} className="ml-1" />
@@ -1845,6 +1942,34 @@ useEffect(() => {
 
                       <div>
                         <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={regCompanyName}
+                          onChange={(e) => setRegCompanyName(e.target.value)}
+                          placeholder="Acme Corp"
+                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                           Phone Number
                         </label>
                         <div className="flex h-11 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
@@ -1933,22 +2058,27 @@ useEffect(() => {
                         Security Verification
                       </h3>
                       <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                        We've simulated sending a security code. Enter test code{" "}
-                        <strong className="font-semibold text-[#0a0a0a]">
-                          1234
-                        </strong>{" "}
-                        to verify your account.
+                        We've sent a security code to your email. Enter the code below to verify.
                       </p>
+                      <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200/60 text-left">
+                        <p className="font-body-md text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">info</span>
+                          Dev Mode Hint:
+                        </p>
+                        <p className="mt-1 font-body-md text-[11px] text-amber-700 leading-normal">
+                          If SMTP is not configured, check the backend terminal console for the printed OTP or inspect the <strong>OTP Logs</strong> in the Admin portal.
+                        </p>
+                      </div>
                     </div>
 
                     <form onSubmit={handleOtpVerify} className="space-y-5">
                       <div>
                         <label className="mb-2 block text-center font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          4-Digit Security Code
+                          6-Digit Security Code
                         </label>
                         <input
                           type="text"
-                          maxLength={4}
+                          maxLength={6}
                           required
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value)}

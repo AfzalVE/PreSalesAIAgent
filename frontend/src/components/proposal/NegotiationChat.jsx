@@ -124,38 +124,50 @@ export default function NegotiationChat() {
       }
     ]);
 
-    // Simulate AI thinking and recalculating allocation values
-    setTimeout(() => {
-      const result = applyNegotiationRequest(text);
-      
-      const aiMessageId = generateMessageId("ai");
-      setIsProcessing(false);
-
-      if (result.success) {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: aiMessageId,
-            sender: "ai",
-            text: result.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            success: true
-          }
-        ]);
-      } else {
-        setMessages(prev => [
-          ...prev,
-          {
-            id: aiMessageId,
-            sender: "ai",
-            text: result.text,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            success: false,
-            warning: result.error
-          }
-        ]);
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to process request");
       }
-    }, 1200);
+
+      const result = applyNegotiationRequest(text);
+      const aiMessageId = generateMessageId("ai");
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: aiMessageId,
+          sender: "ai",
+          text: data.follow_up_message || result.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          success: result.success,
+          warning: result.success ? undefined : result.error
+        }
+      ]);
+    } catch (err) {
+      console.error("API error, falling back to simulation:", err);
+      const result = applyNegotiationRequest(text);
+      const aiMessageId = generateMessageId("ai");
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: aiMessageId,
+          sender: "ai",
+          text: result.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          success: result.success,
+          warning: result.success ? undefined : result.error
+        }
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

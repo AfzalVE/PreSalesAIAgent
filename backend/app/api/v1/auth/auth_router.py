@@ -44,3 +44,16 @@ async def verify_otp(payload: OTPVerifyRequest, db: Session = Depends(get_db)):
     Step 2 for both Admin and User: verify OTP against pending_token, return access_token.
     """
     return verify_login_otp(db, payload)
+
+
+@router.get("/check-email")
+async def check_email(email: str, db: Session = Depends(get_db)):
+    """
+    Check if a user exists with the given email and if they are verified.
+    """
+    from app.models.user import User
+    user = db.query(User).filter(User.email == email).first()
+    return {
+        "exists": user is not None,
+        "is_verified": user.is_verified if user else False
+    }
