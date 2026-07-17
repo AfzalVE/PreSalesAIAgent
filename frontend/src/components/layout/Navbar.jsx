@@ -31,7 +31,7 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
         </div>
 
         {/* Journey Stepper (Only on client journey steps) */}
-        {!isAdmin && activeStep > 0 && activeStep < 7 && (
+        {!isAdmin && activeStep > 0 && activeStep < 4 && (
           <div className="hidden sm:block">
             <JourneyStepper />
           </div>
@@ -42,7 +42,7 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
       </div>
 
       {/* Mobile Journey Stepper (Visible only on mobile/tablet) */}
-      {!isAdmin && activeStep > 0 && activeStep < 7 && (
+      {!isAdmin && activeStep > 0 && activeStep < 4 && (
         <div className="sm:hidden flex justify-center mt-3 pt-3 border-t border-neutral-100/50">
           <JourneyStepper />
         </div>

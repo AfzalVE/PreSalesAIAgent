@@ -382,12 +382,12 @@ export default function ClientPortal() {
               <span>New Proposal Request</span>
             </button>
             <button
-              onClick={handleRestart}
-              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-navy-accent text-white font-button-text text-xs sm:text-sm font-semibold hover:bg-navy-accent/90 shadow-md transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
+              onClick={handleLogout}
+              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 font-button-text text-xs sm:text-sm font-semibold hover:bg-red-100 shadow-sm transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
-              <span>Restart Intake Wizard</span>
+              <LogOut size={14} className="mr-1.5 flex-shrink-0" />
+              <span>Logout</span>
             </button>
-
           </div>
         </div>
 

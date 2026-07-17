@@ -381,7 +381,7 @@ export default function Landing({ onAdminClick }) {
               ? "/super-admin-dashboard"
               : data.role === "admin"
                 ? "/admin"
-                : "/client-portal";
+                : "/onboarding";
           navigate(targetPath);
         }
       }, 500);
