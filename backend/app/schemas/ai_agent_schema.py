@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class AgentTextInput(BaseModel):
@@ -11,14 +11,23 @@ class ResourceRequirement(BaseModel):
     skills: List[str] = Field(default_factory=list, description="List of specific skills required, e.g., ['Python', 'FastAPI'].")
 
 class AgentExtractionResponse(BaseModel):
-    request_id: Optional[str] = Field(None, description="The unique identifier for the database request if tracked statefully.") # newly added
+    request_id: Optional[str] = Field(None, description="The unique identifier for the database request if tracked statefully.")
     proposal_id: str = Field(..., description="The unique identifier for the proposal, e.g., 'PROP-001'.")
-    project_name: str = Field(..., description="The name of the project extracted or generated.")
-    timeline_weeks: Optional[int] = Field(None, description="The timeline of the project in weeks. If not provided by the user, leave it null for downstream calculation.")
-    client_budget: Optional[float] = Field(None, description="The budget of the client in USD. If not provided, leave it null for downstream calculation.")
-    resource_requirements: Optional[List[ResourceRequirement]] = Field(None, description="The list of resources required for the project. If not provided, leave it null for downstream calculation.")
-    follow_up_message: str = Field(..., description="Your conversational response to the user. Must ALWAYS be populated. Use this to ask for missing details, provide recommendations, answer questions, or explain feasibility rejections.")
-    is_ready_for_proposal: bool = Field(False, description="Set this to true ONLY when you have successfully extracted or recommended a project_name, timeline_weeks, client_budget, and resource_requirements. If any of these are missing, set it to false.")
+    project_name: Optional[str] = Field(None, description="The name of the project extracted or generated.")
+    business_domain: Optional[str] = Field(None, description="The business domain of the project.")
+    project_description: Optional[str] = Field(None, description="The description of the project.")
+    preferred_technology: Optional[List[List[str]]] = Field(None, description="List of possible tech stacks, each represented as a list of strings (e.g., [['React', 'FastAPI'], ['Vue', 'Django']]).")
+    timeline_weeks: Optional[int] = Field(None, description="The timeline of the project in weeks.")
+    client_budget: Optional[float] = Field(None, description="The budget of the client in USD.")
+    
+    # State flags
+    is_gathering_info_complete: bool = Field(False, description="True ONLY when project_name, business_domain, project_description, timeline_weeks, and client_budget are ALL present.")
+    tech_stack_confirmed: bool = Field(False, description="True ONLY when the user explicitly agrees to the proposed tech stack.")
+    ready_for_match: bool = Field(False, description="True when info is complete AND tech stack is confirmed.")
+    ready_for_proposal_generation: bool = Field(False, description="True ONLY when the user explicitly says to generate the proposal after seeing the match estimation.")
+    
+    follow_up_message: str = Field(..., description="Your conversational response to the user. Must ALWAYS be populated.")
+    proposal_data: Optional[Dict[str, Any]] = Field(None, description="The generated proposal data if ready_for_proposal_generation is true.")
 
 class NegotiationInput(BaseModel):
     user_request: str = Field(..., description="The user's negotiation request (e.g. 'lower budget by 20%').")

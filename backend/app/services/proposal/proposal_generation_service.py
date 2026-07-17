@@ -40,21 +40,15 @@ async def generate_proposals_for_request(
         proposal_input = {}
     proposal_input.update(kwargs)
 
+    mvp_data = proposal_input.get("mvp", {})
+    full_data_input = proposal_input.get("full_project", {})
+    
     user_input_summary = {
         "proposal_id": proposal_input.get("proposal_id"),
         "project_name": proposal_input.get("project_name"),
-        "timeline_weeks": proposal_input.get("timeline_weeks", proposal_input.get("timeline")),
-        "client_budget": proposal_input.get("client_budget", proposal_input.get("budget")),
-        "recommended_budget": proposal_input.get("recommended_budget", proposal_input.get("budget")),
-        "budget": proposal_input.get("budget"),
-        "resource_requirements": proposal_input.get("resource_requirements", []),
-        "selected_resources": proposal_input.get("selected_resources", []),
-        "developer_cost": proposal_input.get("developer_cost"),
-        "company_static_cost": proposal_input.get("company_static_cost"),
-        "total_project_cost": proposal_input.get("total_project_cost", proposal_input.get("budget")),
-        "estimated_cost": proposal_input.get("estimated_cost", proposal_input.get("budget")),
-        "is_within_budget": proposal_input.get("is_within_budget", True),
-        "budget_variance_usd": proposal_input.get("budget_variance_usd", 0)
+        "client_budget": proposal_input.get("client_budget"),
+        "mvp_estimation": mvp_data,
+        "full_project_estimation": full_data_input
     }
 
     system_prompt = """
@@ -298,15 +292,15 @@ Do not include any additional text.
     final_tech = generation_content.get("inferred_preferred_technology", [])
 
     final_budget = proposal_input.get("client_budget", proposal_input.get("budget", 0))
-    timeline_val = proposal_input.get("timeline_weeks", proposal_input.get("timeline", "TBD"))
+    timeline_val = mvp_data.get("timeline_weeks", proposal_input.get("timeline_weeks", "TBD"))
     final_timeline = f"{timeline_val} Weeks" if str(timeline_val).isnumeric() else str(timeline_val)
 
-    estimated_cost = proposal_input.get("estimated_cost", final_budget)
-    selected_resources = proposal_input.get("selected_resources", [])
-    resource_requirements = proposal_input.get("resource_requirements", [])
+    estimated_cost = mvp_data.get("total_project_cost", final_budget)
+    selected_resources = mvp_data.get("selected_resources", [])
+    resource_requirements = mvp_data.get("resource_requirements", [])
     recommended_budget = proposal_input.get("recommended_budget", final_budget)
-    is_within_budget = proposal_input.get("is_within_budget", True)
-    budget_variance = proposal_input.get("budget_variance_usd", 0)
+    is_within_budget = mvp_data.get("is_within_budget", True)
+    budget_variance = mvp_data.get("budget_variance_usd", 0)
     
     if not is_within_budget:
         return {
@@ -318,7 +312,6 @@ Do not include any additional text.
             ),
             "estimated_cost": estimated_cost,
             "client_budget": final_budget,
-            "recommended_budget": recommended_budget,
             "budget_variance_usd": budget_variance,
             "mvp": None,
             "full": None
@@ -355,8 +348,8 @@ Do not include any additional text.
         selected_resources={
             "resource_requirements": mvp_input.get("resource_requirements", resource_requirements),
             "selected_resources": mvp_input.get("selected_resources", selected_resources),
-            "developer_cost": mvp_input.get("developer_cost", proposal_input.get("developer_cost")),
-            "company_static_cost": proposal_input.get("company_static_cost"),
+            "developer_cost": mvp_input.get("developer_cost"),
+            "company_static_cost": mvp_input.get("company_static_cost"),
             "total_project_cost": mvp_cost
         },
         estimated_duration=f"{mvp_data['estimated_duration_weeks']} Weeks",
@@ -384,8 +377,8 @@ Do not include any additional text.
         selected_resources={
             "resource_requirements": full_input.get("resource_requirements", resource_requirements),
             "selected_resources": full_input.get("selected_resources", selected_resources),
-            "developer_cost": full_input.get("developer_cost", proposal_input.get("developer_cost")),
-            "company_static_cost": proposal_input.get("company_static_cost"),
+            "developer_cost": full_input.get("developer_cost"),
+            "company_static_cost": full_input.get("company_static_cost"),
             "total_project_cost": full_cost
         },
         estimated_duration=f"{full_data['estimated_duration_weeks']} Weeks",
