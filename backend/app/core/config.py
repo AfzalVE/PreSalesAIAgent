@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # ----------------------------------
     # Database
     # ----------------------------------
-    DATABASE_URL:str='postgresql+psycopg://neondb_owner:npg_wgxYMB8psS4E@ep-odd-heart-addo8465-pooler.c-2.us-east-1.aws.neon.tech/presalesmanagement?sslmode=require&channel_binding=require'
+    DATABASE_URL:str
 
     # ----------------------------------
     # JWT
