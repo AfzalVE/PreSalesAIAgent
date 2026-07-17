@@ -66,3 +66,5 @@ loguru==0.7.3
 # Utilities
 # ==========================
 python-dateutil==2.9.0.post0
+
+groq

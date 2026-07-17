@@ -118,8 +118,18 @@ def _format_proposal_dict(prop: Proposal, active_employees: List[Employee]) -> D
             "date": date_str
         })
 
+    client_email_str = ""
+    client_id_str = ""
+    if prop.proposal_request and prop.proposal_request.client:
+        client_email_str = getattr(prop.proposal_request.client, "email", "") or ""
+        client_id_str = str(getattr(prop.proposal_request.client, "id", "")) or ""
+    elif prop.proposal_request:
+        client_id_str = str(prop.proposal_request.client_id or "")
+
     return {
         "id": str(prop.id),
+        "clientEmail": client_email_str.lower(),
+        "clientId": client_id_str,
         "projectName": f"{p_name} ({type_str})",
         "clientName": c_name,
         "industry": industry_str,
@@ -134,14 +144,35 @@ def _format_proposal_dict(prop: Proposal, active_employees: List[Employee]) -> D
     }
 
 
-def get_all_proposals_service(db: Session) -> List[Dict[str, Any]]:
+def get_all_proposals_service(
+    db: Session,
+    user_email: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Retrieves all proposals with eager-loaded relationships and formats them
     with complete details for frontend table and details modal rendering.
+    Optionally filters by user_email or user_id for client isolation.
     """
-    proposals = db.query(Proposal).options(
+    from sqlalchemy import func
+    from app.models.user import User
+
+    query = db.query(Proposal).options(
         joinedload(Proposal.proposal_request).joinedload(ProposalRequest.client)
-    ).order_by(Proposal.created_at.desc()).all()
+    )
+
+    if user_email:
+        query = query.join(Proposal.proposal_request).join(ProposalRequest.client).filter(
+            func.lower(User.email) == func.lower(user_email.strip())
+        )
+    elif user_id:
+        try:
+            uid = uuid.UUID(user_id)
+            query = query.join(Proposal.proposal_request).filter(ProposalRequest.client_id == uid)
+        except ValueError:
+            pass
+
+    proposals = query.order_by(Proposal.created_at.desc()).all()
 
     active_employees = db.query(Employee).filter(Employee.employment_status == EmploymentStatus.ACTIVE).all()
 

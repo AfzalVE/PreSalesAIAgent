@@ -14,7 +14,9 @@ from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
 from app.services.proposal.proposal_generation_service import create_proposal_document
 
-router = APIRouter()
+from app.core.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_db():
     db = SessionLocal()
@@ -35,8 +37,12 @@ from app.services.proposals.proposal_service import get_all_proposals_service, g
 
 @router.get("", summary="List all proposals for Proposals Console")
 @router.get("/all", summary="List all proposals for Proposals Console")
-async def get_all_proposals(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
-    return get_all_proposals_service(db)
+async def get_all_proposals(
+    user_email: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    return get_all_proposals_service(db, user_email=user_email, user_id=user_id)
 
 @router.get("/{proposal_id}", summary="Get a single proposal by ID with full details")
 async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
@@ -44,6 +50,36 @@ async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[
     if not res:
         raise HTTPException(status_code=404, detail="Proposal not found")
     return res
+
+@router.get("/{proposal_id}/export", summary="Export a proposal as a document")
+async def export_proposal(proposal_id: str, db: Session = Depends(get_db)):
+    from fastapi.responses import FileResponse
+    res = get_proposal_by_id_service(db, proposal_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+        
+    output_filepath = os.path.join(os.getcwd(), f"{proposal_id}.docx")
+    
+    # Check if docx already exists, if not generate it
+    if not os.path.exists(output_filepath):
+        create_proposal_document(
+            project_name=res["project_name"],
+            project_description=res["scope"],
+            requirements=res["assumptions"] + res["risks"],
+            preferred_technology=res["tech_stack"],
+            estimated_budget=res["estimated_cost"],
+            estimated_duration=res["estimated_duration"],
+            proposal_type=res["proposal_type"],
+            resources=res["selected_resources"],
+            tech_stack=res["tech_stack"],
+            output_filepath=output_filepath
+        )
+        
+    return FileResponse(
+        path=output_filepath, 
+        filename=f"{res['project_name']}_Proposal.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 @router.post("/generate-demo", summary="Generate MVP and Full Proposals")
 async def generate_demo_proposals(
@@ -178,3 +214,25 @@ async def select_proposal(
             status_code=500,
             detail=f"Proposal selection failed: {str(e)}"
         )
+
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/{proposal_id}/download", summary="Download the finalized proposal document")
+async def download_proposal_doc(proposal_id: str):
+    print("DOWNLOAD ENDPOINT")
+    """
+    Returns the docx file for the given proposal_id with Content-Disposition attachment.
+    """
+    print(proposal_id)
+    static_dir = os.path.join("app", "static", "proposals")
+    filename = f"{proposal_id}.docx"
+    file_path = os.path.join(static_dir, filename)
+    print(file_path)
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path, 
+            filename="Project_Proposal.docx",
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    raise HTTPException(status_code=404, detail="Document not found")
