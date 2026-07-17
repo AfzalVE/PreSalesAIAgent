@@ -6,7 +6,7 @@ from app.services.ai.ai_agent_service import extract_proposal_requirements, nego
 
 from app.core.dependencies import get_current_user
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 def get_db(): #
     db = SessionLocal()
