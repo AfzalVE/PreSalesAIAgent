@@ -237,6 +237,7 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           const targetPath =
             data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")
@@ -301,6 +302,7 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           navigate('/client-portal');
         }, 500);
@@ -372,6 +374,7 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           const targetPath =
             data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")

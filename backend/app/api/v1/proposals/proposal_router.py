@@ -14,7 +14,9 @@ from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
 from app.services.proposal.proposal_generation_service import create_proposal_document
 
-router = APIRouter()
+from app.core.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_db():
     db = SessionLocal()

@@ -8,7 +8,9 @@ from app.models.user import User
 from app.models.enums import UserStatus
 from app.models.proposal_request import ProposalRequest
 
-router = APIRouter()
+from app.core.dependencies import get_current_active_admin
+
+router = APIRouter(dependencies=[Depends(get_current_active_admin)])
 
 def get_db():
     db = SessionLocal()

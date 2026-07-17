@@ -9,7 +9,9 @@ from app.models.user import User
 from app.models.enums import UserRole
 from app.schemas.proposal_request_schema import ProposalRequestCreate, ProposalRequestUpdate, ProposalRequestResponse
 
-router = APIRouter()
+from app.core.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_db():
     db = SessionLocal()

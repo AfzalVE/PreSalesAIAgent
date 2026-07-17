@@ -115,93 +115,7 @@ export const useAppStore = create((set, get) => ({
     negotiationHistory: [entry, ...state.negotiationHistory]
   })),
 
-  generateProposalsFromBackend: async () => {
-    const store = get();
-    const payload = {
-      project_name: store.projectData.name,
-      project_description: store.projectData.description,
-      business_domain: store.projectData.domain,
-      preferred_technology: store.projectData.techStack,
-      budget: store.projectData.budget,
-      timeline: store.projectData.timeline
-    };
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
-
-      const response = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (!response.ok) throw new Error("Failed to generate proposals");
-      const data = await response.json();
-
-      const mvpProposal = data.proposals.find(p => p.proposal_type === "MVP");
-      const fullProposal = data.proposals.find(p => p.proposal_type === "FULL");
-
-      const formatProposal = (p, label, descOverride) => {
-        const teamMapped = (p.selected_resources?.resources || []).map(r => ({
-          name: r.name,
-          role: r.role
-        }));
-
-        return {
-          id: p.id,
-          label: label,
-          description: descOverride || p.scope,
-          timeline: p.estimated_duration,
-          budget: p.estimated_cost,
-          teamSize: teamMapped.length,
-          team: teamMapped,
-          features: [
-            { name: "Core Scope & Deliverables", status: "active", desc: p.scope },
-            { name: "Key Assumptions", status: "active", desc: p.assumptions },
-            { name: "Risk Mitigation", status: "active", desc: p.risks }
-          ],
-          architecture: {
-            client: "Web Application Client",
-            apiGateway: "RESTful API Layer",
-            services: [Object.values(p.tech_stack).join(", ")],
-            databases: [p.tech_stack.db || "PostgreSQL"]
-          },
-          timeline_phases: p.timeline_phases || []
-        };
-      };
-
-      const proposalStages = {
-        mvp: formatProposal(mvpProposal, "MVP Launch", "Lean implementation focusing on core functionalities."),
-        growth: formatProposal(fullProposal, "Growth Engine", "Full product release with complete architecture and integrations."),
-        enterprise: {
-          ...formatProposal(fullProposal, "Enterprise Scale", "Scalable multi-region deployment with enterprise SLAs and auditing."),
-          budget: Math.round(fullProposal.estimated_cost * 1.3),
-          timeline: `${Math.round(parseInt(fullProposal.estimated_duration) * 1.4)} Weeks`
-        }
-      };
-
-      set({
-        proposalStages,
-        activeProposal: proposalStages.growth,
-        selectedProposalStage: 'growth',
-        projectData: {
-          ...store.projectData,
-          name: data.project_name,
-          domain: data.business_domain,
-          description: data.project_description,
-          techStack: data.preferred_technology,
-          budget: data.budget,
-          timeline: data.timeline
-        }
-      });
-      return { success: true };
-    } catch (e) {
-      console.error("Backend proposal generation failed:", e);
-      return { success: false, error: e.message || "Failed to generate proposals from backend." };
-    }
-  },
 
   matchResourcesFromBackend: async () => {
     const store = get();
@@ -228,9 +142,13 @@ export const useAppStore = create((set, get) => ({
     };
 
     try {
+      const token = store.user?.accessToken;
       const response = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify(payload)
       });
       if (!response.ok) throw new Error("Failed to match resources");
@@ -281,10 +199,14 @@ Budget: ${store.projectData.budget}
 Timeline: ${store.projectData.timeline}`;
 
     try {
+      const token = store.user?.accessToken;
       // 1. Call ai-agent/extract-requirements
       const extractionResponse = await fetch("http://localhost:8000/api/v1/ai-agent/extract-requirements", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify({ text: extractionText })
       });
       if (!extractionResponse.ok) throw new Error("Failed to extract requirements");
@@ -309,7 +231,10 @@ Timeline: ${store.projectData.timeline}`;
 
       const matchingResponse = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify(matchingPayload)
       });
       if (!matchingResponse.ok) throw new Error("Failed to match resources");
@@ -335,7 +260,10 @@ Timeline: ${store.projectData.timeline}`;
 
       const generationResponse = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify(generationPayload)
       });
       if (!generationResponse.ok) throw new Error("Failed to generate demo proposals");
@@ -377,8 +305,10 @@ Timeline: ${store.projectData.timeline}`;
 
   selectProposalFromBackend: async (proposalId) => {
     try {
+      const token = get().user?.accessToken;
       const response = await fetch(`http://localhost:8000/api/v1/proposals/${proposalId}/select`, {
-        method: "POST"
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (!response.ok) throw new Error("Failed to select proposal");
       const data = await response.json();
@@ -405,9 +335,12 @@ Timeline: ${store.projectData.timeline}`;
   },
 
   fetchAdminData: async () => {
+    const token = get().user?.accessToken;
     const safeFetch = async (url) => {
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (res.ok) return await res.json();
       } catch (e) {
         console.error(`[useAppStore] Error fetching ${url}:`, e);
@@ -436,9 +369,13 @@ Timeline: ${store.projectData.timeline}`;
 
   updateEmployeeOnBackend: async (empId, updatedFields) => {
     try {
+      const token = get().user?.accessToken;
       const response = await fetch(`http://localhost:8000/api/v1/employees/${empId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify(updatedFields)
       });
       if (response.ok) {
@@ -453,8 +390,10 @@ Timeline: ${store.projectData.timeline}`;
 
   toggleUserStatusOnBackend: async (email) => {
     try {
+      const token = get().user?.accessToken;
       const response = await fetch(`http://localhost:8000/api/v1/users/${email}/toggle-status`, {
-        method: "PUT"
+        method: "PUT",
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (response.ok) {
         await get().fetchAdminData();
@@ -468,8 +407,10 @@ Timeline: ${store.projectData.timeline}`;
 
   verifyUserOnBackend: async (email) => {
     try {
+      const token = get().user?.accessToken;
       const response = await fetch(`http://localhost:8000/api/v1/users/${email}/verify`, {
-        method: "PUT"
+        method: "PUT",
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (response.ok) {
         await get().fetchAdminData();
