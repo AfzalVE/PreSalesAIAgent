@@ -47,6 +47,7 @@ export default function NegotiationChat() {
     negotiationHistory,
     projectData,
     updateProjectData,
+    user,
   } = useAppStore();
 
   const [inputPrompt, setInputPrompt] = useState("");
@@ -66,6 +67,9 @@ export default function NegotiationChat() {
   const [recognition, setRecognition] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [chatRequestId, setChatRequestId] = useState(null);
+  const [proposalData, setProposalData] = useState(null);
+  const [activeTab, setActiveTab] = useState("mvp");
+  const [finalizedProposals, setFinalizedProposals] = useState({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -185,7 +189,7 @@ export default function NegotiationChat() {
         reply = data.follow_up_message;
       }
 
-      if (data.is_ready_for_proposal) {
+      if (data.ready_for_proposal_generation) {
         reply +=
           "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals dashboard in a few moments.";
       }
@@ -204,49 +208,11 @@ export default function NegotiationChat() {
         },
       ]);
 
-      if (data.is_ready_for_proposal) {
-        try {
-          // 1. Call Resource Allocation Match (DB endpoint)
-          const matchResponse = await fetch(`http://127.0.0.1:8000/api/v1/resource-allocation/match/db/${data.request_id}`, {
-            method: "POST"
-          });
-
-          if (!matchResponse.ok) {
-            console.error("Resource matching failed.");
-          } else {
-            const matchData = await matchResponse.json();
-
-            // 2. Call Proposal Generation Demo
-            const demoPayload = {
-              project_name: data.project_name || projectData.name,
-              project_description: projectData.description,
-              business_domain: projectData.domain,
-              preferred_technology: data.resource_requirements ? data.resource_requirements.flatMap(r => r.skills) : projectData.techStack,
-              budget: matchData.total_project_cost || data.client_budget || projectData.budget,
-              timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline,
-              existing_request_id: data.request_id
-            };
-
-            const genResponse = await fetch("http://127.0.0.1:8000/api/v1/proposals/generate-demo", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(demoPayload)
-            });
-
-            if (genResponse.ok) {
-              const demoData = await genResponse.json();
-              console.log("Parsed Demo Data: ", demoData);
-              if (demoData && demoData.proposals) {
-                useAppStore.getState().setGeneratedDemos(demoData.proposals);
-              }
-              useAppStore.getState().setIsDemoReady(true);
-            } else {
-              console.error("Demo generation failed.");
-            }
-          }
-        } catch (e) {
-          console.error("Error executing proposal pipeline: ", e);
-        }
+      if (data.ready_for_proposal_generation) {
+         if (data.proposal_data) {
+            setProposalData(data.proposal_data);
+            useAppStore.getState().setIsDemoReady(true);
+         }
       }
     } catch (err) {
       console.error("API error, falling back to simulation:", err);
@@ -275,7 +241,7 @@ export default function NegotiationChat() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto font-sans">
       {/* Conversation Thread */}
-      <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[460px]">
+      <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between h-[600px]">
         {/* Terminal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
@@ -427,57 +393,302 @@ export default function NegotiationChat() {
       </div>
 
       {/* Evolution History & Active Scope Overview */}
-      <div className="lg:col-span-4 flex flex-col justify-between bg-neutral-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[460px]">
+      <div className="lg:col-span-4 flex flex-col justify-between bg-neutral-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden h-[600px]">
         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
 
-        <div>
-          <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-5">
-            <Sparkles
-              size={16}
-              className="text-primary-container animate-pulse"
-            />
-            <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
-              Adjustment Changelog
-            </h4>
-          </div>
+        {(() => {
+          const mvpProposal = proposalData?.proposals?.find(p => p.proposal_type === 'MVP');
+          const fullProposal = proposalData?.proposals?.find(p => p.proposal_type === 'FULL');
 
-          <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
-            {negotiationHistory.map((item, idx) => (
-              <div
-                key={idx}
-                className="pb-3.5 border-b border-white/5 last:border-0"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary-container">
-                    {item.version}
-                  </span>
-                  <span className="text-[9px] text-neutral-400 font-semibold">
-                    {item.date}
-                  </span>
-                </div>
-                <div className="text-[11px] text-neutral-300 font-medium mt-1">
-                  {item.changeDescription}
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
-                  <span>By: {item.author}</span>
-                  <span className="text-white/80">
-                    ${item.budget.toLocaleString()} • {item.timeline}
-                  </span>
-                </div>
+          return proposalData ? (
+            <div className="flex flex-col h-full z-10 relative">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+              <div className="flex items-center space-x-2">
+                <Sparkles size={16} className="text-primary-container animate-pulse" />
+                <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
+                  Generated Proposal
+                </h4>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="flex space-x-1 bg-neutral-800 p-1 rounded-lg">
+                <button 
+                  onClick={() => setActiveTab("mvp")}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'mvp' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  MVP
+                </button>
+                <button 
+                  onClick={() => setActiveTab("full")}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'full' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                >
+                  FULL
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6 text-xs text-neutral-300 custom-scrollbar pb-20">
+              {activeTab === "mvp" && mvpProposal && (
+                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+                    <div>
+                      <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
+                      <p className="text-[11px] leading-relaxed opacity-90">{mvpProposal.executive_summary}</p>
+                    </div>
+                    
+                    {mvpProposal.scope && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Scope</h5>
+                        <p className="text-[11px] leading-relaxed opacity-90">{mvpProposal.scope}</p>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <h5 className="text-primary-container font-bold mb-2">Key Features</h5>
+                      <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                        {mvpProposal.key_features?.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    </div>
 
-        <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
-          <span className="text-neutral-400 font-medium">
-            Negotiation State
-          </span>
-          <span className="text-primary-container font-bold flex items-center">
-            Ready to Sign
-            <ChevronRight size={14} className="ml-0.5" />
-          </span>
-        </div>
+                    {mvpProposal.deliverables?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Deliverables</h5>
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                          {mvpProposal.deliverables.map((d, i) => <li key={i}>{d}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {mvpProposal.acceptance_criteria?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Acceptance Criteria</h5>
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                          {mvpProposal.acceptance_criteria.map((a, i) => <li key={i}>{a}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {(mvpProposal.assumptions || mvpProposal.risks) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {mvpProposal.assumptions && (
+                          <div>
+                            <h5 className="text-primary-container font-bold mb-2">Assumptions</h5>
+                            <p className="text-[11px] opacity-90">{mvpProposal.assumptions}</p>
+                          </div>
+                        )}
+                        {mvpProposal.risks && (
+                          <div>
+                            <h5 className="text-primary-container font-bold mb-2">Risks</h5>
+                            <p className="text-[11px] opacity-90">{mvpProposal.risks}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {mvpProposal.timeline_phases?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Timeline Phases</h5>
+                        <div className="space-y-2">
+                          {mvpProposal.timeline_phases.map((p, i) => (
+                            <div key={i} className="bg-white/5 p-3 rounded-lg border border-white/10 flex flex-col gap-1.5">
+                              <span className="font-bold text-white text-[11px]">Phase: {p.Phase || p.phase || (i + 1)}</span>
+                              {(p.Duration || p.duration) && <span className="text-[9px] font-semibold text-neutral-400">{p.Duration || p.duration}</span>}
+                              <span className="text-[10px] opacity-80 leading-relaxed">{p.Output || p.output || p.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
+                         <div className="font-semibold text-white">{mvpProposal.estimated_duration}</div>
+                      </div>
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Cost</div>
+                         <div className="font-semibold text-white">${mvpProposal.estimated_cost?.toLocaleString()}</div>
+                      </div>
+                    </div>
+                 </div>
+              )}
+              {activeTab === "full" && fullProposal && (
+                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+                    <div>
+                      <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
+                      <p className="text-[11px] leading-relaxed opacity-90">{fullProposal.executive_summary}</p>
+                    </div>
+
+                    {fullProposal.scope && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Scope</h5>
+                        <p className="text-[11px] leading-relaxed opacity-90">{fullProposal.scope}</p>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <h5 className="text-primary-container font-bold mb-2">Key Features</h5>
+                      <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                        {fullProposal.key_features?.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    </div>
+
+                    {fullProposal.deliverables?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Deliverables</h5>
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                          {fullProposal.deliverables.map((d, i) => <li key={i}>{d}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {fullProposal.acceptance_criteria?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Acceptance Criteria</h5>
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
+                          {fullProposal.acceptance_criteria.map((a, i) => <li key={i}>{a}</li>)}
+                        </ul>
+                      </div>
+                    )}
+
+                    {(fullProposal.assumptions || fullProposal.risks) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {fullProposal.assumptions && (
+                          <div>
+                            <h5 className="text-primary-container font-bold mb-2">Assumptions</h5>
+                            <p className="text-[11px] opacity-90">{fullProposal.assumptions}</p>
+                          </div>
+                        )}
+                        {fullProposal.risks && (
+                          <div>
+                            <h5 className="text-primary-container font-bold mb-2">Risks</h5>
+                            <p className="text-[11px] opacity-90">{fullProposal.risks}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {fullProposal.timeline_phases?.length > 0 && (
+                      <div>
+                        <h5 className="text-primary-container font-bold mb-2">Timeline Phases</h5>
+                        <div className="space-y-2">
+                          {fullProposal.timeline_phases.map((p, i) => (
+                            <div key={i} className="bg-white/5 p-3 rounded-lg border border-white/10 flex flex-col gap-1.5">
+                              <span className="font-bold text-white text-[11px]">Phase: {p.Phase || p.phase || (i + 1)}</span>
+                              {(p.Duration || p.duration) && <span className="text-[9px] font-semibold text-neutral-400">{p.Duration || p.duration}</span>}
+                              <span className="text-[10px] opacity-80 leading-relaxed">{p.Output || p.output || p.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
+                         <div className="font-semibold text-white">{fullProposal.estimated_duration}</div>
+                      </div>
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10 overflow-hidden">
+                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Architecture</div>
+                         <div className="font-semibold text-white leading-snug">{fullProposal.architecture}</div>
+                      </div>
+                    </div>
+                 </div>
+              )}
+            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 pt-4 pb-2 border-t border-white/10 flex items-center justify-end z-20">
+              {(() => {
+                const targetProposal = activeTab === 'mvp' ? mvpProposal : fullProposal;
+                const isFinalized = targetProposal && finalizedProposals[targetProposal.id];
+
+                return isFinalized ? (
+                  <button 
+                    className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!targetProposal?.id) return;
+                      const token = user?.accessToken;
+                      window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${targetProposal.id}/download${token ? `?token=${token}` : ""}`;
+                    }}
+                  >
+                    Download POC
+                  </button>
+                ) : (
+                  <button 
+                    className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+                    onClick={async () => {
+                      if (!targetProposal) return;
+                      try {
+                        const res = await fetch(`http://127.0.0.1:8000/api/v1/proposals/${targetProposal.id}/select`, {
+                          method: "POST"
+                        });
+                        if (res.ok) {
+                          setFinalizedProposals(prev => ({ ...prev, [targetProposal.id]: true }));
+                        } else {
+                          alert("Failed to create Final POC.");
+                        }
+                      } catch (e) {
+                        alert("Error calling endpoint");
+                      }
+                    }}
+                  >
+                    Create Final POC
+                  </button>
+                );
+              })()}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="z-10 relative">
+              <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-5">
+                <Sparkles
+                  size={16}
+                  className="text-primary-container animate-pulse"
+                />
+                <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
+                  Adjustment Changelog
+                </h4>
+              </div>
+
+              <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
+                {negotiationHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="pb-3.5 border-b border-white/5 last:border-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-primary-container">
+                        {item.version}
+                      </span>
+                      <span className="text-[9px] text-neutral-400 font-semibold">
+                        {item.date}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-neutral-300 font-medium mt-1">
+                      {item.changeDescription}
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
+                      <span>By: {item.author}</span>
+                      <span className="text-white/80">
+                        ${item.budget.toLocaleString()} • {item.timeline}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs z-10 relative">
+              <span className="text-neutral-400 font-medium">
+                Negotiation State
+              </span>
+              <span className="text-primary-container font-bold flex items-center">
+                Ready to Sign
+                <ChevronRight size={14} className="ml-0.5" />
+              </span>
+            </div>
+          </>
+        );
+        })()}
       </div>
     </div>
   );

@@ -291,7 +291,11 @@ Do not include any additional text.
     final_desc = generation_content.get("inferred_project_description")
     final_tech = generation_content.get("inferred_preferred_technology", [])
 
-    final_budget = proposal_input.get("client_budget", proposal_input.get("budget", 0))
+    final_budget = proposal_input.get("client_budget")
+    if final_budget is None:
+        final_budget = proposal_input.get("budget", 0.0)
+    if final_budget is None:
+        final_budget = 0.0
     timeline_val = mvp_data.get("timeline_weeks", proposal_input.get("timeline_weeks", "TBD"))
     final_timeline = f"{timeline_val} Weeks" if str(timeline_val).isnumeric() else str(timeline_val)
 

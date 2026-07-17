@@ -10,15 +10,14 @@ from app.models.enums import UserRole
 from app.models.proposal_request import ProposalRequest, CommunicationType
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
 
-# Initialize the OpenAI client asynchronously, pointing to Groq's API
+# Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=settings.GROQ_API_KEY
+    api_key=settings.OPENAI_API_KEY
 )
 
 async def extract_proposal_requirements(input_data: AgentTextInput, db: Session) -> AgentExtractionResponse:
     """
-    Calls the Groq API (via OpenAI SDK) in JSON mode to parse unstructured text
+    Calls the OpenAI API in JSON mode to parse unstructured text
     and extract the proposal requirements.
     """
     
@@ -112,7 +111,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.text}
@@ -121,7 +120,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
             temperature=0.1
         )
         
-        # Parse the JSON string returned by Groq
+        # Parse the JSON string returned by OpenAI
         response_content = response.choices[0].message.content
         extracted_dict = json.loads(response_content)
         
@@ -166,11 +165,11 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         raise ValueError(f"The LLM returned invalid data: {ve}")
     except Exception as e:
         db.rollback()
-        print(f"Error calling Groq API: {str(e)}")
+        print(f"Error calling OpenAI API: {str(e)}")
         raise e
 async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationResponse:
     """
-    Calls the Groq API to negotiate proposal parameters (budget, timeline, tech stack)
+    Calls the OpenAI API to negotiate proposal parameters (budget, timeline, tech stack)
     based on the user's request, returning structured adjustments.
     """
     schema_str = json.dumps(NegotiationResponse.model_json_schema(), indent=2)
@@ -197,7 +196,7 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
 
     try:
         response = await client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.user_request}
@@ -217,5 +216,5 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
         print(f"Pydantic Validation Error during negotiation: {ve}")
         raise ValueError(f"The LLM returned invalid data for negotiation: {ve}")
     except Exception as e:
-        print(f"Error calling Groq API during negotiation: {str(e)}")
+        print(f"Error calling OpenAI API during negotiation: {str(e)}")
         raise e
