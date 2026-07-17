@@ -10,7 +10,7 @@ from app.models.proposal_request import ProposalRequest
 
 from app.core.dependencies import get_current_active_admin
 
-router = APIRouter(dependencies=[Depends(get_current_active_admin)])
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()

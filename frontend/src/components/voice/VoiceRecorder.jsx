@@ -1,43 +1,50 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Mic, MicOff, Sparkles, Loader2, ArrowRight } from 'lucide-react';
-import WaveformVisualizer from './WaveformVisualizer';
-import { useAppStore } from '../../store/useAppStore';
+import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { Mic, MicOff, Sparkles, Loader2, ArrowRight } from "lucide-react";
+import WaveformVisualizer from "./WaveformVisualizer";
+import { useAppStore } from "../../store/useAppStore";
 
 export default function VoiceRecorder({ onComplete }) {
   const { updateProjectData } = useAppStore();
   const [isRecording, setIsRecording] = useState(false);
   const [chatLog, setChatLog] = useState([
-    { sender: "ai", text: "Hi there! I'm the ProposalFlow AI assistant. What are you trying to build? Please speak your requirements." }
+    {
+      sender: "ai",
+      text: "Hi there! I'm the ProposalFlow AI assistant. What are you trying to build? Please speak your requirements.",
+    },
   ]);
   const [liveTranscript, setLiveTranscript] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [chatRequestId, setChatRequestId] = useState(null);
-  
+
   const [extractedData, setExtractedData] = useState({
     name: "Pending...",
     features: [],
     budget: null,
     timeline: "Pending...",
     techStack: [],
-    complexity: "Evaluating..."
+    complexity: "Evaluating...",
   });
 
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatLog, liveTranscript, isAiThinking]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (
+      typeof window !== "undefined" &&
+      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
+    ) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       const rec = new SpeechRecognition();
       rec.continuous = true;
       rec.interimResults = true;
-      
+
       rec.onresult = (event) => {
         let currentTranscript = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -45,12 +52,12 @@ export default function VoiceRecorder({ onComplete }) {
         }
         setLiveTranscript(currentTranscript);
       };
-      
+
       rec.onerror = (e) => {
         console.error(e);
         setIsRecording(false);
       };
-      
+
       setRecognition(rec);
     }
   }, []);
@@ -75,9 +82,9 @@ export default function VoiceRecorder({ onComplete }) {
 
   const processVoiceInput = async () => {
     if (!liveTranscript.trim()) return;
-    
+
     const userText = liveTranscript.trim();
-    setChatLog(prev => [...prev, { sender: "user", text: userText }]);
+    setChatLog((prev) => [...prev, { sender: "user", text: userText }]);
     setLiveTranscript("");
     setIsAiThinking(true);
 
@@ -87,25 +94,32 @@ export default function VoiceRecorder({ onComplete }) {
         payload.request_id = chatRequestId;
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const res = await fetch(
+        "http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       const data = await res.json();
-      
+
       if (data.request_id) {
         setChatRequestId(data.request_id);
       }
-      
+
       // Update extracted panel
-      setExtractedData(prev => ({
+      setExtractedData((prev) => ({
         name: data.project_name || prev.name,
         features: [], // Since backend doesn't explicitly return features in the new schema, we just clear or keep.
         budget: data.client_budget !== null ? data.client_budget : prev.budget,
-        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : prev.timeline,
-        techStack: data.resource_requirements ? data.resource_requirements.flatMap(r => r.skills) : prev.techStack,
-        complexity: "Analyzed"
+        timeline: data.timeline_weeks
+          ? `${data.timeline_weeks} Weeks`
+          : prev.timeline,
+        techStack: data.resource_requirements
+          ? data.resource_requirements.flatMap((r) => r.skills)
+          : prev.techStack,
+        complexity: "Analyzed",
       }));
 
       // Update AI chat
@@ -113,19 +127,31 @@ export default function VoiceRecorder({ onComplete }) {
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
-      setChatLog(prev => [...prev, { sender: "ai", text: reply }]);
+      setChatLog((prev) => [...prev, { sender: "ai", text: reply }]);
 
       // Push to store
       updateProjectData({
         name: data.project_name || extractedData.name,
-        budget: data.client_budget !== null ? data.client_budget : extractedData.budget,
-        timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : extractedData.timeline,
-        estimatedTeam: data.resource_requirements ? data.resource_requirements.reduce((acc, curr) => acc + curr.count, 0) : 0
+        budget:
+          data.client_budget !== null
+            ? data.client_budget
+            : extractedData.budget,
+        timeline: data.timeline_weeks
+          ? `${data.timeline_weeks} Weeks`
+          : extractedData.timeline,
+        estimatedTeam: data.resource_requirements
+          ? data.resource_requirements.reduce(
+              (acc, curr) => acc + curr.count,
+              0,
+            )
+          : 0,
       });
-
     } catch (err) {
       console.error(err);
-      setChatLog(prev => [...prev, { sender: "ai", text: "Error connecting to AI service." }]);
+      setChatLog((prev) => [
+        ...prev,
+        { sender: "ai", text: "Error connecting to AI service." },
+      ]);
     } finally {
       setIsAiThinking(false);
     }
@@ -135,11 +161,12 @@ export default function VoiceRecorder({ onComplete }) {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto items-stretch">
       {/* Conversational Screen */}
       <div className="lg:col-span-7 flex flex-col justify-between bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft min-h-[460px]">
-        
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isRecording ? 'bg-red-500 animate-ping' : 'bg-neutral-300'}`} />
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${isRecording ? "bg-red-500 animate-ping" : "bg-neutral-300"}`}
+            />
             <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               {isRecording ? "Voice Session Active" : "Voice Input"}
             </span>
@@ -149,12 +176,17 @@ export default function VoiceRecorder({ onComplete }) {
         {/* Chat History bubble */}
         <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 max-h-[250px]">
           {chatLog.map((chat, idx) => (
-            <div key={idx} className={`flex ${chat.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                chat.sender === 'user'
-                  ? 'bg-neutral-900 text-white font-medium rounded-tr-none'
-                  : 'bg-neutral-50 text-neutral-800 border border-neutral-200/60 rounded-tl-none'
-              }`}>
+            <div
+              key={idx}
+              className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  chat.sender === "user"
+                    ? "bg-neutral-900 text-white font-medium rounded-tr-none"
+                    : "bg-neutral-50 text-neutral-800 border border-neutral-200/60 rounded-tl-none"
+                }`}
+              >
                 {chat.text}
               </div>
             </div>
@@ -184,21 +216,21 @@ export default function VoiceRecorder({ onComplete }) {
         {/* Waveform and Mic controls */}
         <div className="pt-4 border-t border-neutral-100 flex flex-col items-center">
           <WaveformVisualizer isRecording={isRecording} />
-          
+
           <div className="mt-4 flex items-center space-x-4">
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={startVoiceCapture}
               disabled={isAiThinking}
               className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
-                isRecording 
-                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                  : 'bg-brand-500 hover:bg-brand-600 text-white cursor-pointer disabled:opacity-50'
+                isRecording
+                  ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
+                  : "bg-brand-500 hover:bg-brand-600 text-white cursor-pointer disabled:opacity-50"
               }`}
             >
               {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
             </motion.button>
-            
+
             {hasInteracted && !isRecording && !isAiThinking && (
               <motion.button
                 initial={{ scale: 0.9 }}
@@ -210,7 +242,7 @@ export default function VoiceRecorder({ onComplete }) {
                 <ArrowRight size={16} className="ml-2" />
               </motion.button>
             )}
-            
+
             {!isRecording && !isAiThinking && !hasInteracted && (
               <span className="text-xs text-neutral-400 font-medium animate-pulse">
                 Click microphone to answer
@@ -222,19 +254,22 @@ export default function VoiceRecorder({ onComplete }) {
 
       {/* Real-time Extracted Metadata Panel */}
       <div className="lg:col-span-5 bg-neutral-900 text-white rounded-2xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
-        
         {/* Mesh Background Accent */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-400/10 rounded-full blur-2xl pointer-events-none" />
 
         <div>
           <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-6">
             <Sparkles size={16} className="text-brand-400" />
-            <h3 className="text-sm font-semibold tracking-wide uppercase text-white/90">AI Requirement Extraction</h3>
+            <h3 className="text-sm font-semibold tracking-wide uppercase text-white/90">
+              AI Requirement Extraction
+            </h3>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Project Name</label>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                Project Name
+              </label>
               <div className="text-sm font-semibold mt-0.5 text-white/95">
                 {extractedData.name}
               </div>
@@ -242,27 +277,42 @@ export default function VoiceRecorder({ onComplete }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Budget</label>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                  Budget
+                </label>
                 <div className="text-sm font-semibold mt-0.5 text-brand-400">
-                  {extractedData.budget !== null ? `$${extractedData.budget.toLocaleString()}` : "Pending Employee Module"}
+                  {extractedData.budget !== null
+                    ? `$${extractedData.budget.toLocaleString()}`
+                    : "Pending Employee Module"}
                 </div>
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Timeline</label>
+                <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                  Timeline
+                </label>
                 <div className="text-sm font-semibold mt-0.5 text-white/90">
-                  {extractedData.timeline !== "Pending..." ? extractedData.timeline : "Pending Employee Module"}
+                  {extractedData.timeline !== "Pending..."
+                    ? extractedData.timeline
+                    : "Pending Employee Module"}
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Required Skills (Tech Stack)</label>
+              <label className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                Required Skills (Tech Stack)
+              </label>
               {extractedData.techStack.length === 0 ? (
-                <div className="text-xs italic text-neutral-500 mt-1">Analyzing...</div>
+                <div className="text-xs italic text-neutral-500 mt-1">
+                  Analyzing...
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {extractedData.techStack.map((tech, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 text-xs border border-brand-500/10">
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 text-xs border border-brand-500/10"
+                    >
                       {tech}
                     </span>
                   ))}
@@ -273,12 +323,16 @@ export default function VoiceRecorder({ onComplete }) {
         </div>
 
         <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Status</span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
-            extractedData.complexity === "Evaluating..." 
-              ? 'bg-white/10 text-neutral-300'
-              : 'bg-brand-500 text-neutral-900 font-bold'
-          }`}>
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+            Status
+          </span>
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded ${
+              extractedData.complexity === "Evaluating..."
+                ? "bg-white/10 text-neutral-300"
+                : "bg-brand-500 text-neutral-900 font-bold"
+            }`}
+          >
             {extractedData.complexity}
           </span>
         </div>
