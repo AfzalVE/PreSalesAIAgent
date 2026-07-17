@@ -56,6 +56,17 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         db.commit()
         db.refresh(proposal_request)
     
+    recent_messages_context = ""
+    if proposal_request:
+        conversations = db.query(AIConversation).filter(
+            AIConversation.request_id == proposal_request.id
+        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
+        if conversations:
+            conversations.reverse()
+            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
+            for msg in conversations:
+                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
+
     # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
 
@@ -66,30 +77,32 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     
     IMPORTANT: You are continuing a conversation. Here is the previously extracted data:
     {existing_data_str}
+    {recent_messages_context}
 
     Here are the rules:
     1. Merge any new information from the user's message with the existing data.
     2. Extract the `project_name`. If none is apparent, create a generic but descriptive one.
     3. Extract timeline_weeks.
-        - If the user specifies one, use it.
-        - If the user asks for a recommendation, estimate a realistic timeline based on the project scope and populate timeline_weeks.
-        - Otherwise leave it null.
+        - If the user explicitly specifies one, use it.
+        - If the user explicitly asks for a recommendation or says they don't know, estimate a realistic timeline and populate it.
+        - IMPORTANT: If the user DOES NOT specify a timeline and DOES NOT ask for a recommendation, you MUST leave it null and ask them for their target timeline in your follow-up message.
 
     4. Extract client_budget.
-        - If the user specifies one, use it.
-        - If the user asks for a recommendation, estimate a realistic budget based on the project scope and populate client_budget.
-        - Otherwise leave it null.
+        - If the user explicitly specifies one, use it.
+        - If the user explicitly asks for a recommendation or says they don't know, estimate a realistic budget and populate it.
+        - IMPORTANT: If the user DOES NOT specify a budget and DOES NOT ask for a recommendation, you MUST leave it null and ask them for their budget in your follow-up message.
 
     5. Extract or recommend resource_requirements.
         - If the user specifies them, use them.
-        - If the user asks for recommendations, suggest an appropriate team.
+        - If the user explicitly asks for recommendations, suggest an appropriate team.
+        - IMPORTANT: If the user DOES NOT specify resources and DOES NOT ask for recommendations, you MUST leave this empty and ask them about their team requirements.
 
     6. If the user asks for feature recommendations or says they lack technical expertise, recommend an industry-standard feature set appropriate for the project type.
 
     7. follow_up_message must always contain a conversational response.
-        - If the user requests recommendations, provide them directly AND explicitly state the actual numerical values (budget, timeline) and specific resources you are recommending within this text.
+        - If the user explicitly requests recommendations, provide them directly AND explicitly state the actual numerical values (budget, timeline) and specific resources you are recommending within this text.
         - Do not ask for information the user has already said they do not know.
-        - Ask follow-up questions only when essential information is still required and the user has not requested recommendations.
+        - STRONGLY ENFORCED: If you are missing the budget, timeline, or resource requirements, and the user hasn't asked you to recommend them, you MUST use this message to ask them follow-up questions to gather that missing information. Do NOT assume values.
         
     8. FEASIBILITY & NEGOTIATION: If the user requests a change to the existing budget or timeline that is highly unrealistic (e.g., cutting budget by 70%, or a 2-week timeline for a complex app), DO NOT update the `client_budget` or `timeline_weeks` fields with the unrealistic values. Keep the existing values, and populate `follow_up_message` with a professional explanation of why that request is not feasible and what trade-offs would be required. If the request is reasonable, update the fields and use `follow_up_message` to confirm the adjustment.
     
@@ -149,15 +162,6 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         extracted_data = AgentExtractionResponse(**extracted_dict)
         print(extracted_data)
         
-        # Trigger autonomous generation if ready
-        if extracted_data.is_ready_for_proposal:
-            from app.services.proposal.proposal_generation_service import generate_proposals_for_request
-            try:
-                await generate_proposals_for_request(db, proposal_request.id)
-                print(f"Autonomous proposal generation triggered for {proposal_request.id}")
-            except Exception as e:
-                print(f"Failed to auto-generate proposal: {e}")
-                
         return extracted_data
         
     except ValidationError as ve:

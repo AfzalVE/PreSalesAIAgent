@@ -142,7 +142,7 @@ export default function NegotiationChat() {
       if (!response.ok) {
         throw new Error(data.detail || "Failed to process request");
       }
-      
+
       if (data.request_id) {
         setChatRequestId(data.request_id);
       }
@@ -155,14 +155,16 @@ export default function NegotiationChat() {
       });
 
       const aiMessageId = generateMessageId("ai");
-      
+
       let reply = "I've extracted your requirements and updated the project scope.";
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
-      
+
+      let finalWarning = undefined;
+
       if (data.is_ready_for_proposal) {
-        reply += "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals dashboard in a few moments.";
+        reply += "\n\n✨ **Status:** I have all the information I need! I am matching resources and generating your proposal now. Please check the Proposals dashboard in a few moments.";
       }
 
       setMessages(prev => [
@@ -175,6 +177,51 @@ export default function NegotiationChat() {
           success: true
         }
       ]);
+
+      if (data.is_ready_for_proposal) {
+        try {
+          // 1. Call Resource Allocation Match (DB endpoint)
+          const matchResponse = await fetch(`http://127.0.0.1:8000/api/v1/resource-allocation/match/db/${data.request_id}`, {
+            method: "POST"
+          });
+
+          if (!matchResponse.ok) {
+            console.error("Resource matching failed.");
+          } else {
+            const matchData = await matchResponse.json();
+
+            // 2. Call Proposal Generation Demo
+            const demoPayload = {
+              project_name: data.project_name || projectData.name,
+              project_description: projectData.description,
+              business_domain: projectData.domain,
+              preferred_technology: data.resource_requirements ? data.resource_requirements.flatMap(r => r.skills) : projectData.techStack,
+              budget: matchData.total_project_cost || data.client_budget || projectData.budget,
+              timeline: data.timeline_weeks ? `${data.timeline_weeks} Weeks` : projectData.timeline,
+              existing_request_id: data.request_id
+            };
+
+            const genResponse = await fetch("http://127.0.0.1:8000/api/v1/proposals/generate-demo", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(demoPayload)
+            });
+            
+            if (genResponse.ok) {
+              const demoData = await genResponse.json();
+              console.log("Parsed Demo Data: ", demoData);
+              if (demoData && demoData.proposals) {
+                useAppStore.getState().setGeneratedDemos(demoData.proposals);
+              }
+              useAppStore.getState().setIsDemoReady(true);
+            } else {
+              console.error("Demo generation failed.");
+            }
+          }
+        } catch (e) {
+          console.error("Error executing proposal pipeline: ", e);
+        }
+      }
     } catch (err) {
       console.error("API error, falling back to simulation:", err);
       const result = applyNegotiationRequest(text);
