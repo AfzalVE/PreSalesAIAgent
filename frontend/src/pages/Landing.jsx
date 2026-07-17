@@ -173,7 +173,7 @@ export default function Landing({ onAdminClick }) {
     setError("");
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/auth/check-email?email=${encodeURIComponent(entranceInput)}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/check-email?email=${encodeURIComponent(entranceInput)}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error("Failed to check email status");
@@ -216,7 +216,7 @@ export default function Landing({ onAdminClick }) {
     setError("");
     setOtpStatus("verifying");
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+      const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/user-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -237,6 +237,7 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           const targetPath =
             data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")
@@ -274,7 +275,7 @@ export default function Landing({ onAdminClick }) {
     setError("");
     setOtpStatus("verifying");
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/user-login", {
+      const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/user-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -301,6 +302,7 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           navigate('/client-portal');
         }, 500);
@@ -345,7 +347,7 @@ export default function Landing({ onAdminClick }) {
     setOtpStatus("verifying");
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/verify-otp", {
+      const response = await fetch("${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -372,13 +374,14 @@ export default function Landing({ onAdminClick }) {
             companyName: data.company_name || regCompanyName || "Sovereign Enterprise",
             role: data.role,
             isVerified: true,
+            accessToken: data.access_token,
           });
           const targetPath =
             data.role === "super-admin" || data.email?.toLowerCase().includes("superadmin")
               ? "/super-admin-dashboard"
               : data.role === "admin"
                 ? "/admin"
-                : "/client-portal";
+                : "/onboarding";
           navigate(targetPath);
         }
       }, 500);

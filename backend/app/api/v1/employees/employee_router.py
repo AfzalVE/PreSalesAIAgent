@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models.employee import Employee, EmploymentStatus, SkillLevel
 
-router = APIRouter()
+from app.core.dependencies import get_current_active_admin
+
+router = APIRouter(dependencies=[Depends(get_current_active_admin)])
 
 def get_db():
     db = SessionLocal()

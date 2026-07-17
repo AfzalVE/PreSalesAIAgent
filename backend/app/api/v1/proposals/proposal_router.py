@@ -14,7 +14,9 @@ from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
 from app.services.proposal.proposal_generation_service import create_proposal_document
 
-router = APIRouter()
+from app.core.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_db():
     db = SessionLocal()
@@ -214,3 +216,25 @@ async def select_proposal(
             status_code=500,
             detail=f"Proposal selection failed: {str(e)}"
         )
+
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/{proposal_id}/download", summary="Download the finalized proposal document")
+async def download_proposal_doc(proposal_id: str):
+    print("DOWNLOAD ENDPOINT")
+    """
+    Returns the docx file for the given proposal_id with Content-Disposition attachment.
+    """
+    print(proposal_id)
+    static_dir = os.path.join("app", "static", "proposals")
+    filename = f"{proposal_id}.docx"
+    file_path = os.path.join(static_dir, filename)
+    print(file_path)
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path, 
+            filename="Project_Proposal.docx",
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    raise HTTPException(status_code=404, detail="Document not found")

@@ -266,7 +266,7 @@ export default function ClientPortal() {
       if (data.follow_up_message) {
         reply = data.follow_up_message;
       }
-      
+
       if (data.is_ready_for_proposal) {
         setIsDemoReady(true);
         setActiveTab("demos");
@@ -303,6 +303,15 @@ export default function ClientPortal() {
       recognition.start();
       setIsRecordingVoice(true);
     }
+  };
+
+  const handleNewProposal = () => {
+    navigate("/onboarding");
+  };
+
+  const handleChat = () => {
+
+    navigate("/broker");
   };
 
   const clientProposals = (adminProposals || []).filter(prop => {
@@ -347,25 +356,18 @@ export default function ClientPortal() {
 
           <div className="flex items-center flex-wrap gap-2 sm:gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleNewProposal}
               className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-primary-container text-navy-accent font-button-text text-xs sm:text-sm font-semibold hover:shadow-md transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
               <PlusCircle size={14} className="mr-1.5 flex-shrink-0" />
               <span>New Proposal Request</span>
             </button>
             <button
-              onClick={handleRestart}
-              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-navy-accent text-white font-button-text text-xs sm:text-sm font-semibold hover:bg-navy-accent/90 shadow-md transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
-            >
-              <span>Restart Intake Wizard</span>
-            </button>
-            <button
               onClick={handleLogout}
-              title="Sign out of Client Portal"
-              className="inline-flex items-center justify-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-red-50 text-red-600 font-button-text text-xs sm:text-sm font-semibold hover:bg-red-100 hover:text-red-700 border border-red-200/60 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer gap-1.5 w-full sm:w-auto"
+              className="inline-flex items-center px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 font-button-text text-xs sm:text-sm font-semibold hover:bg-red-100 shadow-sm transition-all duration-200 cursor-pointer flex-1 sm:flex-initial justify-center"
             >
-              <LogOut size={14} className="text-red-500 flex-shrink-0" />
-              <span>Log Out</span>
+              <LogOut size={14} className="mr-1.5 flex-shrink-0" />
+              <span>Logout</span>
             </button>
           </div>
         </div>
@@ -376,14 +378,21 @@ export default function ClientPortal() {
             { id: "overview", label: "Overview" },
             { id: "requests", label: "Proposal Requests" },
             { id: "chat", label: "AI Assistant Chat" },
-            ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : [])
+            ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                activeTab === tab.id ? "text-neutral-900 font-bold" : "text-neutral-500 hover:text-neutral-900"
-              }`}
+              onClick={() => {
+                if (tab.id === "chat") {
+                  navigate("/broker");
+                  return;
+                }
+                setActiveTab(tab.id);
+              }}
+              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
+                  ? "text-neutral-900 font-bold"
+                  : "text-neutral-500 hover:text-neutral-900"
+                }`}
             >
               {activeTab === tab.id && (
                 <motion.div
@@ -591,9 +600,8 @@ export default function ClientPortal() {
                   <button
                     key={req.id}
                     onClick={() => handleSelectChatRequest(req)}
-                    className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${
-                      chatRequestId === req.id ? 'border-primary bg-primary-container/20 ring-1 ring-primary' : 'border-neutral-100'
-                    }`}
+                    className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${chatRequestId === req.id ? 'border-primary bg-primary-container/20 ring-1 ring-primary' : 'border-neutral-100'
+                      }`}
                   >
                     <span className="font-body-md text-sm font-semibold text-navy-accent block">{req.name}</span>
                     <span className="font-body-md text-sm text-on-surface-variant mt-0.5 block">{req.domain} • ${Number(req.budget || 0).toLocaleString()}</span>
@@ -647,8 +655,8 @@ export default function ClientPortal() {
                     type="button"
                     onClick={toggleVoiceRecording}
                     className={`p-2.5 rounded-xl transition-all duration-200 relative ${isRecordingVoice
-                        ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200'
-                        : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                      ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-200'
+                      : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
                       }`}
                     title="Speak to Broker"
                   >
@@ -697,7 +705,7 @@ export default function ClientPortal() {
                       </div>
                       <span className="text-xl font-bold text-primary">${(demo.estimated_cost || 0).toLocaleString()}</span>
                     </div>
-                    
+
                     <div className="space-y-3 mb-6 flex-1 text-sm text-neutral-600">
                       <div className="flex justify-between border-b border-neutral-100 pb-2">
                         <span className="font-medium text-neutral-400">Timeline:</span>
@@ -715,9 +723,10 @@ export default function ClientPortal() {
                       </div>
                     </div>
 
-                    <button 
+                    <button
                       onClick={() => {
-                        window.open(`http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export`, '_blank');
+                        const token = user?.accessToken;
+                        window.open(`http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export${token ? `?token=${token}` : ""}`, '_blank');
                       }}
                       className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 shadow-md transition-all text-sm"
                     >
@@ -725,7 +734,7 @@ export default function ClientPortal() {
                     </button>
                   </div>
                 ))}
-                
+
                 {generatedDemos.length === 0 && !isDemosLoading && (
                   <div className="col-span-2 text-center p-12 bg-white rounded-3xl border border-dashed border-neutral-200 text-neutral-400 font-medium">
                     No demos generated yet. Complete the chat wizard first.

@@ -4,7 +4,9 @@ from app.core.database import SessionLocal #
 from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 from app.services.ai.ai_agent_service import extract_proposal_requirements, negotiate_proposal
 
-router = APIRouter()
+from app.core.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 def get_db(): #
     db = SessionLocal()

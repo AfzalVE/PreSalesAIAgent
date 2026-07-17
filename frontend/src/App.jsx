@@ -28,6 +28,7 @@ import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import EditUser from "./pages/EditUser";
 
 import AdminPortalRoute from "./routes/AdminPortalRoute";
+import ClientProtectedRoute from "./routes/ClientProtectedRoute";
 
 const PATH_TO_STEP = {
   "/": 0,
@@ -87,23 +88,16 @@ function App() {
           />
 
           {/* Client */}
-
-          <Route path="/onboarding" element={<Onboarding />} />
-
-          <Route path="/summary" element={<RequirementsSummary />} />
-
-          <Route path="/compare" element={<ProposalComparisonPage />} />
-
+          <Route path="/onboarding" element={<ClientProtectedRoute><Onboarding /></ClientProtectedRoute>} />
+          <Route path="/summary" element={<ClientProtectedRoute><RequirementsSummary /></ClientProtectedRoute>} />
+          <Route path="/compare" element={<ClientProtectedRoute><ProposalComparisonPage /></ClientProtectedRoute>} />
           <Route
             path="/proposal-preview"
-            element={<ProposalPreviewPage />}
+            element={<ClientProtectedRoute><ProposalPreviewPage /></ClientProtectedRoute>}
           />
-
-          <Route path="/broker" element={<Negotiation />} />
-
-          <Route path="/sign" element={<FinalApproval />} />
-
-          <Route path="/client-portal" element={<ClientPortal />} />
+          <Route path="/broker" element={<ClientProtectedRoute><Negotiation /></ClientProtectedRoute>} />
+          <Route path="/sign" element={<ClientProtectedRoute><FinalApproval /></ClientProtectedRoute>} />
+          <Route path="/client-portal" element={<ClientProtectedRoute><ClientPortal /></ClientProtectedRoute>} />
 
           {/* Super Admin */}
 
@@ -129,10 +123,9 @@ function App() {
           />
 
           {/* Edit User */}
-
           <Route
             path="/edit-user"
-            element={<EditUser />}
+            element={<ClientProtectedRoute><EditUser /></ClientProtectedRoute>}
           />
 
           <Route

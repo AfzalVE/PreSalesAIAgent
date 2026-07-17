@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as mammoth from "mammoth";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -18,8 +19,10 @@ import { useAppStore } from "../store/useAppStore";
 
 export default function ProposalPreviewPage() {
   const navigate = useNavigate();
-  const { activeProposal } = useAppStore();
+  const { activeProposal, selectProposalFromBackend, user } = useAppStore();
   const [viewMode, setViewMode] = useState("mvp"); // 'mvp' or 'full'
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [docHtml, setDocHtml] = useState(null);
 
   useEffect(() => {
     console.log("========== Proposal Response ==========");
@@ -29,8 +32,40 @@ export default function ProposalPreviewPage() {
 
   const proposal = activeProposal?.[viewMode];
 
-  const handleProceedToSign = () => {
-    navigate("/client-portal");
+  const handleProceedToSign = async () => {
+    const fullProposal = activeProposal?.proposals?.find(p => p.proposal_type === "FULL");
+    const idToSelect = fullProposal ? fullProposal.id : proposal?.id;
+    if (!idToSelect) return;
+
+    setIsGenerating(true);
+    const res = await selectProposalFromBackend(idToSelect);
+
+    if (res.success && res.docx_url && res.docx_url !== "#") {
+      try {
+        const token = user?.accessToken;
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+        const docRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${idToSelect}/download`, { headers });
+        if (docRes.ok) {
+          const arrayBuffer = await docRes.arrayBuffer();
+          const result = await mammoth.convertToHtml({ arrayBuffer });
+          setDocHtml(result.value);
+        }
+      } catch (err) {
+        console.error("Failed to render docx:", err);
+      }
+    }
+    setIsGenerating(false);
+  };
+
+  const handleDownload = (e) => {
+    e.preventDefault();
+    const fullProposal = activeProposal?.proposals?.find(p => p.proposal_type === "FULL");
+    const idToSelect = fullProposal ? fullProposal.id : proposal?.id;
+    if (!idToSelect) return;
+
+    const token = user?.accessToken;
+    // Direct browser navigation with token query param fallback
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${idToSelect}/download${token ? `?token=${token}` : ""}`;
   };
 
   if (!activeProposal) {
@@ -157,7 +192,7 @@ export default function ProposalPreviewPage() {
               </h2>
             </div>
             <div className="flex flex-wrap gap-3">
-              {(activeProposal.inferred_preferred_technology || []).map((technology, index) => (
+              {(activeProposal.preferred_technology || []).map((technology, index) => (
                 <span
                   key={index}
                   className="px-4 py-2 rounded-full bg-primary/10 text-primary font-semibold text-sm"
@@ -180,7 +215,7 @@ export default function ProposalPreviewPage() {
                 </span>
               </div>
               <h2 className="text-3xl font-black text-primary">
-                ${Number(proposal?.estimated_cost || activeProposal.inferred_budget || 0).toLocaleString()}
+                ${Number(proposal?.estimated_cost || activeProposal.budget || 0).toLocaleString()}
               </h2>
             </div>
             <div className="rounded-2xl border p-6 bg-gradient-to-br from-blue-50 to-white">
@@ -191,7 +226,7 @@ export default function ProposalPreviewPage() {
                 </span>
               </div>
               <h2 className="text-3xl font-black text-neutral-900">
-                {proposal?.estimated_duration ?? activeProposal.inferred_timeline}
+                {proposal?.estimated_duration ?? activeProposal.timeline}
               </h2>
             </div>
             <div className="rounded-2xl border p-6 bg-gradient-to-br from-emerald-50 to-white">
@@ -393,14 +428,63 @@ export default function ProposalPreviewPage() {
             >
               Edit Project Details
             </button>
-            <button
-              onClick={handleProceedToSign}
-              className="px-10 py-4 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
-            >
-              Continue to Signing
-              <ChevronRight size={18} />
-            </button>
+            {activeProposal?.docx_url && activeProposal.docx_url !== "#" ? (
+              <button
+                onClick={handleDownload}
+                className="px-10 py-4 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
+              >
+                Download Document
+                <ChevronRight size={18} />
+              </button>
+            ) : (
+              <button
+                onClick={handleProceedToSign}
+                disabled={isGenerating}
+                className="px-10 py-4 rounded-full bg-primary text-white font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {isGenerating ? "Generating..." : "Create Final Proposal"}
+                {!isGenerating && <ChevronRight size={18} />}
+              </button>
+            )}
           </div>
+
+          {/* ======================================================= */}
+          {/* Document Preview */}
+          {/* ======================================================= */}
+          {docHtml && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-10 border-t border-neutral-100 pt-10"
+            >
+              <div className="flex items-center gap-2 mb-6">
+                <FileText className="text-primary" size={24} />
+                <h2 className="text-2xl font-bold text-neutral-900">
+                  Final Document Preview
+                </h2>
+              </div>
+              <div 
+                className="bg-white rounded-xl border border-neutral-200 p-8 shadow-inner overflow-hidden"
+              >
+                {/* We use basic CSS since tailwind typography might not be installed */}
+                <div 
+                  className="docx-preview text-sm leading-relaxed text-neutral-800 space-y-4"
+                  dangerouslySetInnerHTML={{ __html: docHtml }} 
+                />
+              </div>
+              <style dangerouslySetInnerHTML={{__html: `
+                .docx-preview h1 { font-size: 1.875rem; font-weight: 800; margin-top: 2rem; margin-bottom: 1rem; color: #171717; }
+                .docx-preview h2 { font-size: 1.5rem; font-weight: 700; margin-top: 1.75rem; margin-bottom: 0.75rem; color: #171717; }
+                .docx-preview h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #171717; }
+                .docx-preview p { margin-bottom: 1rem; }
+                .docx-preview ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+                .docx-preview table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; }
+                .docx-preview th, .docx-preview td { border: 1px solid #e5e5e5; padding: 0.75rem; text-align: left; }
+                .docx-preview th { background-color: #f9fafb; font-weight: 600; }
+              `}} />
+            </motion.div>
+          )}
+
         </motion.div>
       </div>
     </div>

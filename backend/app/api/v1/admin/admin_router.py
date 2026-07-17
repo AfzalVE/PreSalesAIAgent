@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.services.admin.admin_service import get_dashboard_stats_service, get_otp_logs_service
 
-router = APIRouter()
+from app.core.dependencies import get_current_active_admin
+
+router = APIRouter(dependencies=[Depends(get_current_active_admin)])
 
 def get_db():
     db = SessionLocal()

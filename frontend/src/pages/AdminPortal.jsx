@@ -145,8 +145,7 @@ export default function AdminPortal() {
       <FloatingBackground />
 
       <div className="max-w-7xl mx-auto space-y-10 relative z-10">
-        {/* Editorial Header */}
-        <div className="pb-6 border-b border-neutral-200/60 flex flex-col 2xl:flex-row 2xl:items-center justify-between w-full gap-5">
+        <div className="pb-6 border-b border-neutral-200/60 flex flex-col md:flex-row md:items-center justify-between w-full gap-5">
           <div className="flex-shrink-0">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display text-neutral-900 tracking-tight leading-none">
               Resource Operations Studio
@@ -154,6 +153,15 @@ export default function AdminPortal() {
             <p className="text-xs sm:text-sm text-neutral-500 mt-1 font-medium">
               Manage corporate employee benches, resource allocations, and proposal conversion charts.
             </p>
+          </div>
+          <div className="flex items-center gap-3 self-start md:self-center">
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 font-sans text-xs sm:text-sm font-semibold hover:bg-red-100 shadow-sm transition-all duration-200 cursor-pointer justify-center"
+            >
+              <LogOut size={14} className="mr-1.5 flex-shrink-0" />
+              <span>Logout</span>
+            </button>
           </div>
 
           {/* Sub-tab Navigation with Moveable Select Effect & Inline Logout */}
