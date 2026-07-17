@@ -11,7 +11,7 @@ from app.schemas.proposal_request_schema import ProposalRequestCreate, ProposalR
 
 from app.core.dependencies import get_current_user
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()
