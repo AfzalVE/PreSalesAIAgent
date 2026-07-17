@@ -64,7 +64,7 @@ export default function Negotiation() {
           <div className="text-center sm:text-left">
             <span className="text-[10px] uppercase font-bold text-neutral-400">Current Validated Blueprint</span>
             <div className="text-sm font-bold text-neutral-800 mt-0.5">
-              ${activeProposal.budget.toLocaleString()} Budget • {activeProposal.timeline} Duration • {activeProposal.team.length} Engineers
+              ${(activeProposal?.budget ?? activeProposal?.inferred_budget ?? 0).toLocaleString()} Budget • {activeProposal?.timeline ?? activeProposal?.inferred_timeline ?? "12 Weeks"} Duration • {(activeProposal?.team ?? activeProposal?.full?.team ?? []).length} Engineers
             </div>
           </div>
 
