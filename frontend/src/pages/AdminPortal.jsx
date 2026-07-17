@@ -178,9 +178,8 @@ export default function AdminPortal() {
                 <button
                   key={tab.id}
                   onClick={() => navigate(tab.path)}
-                  className={`relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-colors duration-200 z-10 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                    isActive ? "text-navy-accent font-extrabold shadow-xs" : "text-neutral-500 hover:text-neutral-800"
-                  }`}
+                  className={`relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold transition-colors duration-200 z-10 cursor-pointer whitespace-nowrap flex-shrink-0 ${isActive ? "text-navy-accent font-extrabold shadow-xs" : "text-neutral-500 hover:text-neutral-800"
+                    }`}
                 >
                   {isActive && (
                     <motion.div
@@ -294,13 +293,12 @@ export default function AdminPortal() {
                         </td>
                         <td className="py-4">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              prop.status === "Approved"
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${prop.status === "Approved"
                                 ? "bg-brand-50 text-brand-600 border border-brand-100"
                                 : prop.status === "Negotiating"
                                   ? "bg-amber-50 text-amber-600 border border-amber-100"
                                   : "bg-neutral-100 text-neutral-500"
-                            }`}
+                              }`}
                           >
                             {prop.status}
                           </span>
@@ -340,31 +338,28 @@ export default function AdminPortal() {
                 <div className="flex items-center space-x-1.5 border border-neutral-200 rounded-xl p-1 bg-neutral-50">
                   <button
                     onClick={() => setFilterMode("all")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                      filterMode === "all"
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${filterMode === "all"
                         ? "bg-white text-neutral-800 shadow-sm"
                         : "text-neutral-500 hover:text-neutral-800"
-                    }`}
+                      }`}
                   >
                     All Staff
                   </button>
                   <button
                     onClick={() => setFilterMode("bench")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                      filterMode === "bench"
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${filterMode === "bench"
                         ? "bg-white text-neutral-800 shadow-sm"
                         : "text-neutral-500 hover:text-neutral-800"
-                    }`}
+                      }`}
                   >
                     On Bench
                   </button>
                   <button
                     onClick={() => setFilterMode("allocated")}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                      filterMode === "allocated"
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${filterMode === "allocated"
                         ? "bg-white text-neutral-800 shadow-sm"
                         : "text-neutral-500 hover:text-neutral-800"
-                    }`}
+                      }`}
                   >
                     Allocated
                   </button>
@@ -932,14 +927,12 @@ export default function AdminPortal() {
                   <button
                     type="button"
                     onClick={() => setEditBenchStatus(!editBenchStatus)}
-                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${
-                      editBenchStatus ? "bg-brand-500" : "bg-neutral-200"
-                    }`}
+                    className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none ${editBenchStatus ? "bg-brand-500" : "bg-neutral-200"
+                      }`}
                   >
                     <div
-                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
-                        editBenchStatus ? "translate-x-6" : "translate-x-0"
-                      }`}
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${editBenchStatus ? "translate-x-6" : "translate-x-0"
+                        }`}
                     />
                   </button>
                 </div>
@@ -957,11 +950,10 @@ export default function AdminPortal() {
                           key={skill}
                           type="button"
                           onClick={() => toggleEditSkill(skill)}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 ${
-                            isSelected
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 ${isSelected
                               ? "bg-brand-50 border-brand-200 text-brand-600 font-bold"
                               : "bg-white border-neutral-200 text-neutral-500 hover:bg-neutral-50"
-                          }`}
+                            }`}
                         >
                           {isSelected && (
                             <Check size={10} className="mr-1" strokeWidth={3} />
