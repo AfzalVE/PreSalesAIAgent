@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, MessageSquare, AlertTriangle, RefreshCw, ChevronRight, Mic } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { useNavigate } from 'react-router-dom';
 
 let messageCounter = 0;
 const generateMessageId = (sender) => `msg-${sender}-${++messageCounter}`;
@@ -34,12 +35,77 @@ function StreamingText({ text, onComplete }) {
 }
 
 export default function NegotiationChat() {
+  const navigate = useNavigate();
   const {
     applyNegotiationRequest,
     negotiationHistory,
     projectData,
     updateProjectData
   } = useAppStore();
+
+  const handleLoadMockMvp = () => {
+    const mockMvp = {
+      id: "0aa3092c-2306-4808-bf95-57b92cb6ba58",
+      proposal_type: "MVP",
+      project_name: projectData.name || "Zenith Retail Portal",
+      scope: "Core boutique storefront engine and catalog system.",
+      estimated_cost: 35000,
+      estimated_duration: "6 Weeks",
+      tech_stack: ["React", "FastAPI", "PostgreSQL"],
+      timeline_phases: [
+        {"Phase": "Architecture Setup", "Duration": "2 Weeks", "Output": "System Architecture Blueprint"},
+        {"Phase": "Core Feature Development", "Duration": "4 Weeks", "Output": "Fully functional MVP codebase"}
+      ],
+      assumptions: "Standard cloud environment",
+      risks: "Potential delays in third-party API configurations",
+      selected_resources: {
+        resources: [
+          { name: "Alex Rivera", role: "Lead Architect" },
+          { name: "Elena Rostova", role: "Full Stack Engineer" }
+        ]
+      }
+    };
+
+    const mockFull = {
+      id: "0aa3092c-2306-4808-bf95-57b92cb6ba58",
+      proposal_type: "FULL",
+      project_name: projectData.name || "Zenith Retail Portal",
+      scope: "Enterprise-grade digital storefront with AI sizing recommendations.",
+      estimated_cost: 75000,
+      estimated_duration: "12 Weeks",
+      tech_stack: ["React", "FastAPI", "PostgreSQL", "AWS"],
+      timeline_phases: [
+        {"Phase": "Design & Setup", "Duration": "3 Weeks", "Output": "UI/UX Layout Prototype"},
+        {"Phase": "Core Backend Engine", "Duration": "6 Weeks", "Output": "REST API Development"},
+        {"Phase": "Deploy & Launch", "Duration": "3 Weeks", "Output": "Production Environment Build"}
+      ],
+      assumptions: "Continuous deployment pipeline",
+      risks: "Scale and concurrent database query limits",
+      selected_resources: {
+        resources: [
+          { name: "Alex Rivera", role: "Lead Architect" },
+          { name: "Elena Rostova", role: "Full Stack Engineer" },
+          { name: "Sarah Chen", role: "Senior AI Engineer" }
+        ]
+      }
+    };
+
+    useAppStore.setState({
+      activeProposal: {
+        inferred_project_name: projectData.name || "Zenith Retail Portal",
+        inferred_business_domain: projectData.domain || "E-Commerce",
+        inferred_project_description: projectData.description || "Boutique storefront with recommendations.",
+        inferred_preferred_technology: projectData.techStack || ["React", "FastAPI"],
+        inferred_budget: projectData.budget || 75000,
+        inferred_timeline: projectData.timeline || "12 Weeks",
+        mvp: mockMvp,
+        full: mockFull,
+        proposals: [mockMvp, mockFull]
+      }
+    });
+
+    navigate("/proposal-preview");
+  };
 
   const [inputPrompt, setInputPrompt] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -276,6 +342,24 @@ export default function NegotiationChat() {
                 {sug}
               </button>
             ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3 mb-4 p-3.5 bg-neutral-50 rounded-xl border border-neutral-200/60 shadow-inner">
+            <span className="text-[10px] uppercase font-bold text-neutral-400 w-full mb-1">Scoping Output Generators (Demo Sandbox)</span>
+            <button
+              type="button"
+              onClick={handleLoadMockMvp}
+              className="text-[11px] font-bold text-navy-accent bg-primary-container hover:bg-primary-container/80 border border-primary/20 px-4 py-2 rounded-xl transition-all duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              🚀 Generate MVP Mock Preview
+            </button>
+            <button
+              type="button"
+              onClick={handleLoadMockMvp} // Both will initialize activeProposal and redirect to proposal preview toggle
+              className="text-[11px] font-bold text-navy-accent bg-primary-container hover:bg-primary-container/80 border border-primary/20 px-4 py-2 rounded-xl transition-all duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              ✨ Generate Full Mock Preview
+            </button>
           </div>
 
           {/* Form input */}
