@@ -49,27 +49,8 @@ export default function ClientPortal() {
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatRequestId, setChatRequestId] = useState(null);
-  const [generatedDemos, setGeneratedDemos] = useState([]);
   const [isDemosLoading, setIsDemosLoading] = useState(false);
 
-  useEffect(() => {
-    if (activeTab === "demos") {
-      const fetchDemos = async () => {
-        setIsDemosLoading(true);
-        try {
-          await new Promise((r) => setTimeout(r, 2000));
-          const res = await fetch("http://127.0.0.1:8000/api/v1/proposals/all");
-          const allProposals = await res.json();
-          setGeneratedDemos(allProposals.slice(-2));
-        } catch (error) {
-          console.error("Failed to fetch demos", error);
-        } finally {
-          setIsDemosLoading(false);
-        }
-      };
-      fetchDemos();
-    }
-  }, [activeTab]);
   const [recognition, setRecognition] = useState(null);
 
   useEffect(() => {
@@ -98,7 +79,8 @@ export default function ClientPortal() {
 
   // List of client's proposal requests dynamically fetched from PostgreSQL
   const [requestsList, setRequestsList] = useState([]);
-  const { adminProposals, user, isDemoReady, setIsDemoReady } = useAppStore(); // Load existing admin-curated proposals for review
+  const { adminProposals, user, isDemoReady, setIsDemoReady, generatedDemos } =
+    useAppStore(); // Load existing admin-curated proposals for review
 
   const fetchClientData = async () => {
     try {

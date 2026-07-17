@@ -26,7 +26,8 @@ async def generate_proposals_for_request(
     business_domain: Optional[str] = None,
     preferred_technology: Optional[List[str]] = None,
     budget: Optional[float] = None,
-    timeline: Optional[str] = None
+    timeline: Optional[str] = None,
+    existing_request_id: Optional[uuid.UUID] = None
 ) -> Dict[str, Any]:
     """
     Generates two proposals (MVP and Full) for a new/existing project request.
@@ -105,7 +106,9 @@ async def generate_proposals_for_request(
         "timeline_phases": [
           {"Phase": "string", "Duration": "string", "Output": "string"}
         ],
-        
+        "resource_requirements": [
+          {"role": "string", "count": int, "minimum_experience": int, "skills": ["string"]}
+        ]
       }
     }
     """
@@ -131,44 +134,55 @@ async def generate_proposals_for_request(
     final_timeline = generation_content.get("inferred_timeline") or timeline or "12 Weeks"
 
     # 3. Create ProposalRequest record in the database
-    proposal_request = ProposalRequest(
-        id=uuid.uuid4(),
-        client_id=client_id,
-        project_name=final_project_name,
-        project_description=final_desc,
-        business_domain=final_domain,
-        preferred_technology=final_tech,
-        budget=final_budget,
-        timeline=final_timeline,
-        communication_type=CommunicationType.FORM,
-        extracted_json=generation_content,
-        status=ProposalRequestStatus.PROCESSING
-    )
-    db.add(proposal_request)
+    if existing_request_id:
+        proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == existing_request_id).first()
+        if not proposal_request:
+            raise ValueError(f"No request found for id {existing_request_id}")
+        proposal_request.project_name = final_project_name
+        proposal_request.project_description = final_desc
+        proposal_request.business_domain = final_domain
+        proposal_request.preferred_technology = final_tech
+        proposal_request.budget = final_budget
+        proposal_request.timeline = final_timeline
+        proposal_request.extracted_json = generation_content
+        proposal_request.status = ProposalRequestStatus.PROCESSING
+    else:
+        proposal_request = ProposalRequest(
+            id=uuid.uuid4(),
+            client_id=client_id,
+            project_name=final_project_name,
+            project_description=final_desc,
+            business_domain=final_domain,
+            preferred_technology=final_tech,
+            budget=final_budget,
+            timeline=final_timeline,
+            communication_type=CommunicationType.FORM,
+            extracted_json=generation_content,
+            status=ProposalRequestStatus.PROCESSING
+        )
+        db.add(proposal_request)
     db.flush()
 
     # 4. Generate MVP Proposal
     mvp_data = generation_content["mvp"]
     # Run resource matching for MVP
-    # mvp_match_payload = {
-    #     "proposal_id": f"PROP-MVP-{uuid.uuid4().hex[:6].upper()}",
-    #     "project_name": f"{final_project_name} (MVP)",
-    #     "timeline_weeks": mvp_data["estimated_duration_weeks"],
-    #     "client_budget": final_budget * 0.5, # Assume MVP budget is a fraction of target budget
-    #     "resource_requirements": mvp_data["resource_requirements"]
-    # }
-    # mvp_estimate = match_resources(mvp_match_payload)
+    mvp_match_payload = {
+        "proposal_id": f"PROP-MVP-{uuid.uuid4().hex[:6].upper()}",
+        "project_name": f"{final_project_name} (MVP)",
+        "timeline_weeks": mvp_data["estimated_duration_weeks"],
+        "client_budget": final_budget * 0.5, # Assume MVP budget is a fraction of target budget
+        "resource_requirements": mvp_data["resource_requirements"]
+    }
+    mvp_estimate = match_resources(mvp_match_payload)
     
     mvp_proposal = Proposal(
         id=uuid.uuid4(),
         request_id=proposal_request.id,
         proposal_type=ProposalType.MVP,
         tech_stack=mvp_data["tech_stack"],
-        # estimated_cost=mvp_estimate["total_project_cost"],
-        estimated_cost=final_budget * 0.5,
+        estimated_cost=mvp_estimate["total_project_cost"],
         estimated_duration=f"{mvp_data['estimated_duration_weeks']} Weeks",
-        # selected_resources={"resources": mvp_estimate["selected_resources"]},
-        selected_resources={},
+        selected_resources={"resources": mvp_estimate["selected_resources"]},
         scope=mvp_data["scope"],
         assumptions=mvp_data["assumptions"],
         risks=mvp_data["risks"],
@@ -180,40 +194,38 @@ async def generate_proposals_for_request(
     db.add(mvp_proposal)
 
     # Save MVP Resource Allocations
-    # for res in mvp_estimate["selected_resources"]:
-    #     alloc = ResourceAllocation(
-    #         id=uuid.uuid4(),
-    #         proposal_id=mvp_proposal.id,
-    #         employee_id=uuid.UUID(res["employee_id"]),
-    #         role=res["role"],
-    #         allocated_hours=res["allocated_hours"],
-    #         duration_weeks=mvp_data["estimated_duration_weeks"],
-    #         estimated_cost=res["estimated_cost"]
-    #     )
-    #     db.add(alloc)
+    for res in mvp_estimate["selected_resources"]:
+        alloc = ResourceAllocation(
+            id=uuid.uuid4(),
+            proposal_id=mvp_proposal.id,
+            employee_id=uuid.UUID(res["employee_id"]),
+            role=res["role"],
+            allocated_hours=res["allocated_hours"],
+            duration_weeks=mvp_data["estimated_duration_weeks"],
+            estimated_cost=res["estimated_cost"]
+        )
+        db.add(alloc)
 
     # 5. Generate Full Product Proposal
     full_data = generation_content["full"]
     # Run resource matching for Full Product
-    # full_match_payload = {
-    #     "proposal_id": f"PROP-FULL-{uuid.uuid4().hex[:6].upper()}",
-    #     "project_name": final_project_name,
-    #     "timeline_weeks": full_data["estimated_duration_weeks"],
-    #     "client_budget": final_budget,
-    #     "resource_requirements": full_data["resource_requirements"]
-    # }
-    # full_estimate = match_resources(full_match_payload)
+    full_match_payload = {
+        "proposal_id": f"PROP-FULL-{uuid.uuid4().hex[:6].upper()}",
+        "project_name": final_project_name,
+        "timeline_weeks": full_data["estimated_duration_weeks"],
+        "client_budget": final_budget,
+        "resource_requirements": full_data["resource_requirements"]
+    }
+    full_estimate = match_resources(full_match_payload)
     
     full_proposal = Proposal(
         id=uuid.uuid4(),
         request_id=proposal_request.id,
         proposal_type=ProposalType.FULL,
         tech_stack=full_data["tech_stack"],
-        # estimated_cost=full_estimate["total_project_cost"],
-        estimated_cost=final_budget,
+        estimated_cost=full_estimate["total_project_cost"],
         estimated_duration=f"{full_data['estimated_duration_weeks']} Weeks",
-        # selected_resources={"resources": full_estimate["selected_resources"]},
-        selected_resources={},
+        selected_resources={"resources": full_estimate["selected_resources"]},
         scope=full_data["scope"],
         assumptions=full_data["assumptions"],
         risks=full_data["risks"],
@@ -225,21 +237,70 @@ async def generate_proposals_for_request(
     db.add(full_proposal)
 
     # Save Full Product Resource Allocations
-    # for res in full_estimate["selected_resources"]:
-    #     alloc = ResourceAllocation(
-    #         id=uuid.uuid4(),
-    #         proposal_id=full_proposal.id,
-    #         employee_id=uuid.UUID(res["employee_id"]),
-    #         role=res["role"],
-    #         allocated_hours=res["allocated_hours"],
-    #         duration_weeks=full_data["estimated_duration_weeks"],
-    #         estimated_cost=res["estimated_cost"]
-    #     )
-    #     db.add(alloc)
+    for res in full_estimate["selected_resources"]:
+        alloc = ResourceAllocation(
+            id=uuid.uuid4(),
+            proposal_id=full_proposal.id,
+            employee_id=uuid.UUID(res["employee_id"]),
+            role=res["role"],
+            allocated_hours=res["allocated_hours"],
+            duration_weeks=full_data["estimated_duration_weeks"],
+            estimated_cost=res["estimated_cost"]
+        )
+        db.add(alloc)
 
     proposal_request.status = ProposalRequestStatus.COMPLETED
     db.commit()
-
+    response={
+        "proposal_request_id": str(proposal_request.id),
+        "project_name": final_project_name,
+        "project_description": final_desc,
+        "business_domain": final_domain,
+        "preferred_technology": final_tech,
+        "budget": final_budget,
+        "timeline": final_timeline,
+        "proposals": [
+            # {
+            #     "id": str(mvp_proposal.id),
+            #     "proposal_type": mvp_proposal.proposal_type.value,
+            #     "tech_stack": mvp_proposal.tech_stack,
+            #     "estimated_cost": float(mvp_proposal.estimated_cost),
+            #     "estimated_duration": mvp_proposal.estimated_duration,
+            #     "selected_resources": mvp_proposal.selected_resources,
+            #     "scope": mvp_proposal.scope,
+            #     "assumptions": mvp_proposal.assumptions,
+            #     "risks": mvp_proposal.risks,
+            #     "status": mvp_proposal.status.value,
+            #     "timeline_phases": mvp_proposal.timeline_phases
+            # },
+            {
+                "id": str(mvp_proposal.id),
+                "proposal_type": mvp_proposal.proposal_type.value,
+                "tech_stack": mvp_proposal.tech_stack,
+                "estimated_cost": float(mvp_proposal.estimated_cost),
+                "estimated_duration": mvp_proposal.estimated_duration,
+                "scope": mvp_proposal.scope,
+                "assumptions": mvp_proposal.assumptions,
+                "risks": mvp_proposal.risks,
+                "status": mvp_proposal.status.value,
+                "timeline_phases": mvp_proposal.timeline_phases
+            },
+            {
+                "id": str(full_proposal.id),
+                "proposal_type": full_proposal.proposal_type.value,
+                "tech_stack": full_proposal.tech_stack,
+                "estimated_cost": float(full_proposal.estimated_cost),
+                "estimated_duration": full_proposal.estimated_duration,
+                "selected_resources": full_proposal.selected_resources,
+                "scope": full_proposal.scope,
+                "assumptions": full_proposal.assumptions,
+                "risks": full_proposal.risks,
+                "status": full_proposal.status.value,
+                "timeline_phases": full_proposal.timeline_phases
+            }
+        ]
+    }
+    print(response)
     return {
         "proposal_request_id": str(proposal_request.id),
         "project_name": final_project_name,

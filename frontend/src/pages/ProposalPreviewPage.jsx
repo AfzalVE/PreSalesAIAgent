@@ -44,7 +44,7 @@ export default function ProposalPreviewPage() {
       try {
         const token = user?.accessToken;
         const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-        const docRes = await fetch(`http://localhost:8000/api/v1/proposals/${idToSelect}/download`, { headers });
+        const docRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${idToSelect}/download`, { headers });
         if (docRes.ok) {
           const arrayBuffer = await docRes.arrayBuffer();
           const result = await mammoth.convertToHtml({ arrayBuffer });
@@ -65,7 +65,7 @@ export default function ProposalPreviewPage() {
 
     const token = user?.accessToken;
     // Direct browser navigation with token query param fallback
-    window.location.href = `http://localhost:8000/api/v1/proposals/${idToSelect}/download${token ? `?token=${token}` : ""}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${idToSelect}/download${token ? `?token=${token}` : ""}`;
   };
 
   if (!activeProposal) {

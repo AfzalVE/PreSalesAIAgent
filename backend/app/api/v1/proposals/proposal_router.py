@@ -32,6 +32,7 @@ class GenerateDemoRequest(BaseModel):
     preferred_technology: Optional[List[str]] = Field(default_factory=list, description="Technologies")
     budget: Optional[float] = Field(None, description="Budget Goals")
     timeline: Optional[str] = Field(None, description="Timeline Expectation")
+    existing_request_id: Optional[str] = Field(None, description="Existing Proposal Request UUID")
 
 from app.services.proposals.proposal_service import get_all_proposals_service, get_proposal_by_id_service
 
@@ -110,7 +111,8 @@ async def generate_demo_proposals(
             business_domain=payload.business_domain,
             preferred_technology=payload.preferred_technology,
             budget=payload.budget,
-            timeline=payload.timeline
+            timeline=payload.timeline,
+            existing_request_id=uuid.UUID(payload.existing_request_id) if payload.existing_request_id else None
         )
         return result
 
