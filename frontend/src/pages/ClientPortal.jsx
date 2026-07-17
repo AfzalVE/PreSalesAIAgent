@@ -744,7 +744,8 @@ export default function ClientPortal() {
 
                     <button
                       onClick={() => {
-                        window.open(`http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export`, '_blank');
+                        const token = user?.accessToken;
+                        window.open(`http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export${token ? `?token=${token}` : ""}`, '_blank');
                       }}
                       className="w-full py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/95 shadow-md transition-all text-sm"
                     >

@@ -19,7 +19,7 @@ import { useAppStore } from "../store/useAppStore";
 
 export default function ProposalPreviewPage() {
   const navigate = useNavigate();
-  const { activeProposal, selectProposalFromBackend } = useAppStore();
+  const { activeProposal, selectProposalFromBackend, user } = useAppStore();
   const [viewMode, setViewMode] = useState("mvp"); // 'mvp' or 'full'
   const [isGenerating, setIsGenerating] = useState(false);
   const [docHtml, setDocHtml] = useState(null);
@@ -42,7 +42,9 @@ export default function ProposalPreviewPage() {
 
     if (res.success && res.docx_url && res.docx_url !== "#") {
       try {
-        const docRes = await fetch(`http://localhost:8000/api/v1/proposals/${idToSelect}/download`);
+        const token = user?.accessToken;
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+        const docRes = await fetch(`http://localhost:8000/api/v1/proposals/${idToSelect}/download`, { headers });
         if (docRes.ok) {
           const arrayBuffer = await docRes.arrayBuffer();
           const result = await mammoth.convertToHtml({ arrayBuffer });
@@ -61,8 +63,9 @@ export default function ProposalPreviewPage() {
     const idToSelect = fullProposal ? fullProposal.id : proposal?.id;
     if (!idToSelect) return;
 
-    // Direct browser navigation to trigger Content-Disposition attachment download
-    window.location.href = `http://localhost:8000/api/v1/proposals/${idToSelect}/download`;
+    const token = user?.accessToken;
+    // Direct browser navigation with token query param fallback
+    window.location.href = `http://localhost:8000/api/v1/proposals/${idToSelect}/download${token ? `?token=${token}` : ""}`;
   };
 
   if (!activeProposal) {
