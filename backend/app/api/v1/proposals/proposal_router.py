@@ -14,9 +14,7 @@ from app.schemas.proposal_schema import ProposalResponse, ProposalSelection
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
 from app.services.proposal.proposal_generation_service import create_proposal_document
 
-from app.core.dependencies import get_current_user
-
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()
@@ -26,6 +24,7 @@ def get_db():
         db.close()
 
 class GenerateDemoRequest(BaseModel):
+    model_config = {"extra": "allow"}
     project_name: Optional[str] = Field(None, description="Project Name")
     project_description: Optional[str] = Field(None, description="Description")
     business_domain: Optional[str] = Field(None, description="Business Domain")
@@ -83,7 +82,7 @@ async def export_proposal(proposal_id: str, db: Session = Depends(get_db)):
 
 @router.post("/generate-demo", summary="Generate MVP and Full Proposals")
 async def generate_demo_proposals(
-    payload: GenerateDemoRequest,
+    payload: Dict[str, Any],
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
@@ -105,12 +104,7 @@ async def generate_demo_proposals(
         result = await generate_proposals_for_request(
             db=db,
             client_id=client_id,
-            project_name=payload.project_name,
-            project_description=payload.project_description,
-            business_domain=payload.business_domain,
-            preferred_technology=payload.preferred_technology,
-            budget=payload.budget,
-            timeline=payload.timeline
+            proposal_input=payload
         )
         return result
 

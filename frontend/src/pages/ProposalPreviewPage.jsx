@@ -10,7 +10,13 @@ import {
   Clock3,
   DollarSign,
   Briefcase,
-  FileText
+  FileText,
+  ArrowRightLeft,
+  Layers,
+  Star,
+  CheckCircle2,
+  Package,
+  ListChecks
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,8 +39,7 @@ export default function ProposalPreviewPage() {
   const proposal = activeProposal?.[viewMode];
 
   const handleProceedToSign = async () => {
-    const fullProposal = activeProposal?.proposals?.find(p => p.proposal_type === "FULL");
-    const idToSelect = fullProposal ? fullProposal.id : proposal?.id;
+    const idToSelect = proposal?.id;
     if (!idToSelect) return;
 
     setIsGenerating(true);
@@ -59,8 +64,7 @@ export default function ProposalPreviewPage() {
 
   const handleDownload = (e) => {
     e.preventDefault();
-    const fullProposal = activeProposal?.proposals?.find(p => p.proposal_type === "FULL");
-    const idToSelect = fullProposal ? fullProposal.id : proposal?.id;
+    const idToSelect = proposal?.id;
     if (!idToSelect) return;
 
     const token = user?.accessToken;
@@ -243,6 +247,25 @@ export default function ProposalPreviewPage() {
           </div>
 
           {/* ======================================================= */}
+          {/* Executive Summary */}
+          {/* ======================================================= */}
+          {proposal?.executive_summary && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <FileText className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Executive Summary
+                </h2>
+              </div>
+              <div className="rounded-2xl border bg-neutral-50 p-6">
+                <p className="text-sm leading-8 whitespace-pre-line text-neutral-700">
+                  {proposal.executive_summary}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================= */}
           {/* Proposed Scope */}
           {/* ======================================================= */}
           <div className="space-y-5">
@@ -258,6 +281,28 @@ export default function ProposalPreviewPage() {
               </p>
             </div>
           </div>
+
+          {/* ======================================================= */}
+          {/* Key Features */}
+          {/* ======================================================= */}
+          {proposal?.key_features && proposal.key_features.length > 0 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <Star className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Key Features
+                </h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {proposal.key_features.map((feature, index) => (
+                  <div key={index} className="flex items-start gap-3 rounded-xl border bg-white p-4 shadow-sm">
+                    <CheckCircle2 className="text-emerald-500 mt-1 flex-shrink-0" size={16} />
+                    <span className="text-sm text-neutral-700 leading-relaxed">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ======================================================= */}
           {/* Technology Stack */}
@@ -286,6 +331,25 @@ export default function ProposalPreviewPage() {
               ))}
             </div>
           </div>
+
+          {/* ======================================================= */}
+          {/* Solution Architecture */}
+          {/* ======================================================= */}
+          {proposal?.architecture && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <Layers className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Solution Architecture
+                </h2>
+              </div>
+              <div className="rounded-2xl border bg-neutral-50 p-6">
+                <p className="text-sm leading-8 whitespace-pre-line text-neutral-700">
+                  {proposal.architecture}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ======================================================= */}
           {/* Development Timeline */}
@@ -326,6 +390,27 @@ export default function ProposalPreviewPage() {
               ))}
             </div>
           </div>
+
+          {/* ======================================================= */}
+          {/* Deliverables */}
+          {/* ======================================================= */}
+          {proposal?.deliverables && proposal.deliverables.length > 0 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <Package className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Deliverables
+                </h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {proposal.deliverables.map((deliverable, index) => (
+                  <span key={index} className="px-4 py-2 rounded-xl border bg-white text-sm text-neutral-700 shadow-sm">
+                    {deliverable}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ======================================================= */}
           {/* Resource Requirements */}
@@ -417,6 +502,61 @@ export default function ProposalPreviewPage() {
               </p>
             </div>
           </div>
+
+          {/* ======================================================= */}
+          {/* Acceptance Criteria */}
+          {/* ======================================================= */}
+          {proposal?.acceptance_criteria && proposal.acceptance_criteria.length > 0 && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <ListChecks className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  Acceptance Criteria
+                </h2>
+              </div>
+              <ul className="rounded-2xl border bg-neutral-50 p-6 space-y-3">
+                {proposal.acceptance_criteria.map((criteria, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                    <span className="text-sm leading-relaxed text-neutral-700">{criteria}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* ======================================================= */}
+          {/* Key Differences */}
+          {/* ======================================================= */}
+          {activeProposal?.key_differences && activeProposal.key_differences.length > 0 && (
+            <div className="space-y-6 pt-4 border-t border-neutral-100">
+              <div className="flex items-center gap-2">
+                <ArrowRightLeft className="text-primary" size={20} />
+                <h2 className="text-xl font-bold text-neutral-900">
+                  MVP vs Full Product Differences
+                </h2>
+              </div>
+              <div className="grid lg:grid-cols-2 gap-5">
+                {activeProposal.key_differences.map((diff, index) => (
+                  <div key={index} className="rounded-2xl border bg-white shadow-sm p-5 space-y-4">
+                    <h3 className="text-[11px] uppercase tracking-widest text-primary font-bold">
+                      {diff.category}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-500 mb-1">MVP</p>
+                        <p className="text-sm text-neutral-800 leading-relaxed">{diff.mvp}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-500 mb-1">Full Product</p>
+                        <p className="text-sm text-neutral-800 leading-relaxed">{diff.full}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ======================================================= */}
           {/* Action Buttons */}

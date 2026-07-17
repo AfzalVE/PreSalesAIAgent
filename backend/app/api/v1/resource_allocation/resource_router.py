@@ -3,9 +3,7 @@ from fastapi import APIRouter, Body, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from app.services.resource import match_resources, match_resources_from_db_request
-from app.core.dependencies import get_current_user
-
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter()
 
 
 class ResourceRequirementItem(BaseModel):

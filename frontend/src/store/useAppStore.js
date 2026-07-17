@@ -145,7 +145,7 @@ export const useAppStore = create((set, get) => ({
       const token = store.user?.accessToken;
       const response = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },
@@ -203,7 +203,7 @@ Timeline: ${store.projectData.timeline}`;
       // 1. Call ai-agent/extract-requirements
       const extractionResponse = await fetch("http://localhost:8000/api/v1/ai-agent/extract-requirements", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },
@@ -231,7 +231,7 @@ Timeline: ${store.projectData.timeline}`;
 
       const matchingResponse = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },
@@ -255,12 +255,13 @@ Timeline: ${store.projectData.timeline}`;
         business_domain: extractionData.business_domain || store.projectData.domain,
         preferred_technology: store.projectData.techStack,
         budget: extractionData.client_budget || store.projectData.budget,
-        timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline
+        timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline,
+        ...matchingData
       };
 
       const generationResponse = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },
@@ -289,7 +290,9 @@ Timeline: ${store.projectData.timeline}`;
         inferred_budget: generationData.budget,
         inferred_timeline: generationData.timeline,
         mvp: mvpProposal,
-        full: fullProposal
+        full: fullProposal,
+        proposals: generationData.proposals,
+        key_differences: generationData.key_differences
       };
 
       set({
@@ -372,7 +375,7 @@ Timeline: ${store.projectData.timeline}`;
       const token = get().user?.accessToken;
       const response = await fetch(`http://localhost:8000/api/v1/employees/${empId}`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },

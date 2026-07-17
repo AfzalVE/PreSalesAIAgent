@@ -3,7 +3,6 @@ import uuid
 from typing import Dict, Any, List, Optional
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
-
 from app.core.config import settings
 from app.models.proposal import Proposal, ProposalType, ProposalStatus
 from app.models.proposal_request import ProposalRequest, CommunicationType, ProposalRequestStatus
@@ -18,96 +17,266 @@ client = AsyncOpenAI(
     api_key=settings.GROQ_API_KEY
 )
 
+from typing import Dict, Any
+import uuid
+
 async def generate_proposals_for_request(
     db: Session,
     client_id: uuid.UUID,
-    project_name: Optional[str] = None,
-    project_description: Optional[str] = None,
-    business_domain: Optional[str] = None,
-    preferred_technology: Optional[List[str]] = None,
-    budget: Optional[float] = None,
-    timeline: Optional[str] = None
+    proposal_input: Dict[str, Any] = None,
+    **kwargs
 ) -> Dict[str, Any]:
     """
-    Generates two proposals (MVP and Full) for a new/existing project request.
-    Uses LLM to infer/suggest missing fields and builds structured scoping details.
-    Uses the Resource Allocation engine to match developers and calculate precise costs.
-    Saves everything to the database and returns the generated details.
+    Generates professional MVP and Full proposals using the finalized
+    project estimation from the Resource Allocation Engine.
+
+    The estimation payload already contains the calculated project cost,
+    selected resources, resource requirements, timeline, and budget
+    feasibility. The AI only generates the proposal content and must not
+    modify any financial values.
     """
-    
-    # 1. Ask the LLM to process details, complete missing fields, and draft the core architectures/scopes/timelines
+    print(f"======================PROPOSAL INPUT {proposal_input}")
+    if proposal_input is None:
+        proposal_input = {}
+    proposal_input.update(kwargs)
+
     user_input_summary = {
-        "project_name": project_name or "",
-        "project_description": project_description or "",
-        "business_domain": business_domain or "",
-        "preferred_technology": preferred_technology or [],
-        "budget": budget,
-        "timeline": timeline
+        "proposal_id": proposal_input.get("proposal_id"),
+        "project_name": proposal_input.get("project_name"),
+        "timeline_weeks": proposal_input.get("timeline_weeks", proposal_input.get("timeline")),
+        "client_budget": proposal_input.get("client_budget", proposal_input.get("budget")),
+        "recommended_budget": proposal_input.get("recommended_budget", proposal_input.get("budget")),
+        "budget": proposal_input.get("budget"),
+        "resource_requirements": proposal_input.get("resource_requirements", []),
+        "selected_resources": proposal_input.get("selected_resources", []),
+        "developer_cost": proposal_input.get("developer_cost"),
+        "company_static_cost": proposal_input.get("company_static_cost"),
+        "total_project_cost": proposal_input.get("total_project_cost", proposal_input.get("budget")),
+        "estimated_cost": proposal_input.get("estimated_cost", proposal_input.get("budget")),
+        "is_within_budget": proposal_input.get("is_within_budget", True),
+        "budget_variance_usd": proposal_input.get("budget_variance_usd", 0)
     }
 
     system_prompt = """
-    You are an expert technical director and pre-sales solutions architect.
-    Your task is to analyze user-provided project specifications and draft TWO options for building their software:
-    1. A lean MVP (Minimum Viable Product): Focuses on core workflows, short timeline, minimal cost.
-    2. A Full Product: Complete ecosystem, richer features, integrations, scalable infrastructure.
+    You are a Senior Technical Director and Pre-Sales Solution Architect with extensive experience in enterprise software consulting, solution architecture, and proposal writing.
 
-    RULES FOR INFERENCE:
-    - If project name, description, or domain are missing or sparse, intelligently infer/elaborate them to make a professional pitch.
-    - If preferred technologies are missing, select a modern stack (e.g. React/Vite, FastAPI/Python, PostgreSQL, AWS).
-    - If budget is missing or 0, suggest standard pricing (e.g., $20k-$40k for MVP, $70k-$150k for Full Product).
-    - If timeline is missing, suggest a reasonable duration (e.g. 6 weeks for MVP, 12-16 weeks for Full Product).
+Your task is to analyze the provided project estimation data and generate TWO professional software implementation proposals:
 
-    RULES FOR TIMELINE PHASES:
-    - Every option MUST include a detailed development roadmap/timeline of phases.
-    - Take the exact formatting style from 'City_Canvas_POC.docx'. Each phase in the timeline must contain:
-      - 'Phase': Name of development phase (e.g. "UI/UX Design", "Core API Integration", "Security Auditing")
-      - 'Duration': Number of days/weeks (e.g. "3-5 Days", "2 Weeks")
-      - 'Output': Tangible deliverable (e.g. "Responsive Prototype", "Tested REST Endpoints")
-    - Keep timeline phases realistic and aligned with the estimated duration.
+1. MVP (Minimum Viable Product)
+   - Focus on delivering the client's core business objectives.
+   - Include only essential features required for a production-ready first release.
+   - Keep the architecture simple, maintainable, and scalable enough for future enhancements.
 
-    Return ONLY a valid JSON object matching this structure:
+2. Full Product
+   - Present a complete enterprise-grade solution.
+   - Include advanced functionality, integrations, reporting, analytics, security, scalability, monitoring, and automation.
+   - The Full Product should be significantly more comprehensive than the MVP and should not simply repeat the same content.
+
+IMPORTANT RULES
+
+• The input already contains the finalized project estimation generated by the resource allocation engine.
+• The input includes project cost, selected resources, timeline, budget feasibility, and resource requirements.
+• NEVER modify, estimate, calculate, or infer any financial values.
+• NEVER change the provided timeline duration or selected resources.
+• Use the provided resource requirements and timeline as authoritative.
+• Your responsibility is only to generate professional proposal content.
+
+INFERENCE RULES
+
+If project details are incomplete, intelligently infer and enhance:
+
+- Business domain
+- Project description
+- Functional scope
+- Preferred technology stack
+- Technical architecture
+
+The inferred information should remain realistic and consistent with the project requirements.
+
+----------------------------------
+
+Each proposal MUST include:
+
+1. Executive Summary
+   - A concise overview of the proposed solution.
+
+2. Technology Stack
+   {
+      "backend": "",
+      "frontend": "",
+      "database": "",
+      "cloud": "",
+      "other_tools": []
+   }
+
+3. Solution Architecture
+   - Brief explanation of the proposed architecture.
+
+4. Scope
+   - Clearly describe what will be delivered.
+
+5. Key Features
+   - A detailed list of features included in the proposal.
+
+6. Deliverables
+   - List all deliverables to be handed over to the client.
+
+7. Assumptions
+   - State all technical and business assumptions.
+
+8. Risks
+   - Mention implementation risks and possible mitigation.
+
+9. Acceptance Criteria
+   - Define when the project can be considered successfully delivered.
+
+10. Timeline Phases
+
+Generate a realistic implementation roadmap.
+
+Each phase MUST follow this format:
+
+{
+    "Phase": "",
+    "Duration": "",
+    "Output": ""
+}
+
+Example:
+
+[
     {
-      "inferred_project_name": "string",
-      "inferred_business_domain": "string",
-      "inferred_project_description": "string",
-      "inferred_preferred_technology": ["string"],
-      "inferred_budget": float,
-      "inferred_timeline": "string",
-      "mvp": {
-        "tech_stack": {
-          "backend": "string",
-          "frontend": "string",
-          "db": "string",
-          "cloud": "string"
-        },
-        "scope": "string",
-        "assumptions": "string",
-        "risks": "string",
-        "estimated_duration_weeks": int,
-        "timeline_phases": [
-          {"Phase": "string", "Duration": "string", "Output": "string"}
-        ],
-        "resource_requirements": [
-          {"role": "string", "count": int, "minimum_experience": int, "skills": ["string"]}
-        ]
-      },
-      "full": {
-        "tech_stack": {
-          "backend": "string",
-          "frontend": "string",
-          "db": "string",
-          "cloud": "string"
-        },
-        "scope": "string",
-        "assumptions": "string",
-        "risks": "string",
-        "estimated_duration_weeks": int,
-        "timeline_phases": [
-          {"Phase": "string", "Duration": "string", "Output": "string"}
-        ],
-        
-      }
+        "Phase": "Requirement Analysis",
+        "Duration": "3-5 Days",
+        "Output": "Detailed Software Requirement Specification"
+    },
+    {
+        "Phase": "UI/UX Design",
+        "Duration": "1 Week",
+        "Output": "Interactive UI Prototype"
     }
+]
+
+The timeline should completely utilize the provided project duration.
+
+----------------------------------
+
+MVP Requirements
+
+The MVP should contain only essential functionality.
+
+Typical MVP characteristics:
+
+• Authentication
+• Core business workflow
+• Basic dashboard
+• CRUD operations
+• Essential APIs
+• Responsive UI
+• Basic deployment
+• Minimal security
+
+Avoid adding advanced enterprise capabilities.
+
+----------------------------------
+
+Full Product Requirements
+
+The Full Product should include everything from the MVP plus advanced enterprise capabilities such as:
+
+• Role-Based Access Control (RBAC)
+• Advanced Admin Dashboard
+• Reporting & Analytics
+• Notifications
+• Audit Logs
+• API Integrations
+• Workflow Automation
+• Performance Optimization
+• Monitoring & Logging
+• Security Best Practices
+• Backup & Recovery
+• CI/CD Pipeline
+• Scalability Improvements
+• Production Readiness
+
+----------------------------------
+
+Key Differences
+
+Generate a comparison highlighting the differences between the MVP and Full Product.
+
+Example:
+
+[
+    {
+        "category": "Features",
+        "mvp": "Core business workflows only",
+        "full": "Advanced workflows, automation, analytics, and integrations"
+    },
+    {
+        "category": "Architecture",
+        "mvp": "Monolithic application",
+        "full": "Scalable modular architecture"
+    },
+    {
+        "category": "Security",
+        "mvp": "JWT Authentication",
+        "full": "JWT, RBAC, Audit Logs, MFA"
+    },
+    {
+        "category": "Deployment",
+        "mvp": "Single production environment",
+        "full": "CI/CD with Development, QA, Staging, and Production"
+    }
+]
+
+----------------------------------
+
+Return ONLY a valid JSON object with the following structure:
+
+{
+    "inferred_project_name": "",
+    "inferred_business_domain": "",
+    "inferred_project_description": "",
+    "inferred_preferred_technology": [],
+
+    "mvp": {
+        "executive_summary": "",
+        "tech_stack": {},
+        "architecture": "",
+        "scope": "",
+        "key_features": [],
+        "deliverables": [],
+        "assumptions": "",
+        "risks": "",
+        "acceptance_criteria": [],
+        "estimated_duration_weeks": 0,
+        "timeline_phases": [],
+        "resource_requirements": []
+    },
+
+    "full": {
+        "executive_summary": "",
+        "tech_stack": {},
+        "architecture": "",
+        "scope": "",
+        "key_features": [],
+        "deliverables": [],
+        "assumptions": "",
+        "risks": "",
+        "acceptance_criteria": [],
+        "estimated_duration_weeks": 0,
+        "timeline_phases": [],
+        "resource_requirements": []
+    },
+
+    "key_differences": []
+}
+
+Return ONLY valid JSON.
+Do not include markdown.
+Do not include explanations.
+Do not include any additional text.
     """
     print("HEre")
     response = await client.chat.completions.create(
@@ -123,12 +292,37 @@ async def generate_proposals_for_request(
     generation_content = json.loads(response.choices[0].message.content)
     
     # 2. Extract inferred data
-    final_project_name = generation_content.get("inferred_project_name") or "Untitled AI Project"
-    final_domain = generation_content.get("inferred_business_domain") or "Software Development"
-    final_desc = generation_content.get("inferred_project_description") or "Custom software application development"
-    final_tech = generation_content.get("inferred_preferred_technology") or []
-    final_budget = float(generation_content.get("inferred_budget") or budget or 50000.0)
-    final_timeline = generation_content.get("inferred_timeline") or timeline or "12 Weeks"
+    final_project_name = proposal_input.get("project_name", "Draft Project")
+    final_domain = generation_content.get("inferred_business_domain")
+    final_desc = generation_content.get("inferred_project_description")
+    final_tech = generation_content.get("inferred_preferred_technology", [])
+
+    final_budget = proposal_input.get("client_budget", proposal_input.get("budget", 0))
+    timeline_val = proposal_input.get("timeline_weeks", proposal_input.get("timeline", "TBD"))
+    final_timeline = f"{timeline_val} Weeks" if str(timeline_val).isnumeric() else str(timeline_val)
+
+    estimated_cost = proposal_input.get("estimated_cost", final_budget)
+    selected_resources = proposal_input.get("selected_resources", [])
+    resource_requirements = proposal_input.get("resource_requirements", [])
+    recommended_budget = proposal_input.get("recommended_budget", final_budget)
+    is_within_budget = proposal_input.get("is_within_budget", True)
+    budget_variance = proposal_input.get("budget_variance_usd", 0)
+    
+    if not is_within_budget:
+        return {
+            "proposal_id": proposal_input.get("proposal_id"),
+            "possible": False,
+            "description": (
+                "The requested project cannot be delivered within the client's "
+                "specified budget. Please increase the budget or reduce the scope."
+            ),
+            "estimated_cost": estimated_cost,
+            "client_budget": final_budget,
+            "recommended_budget": recommended_budget,
+            "budget_variance_usd": budget_variance,
+            "mvp": None,
+            "full": None
+        }
 
     # 3. Create ProposalRequest record in the database
     proposal_request = ProposalRequest(
@@ -149,26 +343,23 @@ async def generate_proposals_for_request(
 
     # 4. Generate MVP Proposal
     mvp_data = generation_content["mvp"]
-    # Run resource matching for MVP
-    # mvp_match_payload = {
-    #     "proposal_id": f"PROP-MVP-{uuid.uuid4().hex[:6].upper()}",
-    #     "project_name": f"{final_project_name} (MVP)",
-    #     "timeline_weeks": mvp_data["estimated_duration_weeks"],
-    #     "client_budget": final_budget * 0.5, # Assume MVP budget is a fraction of target budget
-    #     "resource_requirements": mvp_data["resource_requirements"]
-    # }
-    # mvp_estimate = match_resources(mvp_match_payload)
-    
+    mvp_input = proposal_input.get("mvp", {})
+    mvp_cost = mvp_input.get("total_project_cost", estimated_cost)
+
     mvp_proposal = Proposal(
         id=uuid.uuid4(),
         request_id=proposal_request.id,
         proposal_type=ProposalType.MVP,
         tech_stack=mvp_data["tech_stack"],
-        # estimated_cost=mvp_estimate["total_project_cost"],
-        estimated_cost=final_budget * 0.5,
+        estimated_cost=mvp_cost,
+        selected_resources={
+            "resource_requirements": mvp_input.get("resource_requirements", resource_requirements),
+            "selected_resources": mvp_input.get("selected_resources", selected_resources),
+            "developer_cost": mvp_input.get("developer_cost", proposal_input.get("developer_cost")),
+            "company_static_cost": proposal_input.get("company_static_cost"),
+            "total_project_cost": mvp_cost
+        },
         estimated_duration=f"{mvp_data['estimated_duration_weeks']} Weeks",
-        # selected_resources={"resources": mvp_estimate["selected_resources"]},
-        selected_resources={},
         scope=mvp_data["scope"],
         assumptions=mvp_data["assumptions"],
         risks=mvp_data["risks"],
@@ -179,41 +370,25 @@ async def generate_proposals_for_request(
     )
     db.add(mvp_proposal)
 
-    # Save MVP Resource Allocations
-    # for res in mvp_estimate["selected_resources"]:
-    #     alloc = ResourceAllocation(
-    #         id=uuid.uuid4(),
-    #         proposal_id=mvp_proposal.id,
-    #         employee_id=uuid.UUID(res["employee_id"]),
-    #         role=res["role"],
-    #         allocated_hours=res["allocated_hours"],
-    #         duration_weeks=mvp_data["estimated_duration_weeks"],
-    #         estimated_cost=res["estimated_cost"]
-    #     )
-    #     db.add(alloc)
-
     # 5. Generate Full Product Proposal
     full_data = generation_content["full"]
-    # Run resource matching for Full Product
-    # full_match_payload = {
-    #     "proposal_id": f"PROP-FULL-{uuid.uuid4().hex[:6].upper()}",
-    #     "project_name": final_project_name,
-    #     "timeline_weeks": full_data["estimated_duration_weeks"],
-    #     "client_budget": final_budget,
-    #     "resource_requirements": full_data["resource_requirements"]
-    # }
-    # full_estimate = match_resources(full_match_payload)
+    full_input = proposal_input.get("full_project", {})
+    full_cost = full_input.get("total_project_cost", estimated_cost)
     
     full_proposal = Proposal(
         id=uuid.uuid4(),
         request_id=proposal_request.id,
         proposal_type=ProposalType.FULL,
         tech_stack=full_data["tech_stack"],
-        # estimated_cost=full_estimate["total_project_cost"],
-        estimated_cost=final_budget,
+        estimated_cost=full_cost,
+        selected_resources={
+            "resource_requirements": full_input.get("resource_requirements", resource_requirements),
+            "selected_resources": full_input.get("selected_resources", selected_resources),
+            "developer_cost": full_input.get("developer_cost", proposal_input.get("developer_cost")),
+            "company_static_cost": proposal_input.get("company_static_cost"),
+            "total_project_cost": full_cost
+        },
         estimated_duration=f"{full_data['estimated_duration_weeks']} Weeks",
-        # selected_resources={"resources": full_estimate["selected_resources"]},
-        selected_resources={},
         scope=full_data["scope"],
         assumptions=full_data["assumptions"],
         risks=full_data["risks"],
@@ -224,71 +399,74 @@ async def generate_proposals_for_request(
     )
     db.add(full_proposal)
 
-    # Save Full Product Resource Allocations
-    # for res in full_estimate["selected_resources"]:
-    #     alloc = ResourceAllocation(
-    #         id=uuid.uuid4(),
-    #         proposal_id=full_proposal.id,
-    #         employee_id=uuid.UUID(res["employee_id"]),
-    #         role=res["role"],
-    #         allocated_hours=res["allocated_hours"],
-    #         duration_weeks=full_data["estimated_duration_weeks"],
-    #         estimated_cost=res["estimated_cost"]
-    #     )
-    #     db.add(alloc)
-
     proposal_request.status = ProposalRequestStatus.COMPLETED
     db.commit()
+    
+    def sanitize_resources(resources_dict):
+        if not resources_dict:
+            return {}
+        sanitized = resources_dict.copy()
+        if "selected_resources" in sanitized:
+            sanitized["selected_resources"] = [
+                {"role": r.get("role", "")} for r in sanitized["selected_resources"] if isinstance(r, dict)
+            ]
+        sanitized.pop("developer_cost", None)
+        sanitized.pop("company_static_cost", None)
+        return sanitized
 
-    return {
+    response_data = {
         "proposal_request_id": str(proposal_request.id),
         "project_name": final_project_name,
         "project_description": final_desc,
         "business_domain": final_domain,
         "preferred_technology": final_tech,
-        "budget": final_budget,
+        "client_budget": final_budget,
+        "recommended_budget": recommended_budget,
+        "estimated_cost": estimated_cost,
         "timeline": final_timeline,
+        "key_differences": generation_content.get("key_differences", []),
         "proposals": [
-            # {
-            #     "id": str(mvp_proposal.id),
-            #     "proposal_type": mvp_proposal.proposal_type.value,
-            #     "tech_stack": mvp_proposal.tech_stack,
-            #     "estimated_cost": float(mvp_proposal.estimated_cost),
-            #     "estimated_duration": mvp_proposal.estimated_duration,
-            #     "selected_resources": mvp_proposal.selected_resources,
-            #     "scope": mvp_proposal.scope,
-            #     "assumptions": mvp_proposal.assumptions,
-            #     "risks": mvp_proposal.risks,
-            #     "status": mvp_proposal.status.value,
-            #     "timeline_phases": mvp_proposal.timeline_phases
-            # },
             {
                 "id": str(mvp_proposal.id),
                 "proposal_type": mvp_proposal.proposal_type.value,
+                "executive_summary": mvp_data.get("executive_summary", ""),
                 "tech_stack": mvp_proposal.tech_stack,
-                "estimated_cost": float(mvp_proposal.estimated_cost),
+                "architecture": mvp_data.get("architecture", ""),
+                "estimated_cost": mvp_cost,
                 "estimated_duration": mvp_proposal.estimated_duration,
+                "selected_resources": sanitize_resources(mvp_proposal.selected_resources),
                 "scope": mvp_proposal.scope,
+                "key_features": mvp_data.get("key_features", []),
+                "deliverables": mvp_data.get("deliverables", []),
                 "assumptions": mvp_proposal.assumptions,
                 "risks": mvp_proposal.risks,
+                "acceptance_criteria": mvp_data.get("acceptance_criteria", []),
                 "status": mvp_proposal.status.value,
-                "timeline_phases": mvp_proposal.timeline_phases
+                "timeline_phases": mvp_proposal.timeline_phases,
             },
             {
                 "id": str(full_proposal.id),
                 "proposal_type": full_proposal.proposal_type.value,
+                "executive_summary": full_data.get("executive_summary", ""),
                 "tech_stack": full_proposal.tech_stack,
-                "estimated_cost": float(full_proposal.estimated_cost),
+                "architecture": full_data.get("architecture", ""),
+                "estimated_cost": full_cost,
                 "estimated_duration": full_proposal.estimated_duration,
-                "selected_resources": full_proposal.selected_resources,
+                "selected_resources": sanitize_resources(full_proposal.selected_resources),
                 "scope": full_proposal.scope,
+                "key_features": full_data.get("key_features", []),
+                "deliverables": full_data.get("deliverables", []),
                 "assumptions": full_proposal.assumptions,
                 "risks": full_proposal.risks,
+                "acceptance_criteria": full_data.get("acceptance_criteria", []),
                 "status": full_proposal.status.value,
-                "timeline_phases": full_proposal.timeline_phases
-            }
-        ]
+                "timeline_phases": full_proposal.timeline_phases,
+            },
+        ],
     }
+
+    print(response_data)
+    return response_data
 
 
 
