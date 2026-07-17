@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, MessageSquare, AlertTriangle, RefreshCw, ChevronRight, Mic } from 'lucide-react';
+import { Send, Sparkles, MessageSquare, AlertTriangle, RefreshCw, Mic } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
 let messageCounter = 0;
@@ -197,9 +197,9 @@ export default function NegotiationChat() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto font-sans">
+    <div className="max-w-4xl mx-auto font-sans w-full">
       {/* Conversation Thread */}
-      <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[460px]">
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[460px]">
 
         {/* Terminal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
@@ -317,44 +317,6 @@ export default function NegotiationChat() {
               <Send size={14} />
             </button>
           </form>
-        </div>
-      </div>
-
-      {/* Evolution History & Active Scope Overview */}
-      <div className="lg:col-span-4 flex flex-col justify-between bg-neutral-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[460px]">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-
-        <div>
-          <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-5">
-            <Sparkles size={16} className="text-primary-container animate-pulse" />
-            <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">Adjustment Changelog</h4>
-          </div>
-
-          <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
-            {negotiationHistory.map((item, idx) => (
-              <div key={idx} className="pb-3.5 border-b border-white/5 last:border-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary-container">{item.version}</span>
-                  <span className="text-[9px] text-neutral-400 font-semibold">{item.date}</span>
-                </div>
-                <div className="text-[11px] text-neutral-300 font-medium mt-1">
-                  {item.changeDescription}
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
-                  <span>By: {item.author}</span>
-                  <span className="text-white/80">${item.budget.toLocaleString()} • {item.timeline}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs">
-          <span className="text-neutral-400 font-medium">Negotiation State</span>
-          <span className="text-primary-container font-bold flex items-center">
-            Ready to Sign
-            <ChevronRight size={14} className="ml-0.5" />
-          </span>
         </div>
       </div>
     </div>
