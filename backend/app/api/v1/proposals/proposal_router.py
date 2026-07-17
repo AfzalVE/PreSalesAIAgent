@@ -31,6 +31,7 @@ class GenerateDemoRequest(BaseModel):
     preferred_technology: Optional[List[str]] = Field(default_factory=list, description="Technologies")
     budget: Optional[float] = Field(None, description="Budget Goals")
     timeline: Optional[str] = Field(None, description="Timeline Expectation")
+    existing_request_id: Optional[str] = Field(None, description="Existing Proposal Request UUID")
 
 from app.services.proposals.proposal_service import get_all_proposals_service, get_proposal_by_id_service
 

@@ -100,9 +100,9 @@ export default function Onboarding() {
       domain: finalDomain || "Custom Domain",
       description: formDescription,
       techStack: techArray,
-      budget: finalBudget || 75000,
-      timeline: finalTimeline || "12 Weeks",
-      estimatedTeam: finalWorkforce || 4
+      budget: finalBudget,
+      timeline: finalTimeline,
+      estimatedTeam: finalWorkforce
     });
 
     setIsGenerating(true);

@@ -9,7 +9,7 @@ from app.models.employee import Employee, EmploymentStatus, SkillLevel
 
 from app.core.dependencies import get_current_active_admin
 
-router = APIRouter(dependencies=[Depends(get_current_active_admin)])
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()

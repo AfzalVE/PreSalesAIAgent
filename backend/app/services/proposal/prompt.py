@@ -64,6 +64,9 @@ Generate ONLY the following JSON.
     "project_name": "",
     "executive_summary": "",
     "scope": "",
+    "estimated_cost": 0,
+    "estimated_duration": "",
+    "proposal_type": "",
     "tech_stack": {
         "Database": "",
         "Backend": "",
@@ -100,42 +103,47 @@ SECTION WRITING GUIDELINES
 
 1. Executive Summary
 
-Write a concise, professional point-wise (bulleted) summary (typically 5 to 8 bullet points, starting with "- ").
+Write 2–4 detailed paragraphs.
 
-The Executive Summary points should cover:
+The Executive Summary should include:
 
 • The client's business challenge.
 • Why the proposed software solution is required.
-• How Artificial Intelligence (AI) or primary engineering approaches improve the process.
+• How Artificial Intelligence (AI) improves the process.
 • The expected business outcomes.
-• High-level scalability, security, and hosting considerations.
+• Scalability, maintainability, and security considerations.
+• The overall implementation strategy.
+• Mention that the solution follows modern software engineering practices.
 
-This section should sound like a premium executive consulting brief.
+This section should sound like an executive consulting proposal.
+
+Avoid generic statements such as:
+
+"This proposal outlines..."
+
+Instead explain the business value.
 
 ----------------------------------------
 
 2. Proposed Solution & Scope
 
-Write a long , professional point wise description of the proposed solution and scope. Write this in a phase wise , like phase 1, phase2 etc. more than 5 to 6phase should be there. describe every phase in long format every phase should be in detail. "Phase 1", Phase 2" .... the phase should be in bold like point heading and under that the phase description should be there in detailed long paragraph. Under every heading write a detailed professional paragraph of at least 500 to 1000. 
-like this - 
+Write 4–6 detailed paragraphs.
 
-**Phase X: Title**
+Describe:
 
-**Phase X: Title**
+• Complete functional scope.
+• User workflow.
+• Major modules.
+• Artificial Intelligence capabilities.
+• Authentication.
+• Resource allocation.
+• Proposal generation workflow.
+• Reporting.
+• Administrative features.
+• Integration possibilities.
+• Future scalability.
 
-long description here.
-now write every phase like this. every phase should be very long in detailed paragraph , according to scenario you can add bullet points in that . the description should be very good quality.
-
-The team will also analyze existing workflows, identify user roles and permissions, define system behavior, and document any business rules or constraints. All gathered requirements will be reviewed, prioritized, and compiled into a detailed Software Requirements Specification (SRS) document. This document will serve as the foundation for the design and development phases, ensuring that the final solution aligns with the client's business goals and delivers a secure, reliable, and user-friendly healthcare platform.
-
-
-The scope points should describe:
-
-• Core functional scope and modules.
-• Primary user workflow.
-• Application security and authentication.
-• Core data management and reporting.
-• Key integrations or administrative panels.
+The reader should clearly understand how the system will work from start to finish.
 
 ----------------------------------------
 
@@ -229,7 +237,7 @@ The timeline should match the estimated project duration.
 
 5. Assumptions
 
-Write 6–10 professional assumptions in bullet points in long format.
+Write 6–10 professional assumptions.
 
 These should include
 
@@ -253,7 +261,7 @@ Deployment approvals
 
 6. Risks & Mitigation
 
-Write 6–10 realistic risks in bullet points in long format.
+Write 6–10 realistic risks.
 
 For every risk include its mitigation strategy.
 

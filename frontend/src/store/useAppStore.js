@@ -58,6 +58,8 @@ export const useAppStore = create((set, get) => ({
 
   isDemoReady: false,
   setIsDemoReady: (ready) => set({ isDemoReady: ready }),
+  generatedDemos: [],
+  setGeneratedDemos: (demos) => set({ generatedDemos: demos }),
 
   // Proposals & Stages
   proposalStages: { ...MOCK_PROPOSAL_STAGES },
@@ -143,7 +145,7 @@ export const useAppStore = create((set, get) => ({
 
     try {
       const token = store.user?.accessToken;
-      const response = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/resource-allocation/match`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -201,7 +203,7 @@ Timeline: ${store.projectData.timeline}`;
     try {
       const token = store.user?.accessToken;
       // 1. Call ai-agent/extract-requirements
-      const extractionResponse = await fetch("http://localhost:8000/api/v1/ai-agent/extract-requirements", {
+      const extractionResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/ai-agent/extract-requirements`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -229,7 +231,7 @@ Timeline: ${store.projectData.timeline}`;
         resource_requirements: extractionData.resource_requirements || []
       };
 
-      const matchingResponse = await fetch("http://localhost:8000/api/v1/resource-allocation/match", {
+      const matchingResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/resource-allocation/match`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -259,7 +261,7 @@ Timeline: ${store.projectData.timeline}`;
         ...matchingData
       };
 
-      const generationResponse = await fetch("http://localhost:8000/api/v1/proposals/generate-demo", {
+      const generationResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/generate-demo`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -309,7 +311,7 @@ Timeline: ${store.projectData.timeline}`;
   selectProposalFromBackend: async (proposalId) => {
     try {
       const token = get().user?.accessToken;
-      const response = await fetch(`http://localhost:8000/api/v1/proposals/${proposalId}/select`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${proposalId}/select`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -351,19 +353,19 @@ Timeline: ${store.projectData.timeline}`;
       return null;
     };
 
-    safeFetch("http://localhost:8000/api/v1/admin/dashboard-stats").then((statsData) => {
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/dashboard-stats`).then((statsData) => {
       if (statsData !== null) set({ dashboardStats: statsData });
     });
-    safeFetch("http://localhost:8000/api/v1/proposals/all").then((propsData) => {
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/all`).then((propsData) => {
       if (propsData !== null) set({ adminProposals: propsData });
     });
-    safeFetch("http://localhost:8000/api/v1/employees").then((empsData) => {
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees`).then((empsData) => {
       if (empsData !== null) set({ employees: empsData });
     });
-    safeFetch("http://localhost:8000/api/v1/users").then((usersData) => {
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users`).then((usersData) => {
       if (usersData !== null) set({ usersList: usersData });
     });
-    safeFetch("http://localhost:8000/api/v1/admin/otp-logs").then((logsData) => {
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/otp-logs`).then((logsData) => {
       if (logsData !== null) set({ otpLogs: logsData });
     });
 
@@ -373,7 +375,7 @@ Timeline: ${store.projectData.timeline}`;
   updateEmployeeOnBackend: async (empId, updatedFields) => {
     try {
       const token = get().user?.accessToken;
-      const response = await fetch(`http://localhost:8000/api/v1/employees/${empId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees/${empId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -394,7 +396,7 @@ Timeline: ${store.projectData.timeline}`;
   toggleUserStatusOnBackend: async (email) => {
     try {
       const token = get().user?.accessToken;
-      const response = await fetch(`http://localhost:8000/api/v1/users/${email}/toggle-status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${email}/toggle-status`, {
         method: "PUT",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -411,7 +413,7 @@ Timeline: ${store.projectData.timeline}`;
   verifyUserOnBackend: async (email) => {
     try {
       const token = get().user?.accessToken;
-      const response = await fetch(`http://localhost:8000/api/v1/users/${email}/verify`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${email}/verify`, {
         method: "PUT",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });

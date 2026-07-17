@@ -35,7 +35,7 @@ async def generate_proposals_for_request(
     feasibility. The AI only generates the proposal content and must not
     modify any financial values.
     """
-    print(f"======================PROPOSAL INPUT {proposal_input}")
+
     if proposal_input is None:
         proposal_input = {}
     proposal_input.update(kwargs)
