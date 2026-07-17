@@ -1,9 +1,11 @@
 import { ShieldAlert, UserCheck, ArrowLeft } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import JourneyStepper from "../common/JourneyStepper";
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar({ isAdmin = false, onToggleMode }) {
   const { activeStep, setActiveStep } = useAppStore();
+  const navigate = useNavigate();
 
   const handleBack = () => {
     if (activeStep === 2) {
@@ -19,7 +21,10 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
     <header className="sticky top-0 z-50 w-full py-4 px-4 sm:px-8 border-b border-outline-variant/20 bg-surface/80 backdrop-blur-md shadow-sm">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo & Back Button */}
-        <div className="flex items-center space-x-2.5">
+        <div 
+          onClick={() => navigate("/")} 
+          className="flex items-center space-x-2.5 cursor-pointer hover:opacity-95 select-none"
+        >
           <img
             src="/ve.png"
             alt="Pre Sales Platform"

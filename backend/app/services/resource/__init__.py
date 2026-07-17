@@ -11,7 +11,6 @@ from .cost_estimation import (
     ResourceRequirement,
     SelectedResource,
     ProjectEstimate,
-    FIXED_COMPANY_STATIC_COST,
 )
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "ResourceRequirement",
     "SelectedResource",
     "ProjectEstimate",
-    "FIXED_COMPANY_STATIC_COST",
 ]
