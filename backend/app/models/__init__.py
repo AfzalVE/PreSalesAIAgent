@@ -7,3 +7,4 @@ from .proposal import Proposal
 from .final_proposal import FinalProposal
 from .poc_document import POCDocument
 from .ai_conversation import AIConversation
+from .client_employee_chat import ClientEmployeeChat
