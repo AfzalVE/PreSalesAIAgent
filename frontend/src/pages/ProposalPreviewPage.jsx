@@ -247,6 +247,86 @@ export default function ProposalPreviewPage() {
           </div>
 
           {/* ======================================================= */}
+          {/* Detailed Budget Breakdown & Team Allocation */}
+          {/* ======================================================= */}
+          {proposal?.selected_resources?.selected_resources && proposal.selected_resources.selected_resources.length > 0 && (
+            <div className="space-y-6 pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign size={20} className="text-primary" />
+                  <h2 className="text-xl font-bold">
+                    Detailed Budget Breakdown
+                  </h2>
+                </div>
+                <div className="text-sm font-semibold text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">
+                  Total Team: {proposal.selected_resources.selected_resources.length} Experts
+                </div>
+              </div>
+              <p className="text-sm text-neutral-500 max-w-3xl">
+                This section provides granular proof of the estimated budget, derived from the exact hourly rate and duration allocation of each developer selected for your project.
+              </p>
+              <div className="grid lg:grid-cols-2 gap-5">
+                {proposal.selected_resources.selected_resources.map((dev, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ y: -2 }}
+                    className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-6 relative overflow-hidden group hover:border-primary/30 transition-all"
+                  >
+                    <div className="absolute top-0 right-0 bg-primary/10 text-primary px-4 py-1.5 rounded-bl-2xl font-bold text-sm border-b border-l border-primary/10">
+                      ${Number(dev.estimated_cost).toLocaleString()}
+                    </div>
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-neutral-100 to-neutral-200 flex items-center justify-center flex-shrink-0 text-xl font-black text-neutral-400 border border-neutral-200/60 shadow-inner group-hover:from-primary/10 group-hover:to-primary/5 group-hover:text-primary transition-colors">
+                        {dev.name?.charAt(0) || "D"}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-neutral-900 leading-tight">{dev.name}</h3>
+                        <p className="text-sm text-primary font-semibold mt-0.5">{dev.role}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 mt-1 font-bold">ID: {dev.employee_id?.split('-')[0] || "N/A"}</p>
+                      </div>
+                    </div>
+                    <div className="mt-5 space-y-4">
+                      <div className="grid grid-cols-2 gap-4 bg-neutral-50 p-3 rounded-xl border border-neutral-100/50">
+                        <div>
+                          <p className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+                            Experience
+                          </p>
+                          <p className="font-semibold text-neutral-800 mt-1">
+                            {dev.experience_years}+ Years
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-widest text-neutral-400 font-semibold">
+                            Rate
+                          </p>
+                          <p className="font-semibold text-neutral-800 mt-1">
+                            ${dev.hourly_cost}/hr
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-widest text-neutral-400 font-semibold mb-2">
+                          Core Skills
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {(dev.skills || []).map((skill, skillIndex) => (
+                            <span
+                              key={skillIndex}
+                              className="px-3 py-1 rounded-full bg-white border border-neutral-200 text-neutral-700 text-xs font-semibold shadow-sm"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================= */}
           {/* Executive Summary */}
           {/* ======================================================= */}
           {proposal?.executive_summary && (

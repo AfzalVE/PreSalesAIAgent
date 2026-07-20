@@ -403,12 +403,9 @@ Do not include any additional text.
         if not resources_dict:
             return {}
         sanitized = resources_dict.copy()
-        if "selected_resources" in sanitized:
-            sanitized["selected_resources"] = [
-                {"role": r.get("role", "")} for r in sanitized["selected_resources"] if isinstance(r, dict)
-            ]
-        sanitized.pop("developer_cost", None)
-        sanitized.pop("company_static_cost", None)
+        # Keep full selected_resources for frontend detailed breakdown proof
+        # sanitized.pop("developer_cost", None)
+        # sanitized.pop("company_static_cost", None)
         return sanitized
 
     response_data = {
