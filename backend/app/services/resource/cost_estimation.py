@@ -53,6 +53,8 @@
 #     bench_status: bool
 #     global_bench: bool
 #     estimated_cost: float = 0.0
+#     experience_years: int = 0
+#     skills: List[str] = field(default_factory=list)
 
 
 # @dataclass
@@ -470,6 +472,8 @@
 #                     bench_status=emp["bench_status"],
 #                     global_bench=emp["global_bench"],
 #                     estimated_cost=estimated_cost,
+#                     experience_years=emp["experience"],
+#                     skills=emp["skills"],
 #                 )
 #             )
 
@@ -495,6 +499,8 @@
 #                 "bench_status": dev.bench_status,
 #                 "global_bench": dev.global_bench,
 #                 "estimated_cost": round(dev.estimated_cost, 2),
+#                 "experience_years": dev.experience_years,
+#                 "skills": dev.skills,
 #             }
 #         )
 
@@ -682,6 +688,8 @@ class SelectedResource:
     bench_status: bool
     global_bench: bool
     estimated_cost: float = 0.0
+    experience_years: int = 0
+    skills: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -1161,6 +1169,8 @@ def allocate_resources(
                     bench_status=emp["bench_status"],
                     global_bench=emp["global_bench"],
                     estimated_cost=estimated_cost,
+                    experience_years=emp["experience"],
+                    skills=emp["skills"],
                 )
             )
 
@@ -1186,6 +1196,8 @@ def _estimate_to_json(estimate: ProjectEstimate, timeline_weeks: int, resource_r
                 "bench_status": dev.bench_status,
                 "global_bench": dev.global_bench,
                 "estimated_cost": round(dev.estimated_cost, 2),
+                "experience_years": dev.experience_years,
+                "skills": dev.skills,
             }
         )
 
