@@ -70,6 +70,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://postcanonical-joy-nonradiating.ngrok-free.dev",
+    "https://presalesaiagent-1.onrender.com",
 ]
 
 app.add_middleware(
