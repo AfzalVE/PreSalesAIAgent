@@ -118,12 +118,12 @@ export default function Onboarding() {
           interimTranscript += event.results[i][0].transcript;
         }
       }
-      
+
       const newText = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript + interimTranscript;
       setFormDescription(newText);
-      
+
       if (finalTranscript) {
-         finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
+        finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
       }
     };
 
@@ -292,11 +292,10 @@ export default function Onboarding() {
               <button
                 type="button"
                 onClick={handleVoiceClick}
-                className={`absolute bottom-2.5 right-2.5 p-1.5 rounded-full transition-colors ${
-                  isListening 
-                    ? "bg-red-100 text-red-500 animate-pulse" 
+                className={`absolute bottom-2.5 right-2.5 p-1.5 rounded-full transition-colors ${isListening
+                    ? "bg-red-100 text-red-500 animate-pulse"
                     : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
+                  }`}
                 title={isListening ? "Stop listening" : "Start voice dictation"}
               >
                 <Mic size={16} />
@@ -337,7 +336,7 @@ export default function Onboarding() {
               {formBudget === "Custom" && (
                 <input
                   type="number"
-                  required
+
                   value={customBudget}
                   onChange={(e) => setCustomBudget(e.target.value)}
                   placeholder="Enter custom budget ($)..."
@@ -365,7 +364,7 @@ export default function Onboarding() {
               {formTimeline === "Custom" && (
                 <input
                   type="text"
-                  required
+
                   value={customTimeline}
                   onChange={(e) => setCustomTimeline(e.target.value)}
                   placeholder="e.g. 30 Weeks or 6 Months..."
@@ -393,7 +392,7 @@ export default function Onboarding() {
                 <input
                   type="number"
                   min="1"
-                  required
+
                   value={customWorkforce}
                   onChange={(e) => setCustomWorkforce(e.target.value)}
                   placeholder="Enter number of developers..."
