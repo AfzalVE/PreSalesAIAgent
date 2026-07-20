@@ -319,6 +319,18 @@ export default function ProposalPreviewPage() {
                           ))}
                         </div>
                       </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg">
+                          5-Day Contact Trial Active
+                        </div>
+                        <button
+                          onClick={() => navigate(`/client/resource-contact?employeeId=${dev.employee_id}&employeeName=${encodeURIComponent(dev.name)}&role=${encodeURIComponent(dev.role)}`)}
+                          className="px-3.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          Connect with {dev.name?.split(" ")[0]}
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 ))}

@@ -20,6 +20,7 @@ import ProposalPreviewPage from "./pages/ProposalPreviewPage";
 import Negotiation from "./pages/Negotiation";
 import FinalApproval from "./pages/FinalApproval";
 import ClientPortal from "./pages/ClientPortal";
+import ResourceContactPage from "./pages/ResourceContactPage";
 
 import AdminPortal from "./pages/AdminPortal";
 import AdminLogin from "./pages/AdminLogin";
@@ -96,6 +97,10 @@ function App() {
           <Route
             path="/proposal-preview"
             element={<ClientProtectedRoute><ProposalPreviewPage /></ClientProtectedRoute>}
+          />
+          <Route
+            path="/client/resource-contact"
+            element={<ClientProtectedRoute><ResourceContactPage /></ClientProtectedRoute>}
           />
           <Route path="/broker" element={<ClientProtectedRoute><Negotiation /></ClientProtectedRoute>} />
           <Route path="/sign" element={<ClientProtectedRoute><FinalApproval /></ClientProtectedRoute>} />
