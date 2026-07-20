@@ -784,7 +784,7 @@ def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
                     "global_bench": bool(dev.global_bench),
                 }
             )
-
+        print("Employees:", employees)
         return employees
 
     finally:
@@ -887,6 +887,7 @@ def filter_candidates(
             tier1.append(emp)
 
     if tier1:
+        print(tier1)
         return tier1
 
     # Tier 2: Role match + experience (relaxing skill check)
@@ -895,6 +896,7 @@ def filter_candidates(
         if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
             tier2.append(emp)
     if tier2:
+        print(tier2)
         return tier2
 
     # Tier 3: Domain / synonym role match (relaxing experience requirements if exact level not available)
@@ -903,6 +905,7 @@ def filter_candidates(
         if is_role_match(emp["role"]):
             tier3.append(emp)
     if tier3:
+        print(tier3)
         return tier3
 
     # Tier 4: Skill match (if role wording differed but required skills match e.g. Python/FastAPI)
@@ -914,6 +917,7 @@ def filter_candidates(
             if any(req_s in emp_skills_lower for req_s in req_skills_lower):
                 tier4.append(emp)
         if tier4:
+            print(tier4)
             return tier4
 
     return []
@@ -979,6 +983,7 @@ def rank_candidates(
                 emp["hourly_cost"],
             )
         )
+    print("Ranked candidates:", candidates)
     return candidates
 
 
