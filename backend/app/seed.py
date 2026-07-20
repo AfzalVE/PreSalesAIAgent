@@ -16,6 +16,7 @@ from app.models.resource_allocation import ResourceAllocation
 from app.models.final_proposal import FinalProposal
 from app.models.poc_document import POCDocument
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
+from app.models.client_employee_chat import ClientEmployeeChat
 
 # Password hashing helper
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -27,6 +28,7 @@ def clean_database(db: Session):
     print("🧹 Cleaning existing data in correct dependency order...")
     # Order: AIConversation -> POCDocument -> FinalProposal -> ResourceAllocation -> Proposal -> ProposalRequest -> EmailOTP -> User -> Employee
     db.query(AIConversation).delete()
+    db.query(ClientEmployeeChat).delete()
     db.query(POCDocument).delete()
     db.query(FinalProposal).delete()
     db.query(ResourceAllocation).delete()
@@ -149,7 +151,9 @@ def seed_data():
             employment_status=EmploymentStatus.ACTIVE,
             skill_names="Python, FastAPI, PostgreSQL, AWS, Docker",
             skill_level=SkillLevel.EXPERT,
-            years_experience=8
+            years_experience=8,
+            password="1234",
+            pdf_path=None
         )
         employee_2 = Employee(
             id=uuid.uuid4(),
@@ -167,7 +171,9 @@ def seed_data():
             employment_status=EmploymentStatus.ACTIVE,
             skill_names="React, TypeScript, Next.js, Tailwind CSS, HTML5/CSS3",
             skill_level=SkillLevel.EXPERT,
-            years_experience=6
+            years_experience=6,
+            password="1234",
+            pdf_path=None
         )
         employee_3 = Employee(
             id=uuid.uuid4(),
@@ -185,7 +191,9 @@ def seed_data():
             employment_status=EmploymentStatus.ACTIVE,
             skill_names="AWS, Kubernetes, System Design, Microservices, Security",
             skill_level=SkillLevel.EXPERT,
-            years_experience=12
+            years_experience=12,
+            password="1234",
+            pdf_path=None
         )
         employee_4 = Employee(
             id=uuid.uuid4(),
@@ -203,7 +211,9 @@ def seed_data():
             employment_status=EmploymentStatus.ACTIVE,
             skill_names="Selenium, PyTest, Playwright, CI/CD, Postman",
             skill_level=SkillLevel.INTERMEDIATE,
-            years_experience=4
+            years_experience=4,
+            password="1234",
+            pdf_path=None
         )
         employee_5 = Employee(
             id=uuid.uuid4(),
@@ -221,7 +231,9 @@ def seed_data():
             employment_status=EmploymentStatus.ACTIVE,
             skill_names="Terraform, Docker, CI/CD GitHub Actions, Penetration Testing, OAuth",
             skill_level=SkillLevel.INTERMEDIATE,
-            years_experience=5
+            years_experience=5,
+            password="1234",
+            pdf_path=None
         )
         db.add_all([employee_1, employee_2, employee_3, employee_4, employee_5])
         db.flush()
@@ -647,6 +659,66 @@ def seed_data():
             )
         ]
         db.add_all(convs)
+        
+        # Seed ClientEmployeeChats
+        print("💬 Seeding Client-Employee Chats...")
+        chats = [
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_1.id,
+                employee_name=employee_1.full_name,
+                client_id=client_user.id,
+                sender="CLIENT",
+                message="Hi, I looked at the technical proposal. Will we use Python for the API?",
+                timestamp=datetime.utcnow() - timedelta(minutes=45)
+            ),
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_1.id,
+                employee_name=employee_1.full_name,
+                client_id=client_user.id,
+                sender="EMPLOYEE",
+                message="Yes Alice! We are planning to build the API using Python and FastAPI. It provides high performance and asynchronous support out-of-the-box, which fits Acme's scalability needs.",
+                timestamp=datetime.utcnow() - timedelta(minutes=43)
+            ),
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_1.id,
+                employee_name=employee_1.full_name,
+                client_id=client_user.id,
+                sender="CLIENT",
+                message="Excellent. What about the database migration strategy? We have a lot of legacy users.",
+                timestamp=datetime.utcnow() - timedelta(minutes=40)
+            ),
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_1.id,
+                employee_name=employee_1.full_name,
+                client_id=client_user.id,
+                sender="EMPLOYEE",
+                message="We will use Alembic for smooth version-controlled migrations. I will also write a custom data-seeding pipeline to safely map legacy data columns into the new schema without any downtime.",
+                timestamp=datetime.utcnow() - timedelta(minutes=38)
+            ),
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_2.id,
+                employee_name=employee_2.full_name,
+                client_id=client_user.id,
+                sender="CLIENT",
+                message="Hello! We want a highly responsive interface with motion effects. Is React/Tailwind suitable?",
+                timestamp=datetime.utcnow() - timedelta(days=1)
+            ),
+            ClientEmployeeChat(
+                id=uuid.uuid4(),
+                employee_id=employee_2.id,
+                employee_name=employee_2.full_name,
+                client_id=client_user.id,
+                sender="EMPLOYEE",
+                message="Hi Charlie, absolutely! React combined with Tailwind CSS allows us to build extremely fast components with custom micro-animations (using Framer Motion or GSAP). It will look very premium.",
+                timestamp=datetime.utcnow() - timedelta(days=1, minutes=58)
+            )
+        ]
+        db.add_all(chats)
         
         # Commit all transitions
         db.commit()
