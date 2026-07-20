@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   RefreshCw,
   X,
+  Menu,
   Sparkles,
   ShieldCheck,
   DollarSign,
@@ -83,6 +84,7 @@ export default function Landing({ onAdminClick }) {
   const navigate = useNavigate();
 
   const [activeNav, setActiveNav] = useState("platform");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Single entrance validation
   const [entranceInput, setEntranceInput] = useState("");
   const [isValidEntrance, setIsValidEntrance] = useState(false);
@@ -622,7 +624,7 @@ export default function Landing({ onAdminClick }) {
               About
             </button>
           </div>
-          <div className="flex items-center flex-wrap gap-2 sm:gap-3 justify-end ml-auto">
+          <div className="hidden md:flex items-center flex-wrap gap-2 sm:gap-3 justify-end ml-auto">
             {user?.isVerified ? (
               <>
                 <span className="text-xs font-semibold text-navy-accent bg-neutral-100 px-2.5 sm:px-3 py-1.5 rounded-lg border border-neutral-200 truncate max-w-[150px] sm:max-w-none">
@@ -666,7 +668,96 @@ export default function Landing({ onAdminClick }) {
               </>
             )}
           </div>
+
+          <div className="md:hidden flex items-center ml-auto">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-navy-accent">
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-outline-variant/20 shadow-lg p-4 flex flex-col gap-4 animate-in slide-in-from-top-2 z-50">
+            <div className="flex flex-col gap-2 border-b border-outline-variant/20 pb-4">
+              <button
+                onClick={() => {
+                  setActiveNav("platform");
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`text-left font-body-md font-semibold py-2 transition-colors ${activeNav === "platform" ? "text-primary" : "text-on-surface-variant"}`}
+              >
+                Platform
+              </button>
+              <button
+                onClick={() => {
+                  setActiveNav("services");
+                  document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`text-left font-body-md font-semibold py-2 transition-colors ${activeNav === "services" ? "text-primary" : "text-on-surface-variant"}`}
+              >
+                Services
+              </button>
+              <button
+                onClick={() => {
+                  setActiveNav("about");
+                  document.getElementById('footer')?.scrollIntoView({ behavior: 'smooth' });
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`text-left font-body-md font-semibold py-2 transition-colors ${activeNav === "about" ? "text-primary" : "text-on-surface-variant"}`}
+              >
+                About
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              {user?.isVerified ? (
+                <>
+                  <span className="text-sm font-semibold text-navy-accent bg-neutral-100 px-3 py-2 rounded-lg border border-neutral-200">
+                    {user.fullName || user.emailOrPhone}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (user.role === "super-admin" || user.emailOrPhone?.toLowerCase().includes("superadmin")) {
+                        navigate("/super-admin-dashboard");
+                      } else if (user.role === "admin") {
+                        navigate("/admin");
+                      } else {
+                        navigate("/client-portal");
+                      }
+                    }}
+                    className="bg-primary-container text-navy-accent px-4 py-2 rounded-lg font-button-text shadow-sm hover:shadow-md transition-all font-semibold text-sm w-full text-center"
+                  >
+                    Client Dashboard
+                  </button>
+                  <button
+                    onClick={resetStore}
+                    className="border border-red-200 bg-red-50 text-red-700 px-4 py-2 rounded-lg font-button-text hover:bg-red-100 transition-all font-semibold text-sm shadow-sm hover:shadow-md w-full text-center"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { navigate("/admin/login"); setIsMobileMenuOpen(false); }}
+                    className="border border-outline/30 bg-white px-4 py-2.5 rounded-lg font-button-text hover:bg-neutral-50 transition-all text-navy-accent font-medium shadow-sm w-full text-center"
+                  >
+                    Admin Login
+                  </button>
+                  <button
+                    onClick={() => { triggerAuthFlow("register"); setIsMobileMenuOpen(false); }}
+                    className="bg-primary-container text-navy-accent px-4 py-2.5 rounded-lg font-button-text shadow-sm hover:shadow-md transition-all font-bold text-sm w-full text-center"
+                  >
+                    Get Started
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
       <main className="relative z-10">
