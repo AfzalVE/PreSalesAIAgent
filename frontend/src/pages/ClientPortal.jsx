@@ -15,6 +15,8 @@ import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import FloatingBackground from "../components/common/FloatingBackground";
 import AnimatedCard from "../components/common/AnimatedCard";
+// Access it directly where you need it
+const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function ClientPortal() {
   const { activeProposal, projectData, resetStore, updateProjectData } =
@@ -108,7 +110,7 @@ export default function ClientPortal() {
 
       // 1. Fetch Proposal Requests from database for THIS logged-in user
       const reqsRes = await fetch(
-        `http://127.0.0.1:8000/api/v1/proposal-requests${queryString}`,
+        `${API}/api/v1/proposal-requests${queryString}`,
       );
       if (reqsRes.ok) {
         const reqsData = await reqsRes.json();
@@ -126,15 +128,15 @@ export default function ClientPortal() {
                 : "Draft",
           createdDate: req.created_at
             ? new Date(req.created_at).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
             : new Date().toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              }),
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
           tech: Array.isArray(req.preferred_technology)
             ? req.preferred_technology.join(", ")
             : req.preferred_technology || "React, Node.js, PostgreSQL",
@@ -149,18 +151,18 @@ export default function ClientPortal() {
 
       // 2. Fetch Proposals from database for THIS logged-in user
       const propsRes = await fetch(
-        `http://127.0.0.1:8000/api/v1/proposals/all${queryString}`,
+        `${API}/api/v1/proposals/all${queryString}`,
       );
       if (propsRes.ok) {
         const propsData = await propsRes.json();
         if (propsData && Array.isArray(propsData)) {
           const filteredProps = currentUserEmail
             ? propsData.filter(
-                (p) =>
-                  !p.clientEmail ||
-                  p.clientEmail.toLowerCase() ===
-                    currentUserEmail.toLowerCase(),
-              )
+              (p) =>
+                !p.clientEmail ||
+                p.clientEmail.toLowerCase() ===
+                currentUserEmail.toLowerCase(),
+            )
             : propsData;
           useAppStore.setState({ adminProposals: filteredProps });
         }
@@ -213,7 +215,7 @@ export default function ClientPortal() {
 
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/api/v1/proposal-requests",
+        `${API}/api/v1/proposal-requests`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -282,7 +284,7 @@ export default function ClientPortal() {
 
   const handleDeleteRequest = async (id) => {
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/proposal-requests/${id}`, {
+      await fetch(`${API}/api/v1/proposal-requests/${id}`, {
         method: "DELETE",
       });
       setRequestsList((prev) => prev.filter((r) => r.id !== id));
@@ -296,7 +298,7 @@ export default function ClientPortal() {
     setChatRequestId(req.id);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/api/v1/proposal-requests/${req.id}/conversations`,
+        `${API}/api/v1/proposal-requests/${req.id}/conversations`,
       );
       if (res.ok) {
         const convos = await res.json();
@@ -339,7 +341,7 @@ export default function ClientPortal() {
       }
 
       const res = await fetch(
-        "http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements",
+        `${API}/api/v1/ai-agent/extract-requirements`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -431,9 +433,9 @@ export default function ClientPortal() {
     Math.max(
       0,
       totalRequestsCount -
-        requestsList.filter(
-          (r) => r.status === "Approved" || r.status === "COMPLETED",
-        ).length,
+      requestsList.filter(
+        (r) => r.status === "Approved" || r.status === "COMPLETED",
+      ).length,
     ) +
     clientProposals.filter(
       (p) => p.status !== "Approved" && p.status !== "Completed",
@@ -504,11 +506,10 @@ export default function ClientPortal() {
                 }
                 setActiveTab(tab.id);
               }}
-              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                activeTab === tab.id
-                  ? "text-neutral-900 font-bold"
-                  : "text-neutral-500 hover:text-neutral-900"
-              }`}
+              className={`relative px-4 py-2 rounded-xl transition-colors duration-200 cursor-pointer whitespace-nowrap flex-shrink-0 ${activeTab === tab.id
+                ? "text-neutral-900 font-bold"
+                : "text-neutral-500 hover:text-neutral-900"
+                }`}
             >
               {activeTab === tab.id && (
                 <motion.div
@@ -747,11 +748,10 @@ export default function ClientPortal() {
                           </td>
                           <td className="py-4">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${
-                                req.status === "Approved"
-                                  ? "bg-primary-container/40 text-primary border border-primary-container"
-                                  : "bg-neutral-100 text-neutral-500"
-                              }`}
+                              className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${req.status === "Approved"
+                                ? "bg-primary-container/40 text-primary border border-primary-container"
+                                : "bg-neutral-100 text-neutral-500"
+                                }`}
                             >
                               {req.status}
                             </span>
@@ -804,11 +804,10 @@ export default function ClientPortal() {
                   <button
                     key={req.id}
                     onClick={() => handleSelectChatRequest(req)}
-                    className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${
-                      chatRequestId === req.id
-                        ? "border-primary bg-primary-container/20 ring-1 ring-primary"
-                        : "border-neutral-100"
-                    }`}
+                    className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${chatRequestId === req.id
+                      ? "border-primary bg-primary-container/20 ring-1 ring-primary"
+                      : "border-neutral-100"
+                      }`}
                   >
                     <span className="font-body-md text-sm font-semibold text-navy-accent block">
                       {req.name}
@@ -840,11 +839,10 @@ export default function ClientPortal() {
                     className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${
-                        msg.sender === "user"
-                          ? "bg-neutral-900 text-white rounded-tr-none"
-                          : "bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none"
-                      }`}
+                      className={`max-w-[80%] px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${msg.sender === "user"
+                        ? "bg-neutral-900 text-white rounded-tr-none"
+                        : "bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none"
+                        }`}
                     >
                       {msg.text}
                     </div>
@@ -877,11 +875,10 @@ export default function ClientPortal() {
                   <button
                     type="button"
                     onClick={toggleVoiceRecording}
-                    className={`p-2.5 rounded-xl transition-all duration-200 relative ${
-                      isRecordingVoice
-                        ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
-                        : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
-                    }`}
+                    className={`p-2.5 rounded-xl transition-all duration-200 relative ${isRecordingVoice
+                      ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
+                      : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                      }`}
                     title="Speak to Broker"
                   >
                     {isRecordingVoice && (
@@ -976,7 +973,7 @@ export default function ClientPortal() {
                       onClick={() => {
                         const token = user?.accessToken;
                         window.open(
-                          `http://127.0.0.1:8000/api/v1/proposals/${demo.id}/export${token ? `?token=${token}` : ""}`,
+                          `${API}/api/v1/proposals/${demo.id}/export${token ? `?token=${token}` : ""}`,
                           "_blank",
                         );
                       }}

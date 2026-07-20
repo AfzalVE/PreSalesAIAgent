@@ -88,7 +88,7 @@ export const MOCK_EMPLOYEES = [
 ];
 
 export const MOCK_SKILLS = [
-  "React", "TypeScript", "Node.js", "Python", "OpenAI API", "AWS", "Docker", "Figma", 
+  "React", "TypeScript", "Node.js", "Python", "OpenAI API", "AWS", "Docker", "Figma",
   "Kubernetes", "GraphQL", "Tailwind CSS", "Terraform", "PostgreSQL", "Cypress"
 ];
 
@@ -226,16 +226,16 @@ export const MOCK_PROPOSAL_STAGES = {
   }
 };
 
-export const MOCK_NEGOTIATION_HISTORY = [
-  {
-    version: "v1.0",
-    date: "14 Jul 2026",
-    budget: 75000,
-    timeline: "12 Weeks",
-    author: "AI Proposal Agent",
-    changeDescription: "Initial automatic proposal generation (Growth Engine)."
-  }
-];
+// export const MOCK_NEGOTIATION_HISTORY = [
+//   {
+//     version: "v1.0",
+//     date: "14 Jul 2026",
+//     budget: 75000,
+//     timeline: "12 Weeks",
+//     author: "AI Proposal Agent",
+//     changeDescription: "Initial automatic proposal generation (Growth Engine)."
+//   }
+// ];
 
 export const MOCK_ADMIN_PROPOSALS = [
   {

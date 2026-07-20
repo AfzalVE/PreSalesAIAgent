@@ -4,6 +4,7 @@ import { Mic, MicOff, Sparkles, Loader2, ArrowRight } from "lucide-react";
 import WaveformVisualizer from "./WaveformVisualizer";
 import { useAppStore } from "../../store/useAppStore";
 
+const API = import.meta.env.VITE_API_BASE_URL;
 export default function VoiceRecorder({ onComplete }) {
   const { updateProjectData } = useAppStore();
   const [isRecording, setIsRecording] = useState(false);
@@ -95,7 +96,7 @@ export default function VoiceRecorder({ onComplete }) {
       }
 
       const res = await fetch(
-        "http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements",
+        `${API}/api/v1/ai-agent/extract-requirements`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -141,9 +142,9 @@ export default function VoiceRecorder({ onComplete }) {
           : extractedData.timeline,
         estimatedTeam: data.resource_requirements
           ? data.resource_requirements.reduce(
-              (acc, curr) => acc + curr.count,
-              0,
-            )
+            (acc, curr) => acc + curr.count,
+            0,
+          )
           : 0,
       });
     } catch (err) {
@@ -181,11 +182,10 @@ export default function VoiceRecorder({ onComplete }) {
               className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  chat.sender === "user"
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${chat.sender === "user"
                     ? "bg-neutral-900 text-white font-medium rounded-tr-none"
                     : "bg-neutral-50 text-neutral-800 border border-neutral-200/60 rounded-tl-none"
-                }`}
+                  }`}
               >
                 {chat.text}
               </div>
@@ -222,11 +222,10 @@ export default function VoiceRecorder({ onComplete }) {
               whileTap={{ scale: 0.95 }}
               onClick={startVoiceCapture}
               disabled={isAiThinking}
-              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
-                isRecording
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${isRecording
                   ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
                   : "bg-brand-500 hover:bg-brand-600 text-white cursor-pointer disabled:opacity-50"
-              }`}
+                }`}
             >
               {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
             </motion.button>
@@ -327,11 +326,10 @@ export default function VoiceRecorder({ onComplete }) {
             Status
           </span>
           <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded ${
-              extractedData.complexity === "Evaluating..."
+            className={`text-xs font-semibold px-2 py-0.5 rounded ${extractedData.complexity === "Evaluating..."
                 ? "bg-white/10 text-neutral-300"
                 : "bg-brand-500 text-neutral-900 font-bold"
-            }`}
+              }`}
           >
             {extractedData.complexity}
           </span>

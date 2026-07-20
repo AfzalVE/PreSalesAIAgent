@@ -9,6 +9,8 @@ import {
   Mic,
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
+// Access it directly where you need it
+const API = import.meta.env.VITE_API_BASE_URL;
 
 let messageCounter = 0;
 const generateMessageId = (sender) => `msg-${sender}-${++messageCounter}`;
@@ -153,7 +155,7 @@ export default function NegotiationChat() {
       }
 
       const response = await fetch(
-        "http://127.0.0.1:8000/api/v1/ai-agent/extract-requirements",
+        `${API}/api/v1/ai-agent/extract-requirements`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -209,10 +211,10 @@ export default function NegotiationChat() {
       ]);
 
       if (data.ready_for_proposal_generation) {
-         if (data.proposal_data) {
-            setProposalData(data.proposal_data);
-            useAppStore.getState().setIsDemoReady(true);
-         }
+        if (data.proposal_data) {
+          setProposalData(data.proposal_data);
+          useAppStore.getState().setIsDemoReady(true);
+        }
       }
     } catch (err) {
       console.error("API error, falling back to simulation:", err);
@@ -243,7 +245,7 @@ export default function NegotiationChat() {
       {/* Conversation Thread */}
       <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between h-[600px]">
         {/* Terminal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+        <div className="flex items-center justify-between pb-6 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
             <MessageSquare size={16} className="text-primary" />
             <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
@@ -256,7 +258,7 @@ export default function NegotiationChat() {
         </div>
 
         {/* Chat Feed */}
-        <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1 max-h-[300px]">
+        <div className="flex-1 overflow-y-auto my-2 space-y-4 pr-1 max-h-[300px]">
           {messages.map((msg) => {
             const isLatest = messages[messages.length - 1].id === msg.id;
             const shouldStream =
@@ -278,8 +280,8 @@ export default function NegotiationChat() {
                 <div className="max-w-[80%] flex flex-col">
                   <div
                     className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm border ${msg.sender === "user"
-                        ? "bg-neutral-900 text-white font-medium rounded-tr-none border-transparent"
-                        : "bg-primary/5 text-neutral-800 rounded-tl-none border-primary/10"
+                      ? "bg-neutral-900 text-white font-medium rounded-tr-none border-transparent"
+                      : "bg-primary/5 text-neutral-800 rounded-tl-none border-primary/10"
                       }`}
                   >
                     {shouldStream ? (
@@ -331,7 +333,7 @@ export default function NegotiationChat() {
 
         {/* Quick Suggestion buttons */}
         <div className="pt-2">
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* <div className="flex flex-wrap gap-2 mb-4">
             {SUGGESTIONS.map((sug) => (
               <button
                 key={sug}
@@ -342,7 +344,7 @@ export default function NegotiationChat() {
                 {sug}
               </button>
             ))}
-          </div>
+          </div> */}
 
           {/* Form input */}
           <form
@@ -367,8 +369,8 @@ export default function NegotiationChat() {
               disabled={isProcessing}
               onClick={toggleMic}
               className={`p-2.5 rounded-xl transition-all duration-200 disabled:opacity-40 relative ${isRecording
-                  ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
-                  : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
+                : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
                 }`}
               title="Speak to Broker"
             >
@@ -402,44 +404,44 @@ export default function NegotiationChat() {
 
           return proposalData ? (
             <div className="flex flex-col h-full z-10 relative">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-              <div className="flex items-center space-x-2">
-                <Sparkles size={16} className="text-primary-container animate-pulse" />
-                <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
-                  Generated Proposal
-                </h4>
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                <div className="flex items-center space-x-2">
+                  <Sparkles size={16} className="text-primary-container animate-pulse" />
+                  <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
+                    Generated Proposal
+                  </h4>
+                </div>
+                <div className="flex space-x-1 bg-neutral-800 p-1 rounded-lg">
+                  <button
+                    onClick={() => setActiveTab("mvp")}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'mvp' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  >
+                    MVP
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("full")}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'full' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                  >
+                    FULL
+                  </button>
+                </div>
               </div>
-              <div className="flex space-x-1 bg-neutral-800 p-1 rounded-lg">
-                <button 
-                  onClick={() => setActiveTab("mvp")}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'mvp' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  MVP
-                </button>
-                <button 
-                  onClick={() => setActiveTab("full")}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${activeTab === 'full' ? 'bg-primary text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
-                >
-                  FULL
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6 text-xs text-neutral-300 custom-scrollbar pb-20">
-              {activeTab === "mvp" && mvpProposal && (
-                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 text-xs text-neutral-300 custom-scrollbar pb-20">
+                {activeTab === "mvp" && mvpProposal && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
                       <p className="text-[11px] leading-relaxed opacity-90">{mvpProposal.executive_summary}</p>
                     </div>
-                    
+
                     {mvpProposal.scope && (
                       <div>
                         <h5 className="text-primary-container font-bold mb-2">Scope</h5>
                         <p className="text-[11px] leading-relaxed opacity-90">{mvpProposal.scope}</p>
                       </div>
                     )}
-                    
+
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Key Features</h5>
                       <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
@@ -496,21 +498,21 @@ export default function NegotiationChat() {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
-                         <div className="font-semibold text-white">{mvpProposal.estimated_duration}</div>
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
+                        <div className="font-semibold text-white">{mvpProposal.estimated_duration}</div>
                       </div>
                       <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Cost</div>
-                         <div className="font-semibold text-white">${mvpProposal.estimated_cost?.toLocaleString()}</div>
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Cost</div>
+                        <div className="font-semibold text-white">${mvpProposal.estimated_cost?.toLocaleString()}</div>
                       </div>
                     </div>
-                 </div>
-              )}
-              {activeTab === "full" && fullProposal && (
-                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+                  </div>
+                )}
+                {activeTab === "full" && fullProposal && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
                       <p className="text-[11px] leading-relaxed opacity-90">{fullProposal.executive_summary}</p>
@@ -522,7 +524,7 @@ export default function NegotiationChat() {
                         <p className="text-[11px] leading-relaxed opacity-90">{fullProposal.scope}</p>
                       </div>
                     )}
-                    
+
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Key Features</h5>
                       <ul className="list-disc pl-4 space-y-1 text-[11px] opacity-90">
@@ -579,115 +581,121 @@ export default function NegotiationChat() {
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="bg-white/5 p-3 rounded-xl border border-white/10">
-                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
-                         <div className="font-semibold text-white">{fullProposal.estimated_duration}</div>
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Timeline</div>
+                        <div className="font-semibold text-white">{fullProposal.estimated_duration}</div>
                       </div>
                       <div className="bg-white/5 p-3 rounded-xl border border-white/10 overflow-hidden">
-                         <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Architecture</div>
-                         <div className="font-semibold text-white leading-snug">{fullProposal.architecture}</div>
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Architecture</div>
+                        <div className="font-semibold text-white leading-snug">{fullProposal.architecture}</div>
                       </div>
                     </div>
-                 </div>
-              )}
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 pt-4 pb-2 border-t border-white/10 flex items-center justify-end z-20">
-              {(() => {
-                const targetProposal = activeTab === 'mvp' ? mvpProposal : fullProposal;
-                const isFinalized = targetProposal && finalizedProposals[targetProposal.id];
-
-                return isFinalized ? (
-                  <button 
-                    className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!targetProposal?.id) return;
-                      const token = user?.accessToken;
-                      window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${targetProposal.id}/download${token ? `?token=${token}` : ""}`;
-                    }}
-                  >
-                    Download POC
-                  </button>
-                ) : (
-                  <button 
-                    className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition shadow-lg shadow-primary/20"
-                    onClick={async () => {
-                      if (!targetProposal) return;
-                      try {
-                        const res = await fetch(`http://127.0.0.1:8000/api/v1/proposals/${targetProposal.id}/select`, {
-                          method: "POST"
-                        });
-                        if (res.ok) {
-                          setFinalizedProposals(prev => ({ ...prev, [targetProposal.id]: true }));
-                        } else {
-                          alert("Failed to create Final POC.");
-                        }
-                      } catch (e) {
-                        alert("Error calling endpoint");
-                      }
-                    }}
-                  >
-                    Create Final POC
-                  </button>
-                );
-              })()}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="z-10 relative">
-              <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-5">
-                <Sparkles
-                  size={16}
-                  className="text-primary-container animate-pulse"
-                />
-                <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
-                  Adjustment Changelog
-                </h4>
-              </div>
-
-              <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
-                {negotiationHistory.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="pb-3.5 border-b border-white/5 last:border-0"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-primary-container">
-                        {item.version}
-                      </span>
-                      <span className="text-[9px] text-neutral-400 font-semibold">
-                        {item.date}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-neutral-300 font-medium mt-1">
-                      {item.changeDescription}
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
-                      <span>By: {item.author}</span>
-                      <span className="text-white/80">
-                        ${item.budget.toLocaleString()} • {item.timeline}
-                      </span>
-                    </div>
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 bg-neutral-900 pt-4 pb-2 border-t border-white/10 flex items-center justify-end z-20">
+                {(() => {
+                  const targetProposal = activeTab === 'mvp' ? mvpProposal : fullProposal;
+                  const isFinalized = targetProposal && finalizedProposals[targetProposal.id];
+
+                  return isFinalized ? (
+                    <button
+                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (!targetProposal?.id) return;
+                        const token = user?.accessToken;
+                        window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${targetProposal.id}/download${token ? `?token=${token}` : ""}`;
+                      }}
+                    >
+                      Download POC
+                    </button>
+                  ) : (
+                    <button
+                      className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+                      onClick={async () => {
+                        if (!targetProposal) return;
+                        try {
+                          const res = await fetch(`${API}/api/v1/proposals/${targetProposal.id}/select`, {
+                            method: "POST"
+                          });
+                          if (res.ok) {
+                            setFinalizedProposals(prev => ({ ...prev, [targetProposal.id]: true }));
+                          } else {
+                            alert("Failed to create Final POC.");
+                          }
+                        } catch (e) {
+                          alert("Error calling endpoint");
+                        }
+                      }}
+                    >
+                      Create Final POC
+                    </button>
+                  );
+                })()}
               </div>
             </div>
+          ) : (
+            <>
+              <div className="z-10 relative">
+                <div className="flex items-center space-x-2 pb-4 border-b border-white/10 mb-5">
+                  <Sparkles
+                    size={16}
+                    className="text-primary-container animate-pulse"
+                  />
+                  <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wider">
+                    Adjustment Changelog
+                  </h4>
+                </div>
 
-            <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs z-10 relative">
-              <span className="text-neutral-400 font-medium">
-                Negotiation State
-              </span>
-              <span className="text-primary-container font-bold flex items-center">
-                Ready to Sign
-                <ChevronRight size={14} className="ml-0.5" />
-              </span>
-            </div>
-          </>
-        );
+                <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
+                  {negotiationHistory.length > 0 ? (
+                    negotiationHistory.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="pb-3.5 border-b border-white/5 last:border-0"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-primary-container">
+                            {item.version}
+                          </span>
+                          <span className="text-[9px] text-neutral-400 font-semibold">
+                            {item.date}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-neutral-300 font-medium mt-1">
+                          {item.changeDescription}
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
+                          <span>By: {item.author}</span>
+                          <span className="text-white/80">
+                            ${item.budget.toLocaleString()} • {item.timeline}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-neutral-400 italic text-center py-4">
+                      generated proposals will appear here
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs z-10 relative">
+                <span className="text-neutral-400 font-medium">
+                  Review Proposals
+                </span>
+                {/* <span className="text-primary-container font-bold flex items-center">
+                  Ready to Sign
+                  <ChevronRight size={14} className="ml-0.5" />
+                </span> */}
+              </div>
+            </>
+          );
         })()}
       </div>
     </div>

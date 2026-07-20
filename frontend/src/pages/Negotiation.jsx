@@ -41,8 +41,8 @@ export default function Negotiation() {
       estimated_duration: currentTimeline.includes("Week") ? `${Math.max(2, Math.round(parseInt(currentTimeline) * 0.5))} Weeks` : "6 Weeks",
       tech_stack: currentTech,
       timeline_phases: [
-        {"Phase": "Architecture Setup", "Duration": "2 Weeks", "Output": "System Architecture"},
-        {"Phase": "Core Feature Development", "Duration": "4 Weeks", "Output": "MVP codebase"}
+        { "Phase": "Architecture Setup", "Duration": "2 Weeks", "Output": "System Architecture" },
+        { "Phase": "Core Feature Development", "Duration": "4 Weeks", "Output": "MVP codebase" }
       ],
       assumptions: "Standard server environment",
       risks: "Potential delays in third-party API integration",
@@ -63,9 +63,9 @@ export default function Negotiation() {
       estimated_duration: currentTimeline,
       tech_stack: currentTech,
       timeline_phases: [
-        {"Phase": "Design & Setup", "Duration": "3 Weeks", "Output": "UI/UX Layout"},
-        {"Phase": "Core Backend Engine", "Duration": "6 Weeks", "Output": "REST API Layer"},
-        {"Phase": "Deploy & Launch", "Duration": "3 Weeks", "Output": "Production Environment"}
+        { "Phase": "Design & Setup", "Duration": "3 Weeks", "Output": "UI/UX Layout" },
+        { "Phase": "Core Backend Engine", "Duration": "6 Weeks", "Output": "REST API Layer" },
+        { "Phase": "Deploy & Launch", "Duration": "3 Weeks", "Output": "Production Environment" }
       ],
       assumptions: "Continuous deployment access",
       risks: "Scale and database query constraints",
@@ -128,7 +128,7 @@ export default function Negotiation() {
         <NegotiationChat />
 
         {/* Confirmation bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-neutral-200/80 rounded-2xl shadow-soft gap-4 max-w-4xl mx-auto">
+        {/* <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-white border border-neutral-200/80 rounded-2xl shadow-soft gap-4 max-w-4xl mx-auto">
           <div className="text-center sm:text-left">
             <span className="text-[10px] uppercase font-bold text-neutral-400">Current Validated Blueprint</span>
             <div className="text-sm font-bold text-neutral-800 mt-0.5">
@@ -162,7 +162,7 @@ export default function Negotiation() {
               )}
             </button>
           </div>
-        </div>
+        </div> */}
 
       </div>
     </div>

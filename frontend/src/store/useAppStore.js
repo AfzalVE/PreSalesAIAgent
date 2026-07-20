@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { MOCK_PROPOSAL_STAGES, MOCK_NEGOTIATION_HISTORY, MOCK_EMPLOYEES, MOCK_ADMIN_PROPOSALS } from '../mock/mockData';
+import { MOCK_PROPOSAL_STAGES, MOCK_EMPLOYEES, MOCK_ADMIN_PROPOSALS } from '../mock/mockData';
 
 const INITIAL_PROJECT_DATA = {
   name: '',
@@ -67,7 +67,7 @@ export const useAppStore = create((set, get) => ({
 
   // Active (negotiated) versions
   activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
-  negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
+  negotiationHistory: [],
   negotiationError: '',
   jsonPocs: {
     extraction: null,
@@ -438,7 +438,7 @@ Timeline: ${store.projectData.timeline}`;
       projectData: { ...INITIAL_PROJECT_DATA },
       selectedProposalStage: 'growth',
       activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
-      negotiationHistory: [...MOCK_NEGOTIATION_HISTORY],
+      negotiationHistory: [],
       negotiationError: ''
     });
   },
