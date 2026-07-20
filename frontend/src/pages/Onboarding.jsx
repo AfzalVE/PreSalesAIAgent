@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
 
@@ -109,13 +110,14 @@ export default function Onboarding() {
     try {
       const res = await generateProposalsFromBackend();
       if (res.success) {
+        toast.success("Proposals generated successfully!");
         navigate('/proposal-preview');
       } else {
-        alert("Failed to generate proposals: " + res.error);
+        toast.error("Failed to generate proposals: " + res.error);
       }
     } catch (err) {
       console.error(err);
-      alert("Error occurred while generating proposals.");
+      toast.error("Error occurred while generating proposals.");
     } finally {
       setIsGenerating(false);
     }

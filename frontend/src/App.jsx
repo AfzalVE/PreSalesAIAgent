@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 import { useAppStore } from "./store/useAppStore";
 
@@ -60,6 +61,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
+      <Toaster position="top-right" />
       {(activeStep > 0 || isAdmin) && (
         <Navbar
           isAdmin={isAdmin}

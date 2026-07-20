@@ -740,6 +740,7 @@ def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
     Returns a plain list of dictionaries so the matching
     logic remains independent of SQLAlchemy ORM instances.
     """
+    print("Fetching employee for calculating budget")
     close_db_when_done = False
     if db is None:
         db = SessionLocal()

@@ -279,10 +279,13 @@ Timeline: ${store.projectData.timeline}`;
           generation: generationData
         }
       }));
+      if (generationData.possible === false) {
+        return { success: false, error: generationData.description || "Project not possible within constraints." };
+      }
 
       // 4. Update activeProposal with raw backend data
-      const mvpProposal = generationData.proposals.find(p => p.proposal_type === "MVP");
-      const fullProposal = generationData.proposals.find(p => p.proposal_type === "FULL");
+      const mvpProposal = generationData.proposals?.find(p => p.proposal_type === "MVP");
+      const fullProposal = generationData.proposals?.find(p => p.proposal_type === "FULL");
 
       const rawProposal = {
         inferred_project_name: generationData.project_name,
