@@ -6,7 +6,7 @@ from app.models.enums import UserRole
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     full_name: str | None = None
     phone: str | None = None
@@ -18,7 +18,7 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     user_id: UUID
     full_name: str
-    email: EmailStr
+    email: str
     role: UserRole
 
 
@@ -33,7 +33,7 @@ class OTPRequiredResponse(BaseModel):
     token_type: str | None = "bearer"
     user_id: UUID | None = None
     full_name: str | None = None
-    email: EmailStr | None = None
+    email: str | None = None
     role: UserRole | None = None
 
 

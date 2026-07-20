@@ -31,21 +31,36 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
     Step 1: Verify email/password + role, then generate and email an OTP.
     Returns a pending_token to be used in step 2 (verify_login_otp).
     """
-    user = db.query(User).filter(User.email == credentials.email).first()
+    login_identifier = credentials.email.strip()
+    is_phone = "@" not in login_identifier and any(c.isdigit() for c in login_identifier)
+
+    if is_phone:
+        actual_email = f"{login_identifier.replace(' ', '').replace('+', '')}@phone-auth.local"
+        user = db.query(User).filter(
+            (User.phone == login_identifier) | (User.email == actual_email)
+        ).first()
+    else:
+        actual_email = login_identifier
+        user = db.query(User).filter(User.email == actual_email).first()
 
     if not user:
         import uuid
         default_role = allowed_roles[0] if allowed_roles else UserRole.CLIENT
-        default_name = credentials.full_name or credentials.email.split('@')[0].capitalize()
+        
+        if is_phone:
+            default_name = credentials.full_name or f"User{str(uuid.uuid4())[:4]}"
+        else:
+            default_name = credentials.full_name or actual_email.split('@')[0].capitalize()
+            
         user = User(
             id=uuid.uuid4(),
-            email=credentials.email,
+            email=actual_email,
             full_name=default_name,
             password_hash=get_password_hash(credentials.password),
             role=default_role,
-            is_verified=False,
-            is_verification_required=True,
-            phone=credentials.phone,
+            is_verified=True,
+            is_verification_required=False,
+            phone=credentials.phone or (login_identifier if is_phone else None),
             company_name=credentials.company_name,
         )
         db.add(user)

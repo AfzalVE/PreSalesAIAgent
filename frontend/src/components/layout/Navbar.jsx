@@ -51,6 +51,13 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
                 {user.fullName || user.emailOrPhone}
               </span>
               <button
+                onClick={() => navigate("/profile")}
+                className="text-xl cursor-pointer hover:scale-110 transition-transform mr-1"
+                title="Profile"
+              >
+                👤
+              </button>
+              <button
                 onClick={() => {
                   if (user.role === "super-admin" || user.emailOrPhone?.toLowerCase().includes("superadmin")) {
                     navigate("/super-admin-dashboard");

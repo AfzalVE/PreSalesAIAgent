@@ -102,6 +102,7 @@ export default function Landing({ onAdminClick }) {
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Register Form
+  const [isPhone, setIsPhone] = useState(false);
   const [regFullName, setRegFullName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regCountryCode, setRegCountryCode] = useState("US +1");
@@ -186,15 +187,24 @@ export default function Landing({ onAdminClick }) {
         setView("login");
       } else {
         setRegEmail(entranceInput);
-        setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
         setView("register");
       }
     } catch (err) {
       setRegEmail(entranceInput);
-      setRegPhone(entranceInput.match(/^\+?[0-9]/) ? entranceInput : "");
       setView("register");
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (regEmail) {
+        setIsPhone(!regEmail.includes('@') && /\d/.test(regEmail));
+      } else {
+        setIsPhone(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [regEmail]);
 
   const startOtpResendTimer = () => {
     setOtpResendTimer(30);
@@ -270,8 +280,8 @@ export default function Landing({ onAdminClick }) {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!regFullName || !regEmail || !regPhone || !regPassword || !isNotRobot) {
-      setError("Please complete all fields and confirm you are not a robot.");
+    if (!regEmail || !regPassword || !isNotRobot || (isPhone && !regFullName)) {
+      setError("Please complete all required fields and confirm you are not a robot.");
       return;
     }
     setError("");
@@ -283,9 +293,9 @@ export default function Landing({ onAdminClick }) {
         body: JSON.stringify({
           email: regEmail,
           password: regPassword,
-          full_name: regFullName,
-          phone: regCountryCode + " " + regPhone,
-          company_name: regCompanyName
+          full_name: isPhone ? regFullName : "",
+          phone: isPhone ? regEmail : "",
+          company_name: ""
         })
       });
       const data = await response.json();
@@ -2154,71 +2164,36 @@ export default function Landing({ onAdminClick }) {
                     <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
                       <div>
                         <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          Full Name
+                          Email or Phone Number
                         </label>
                         <input
                           type="text"
-                          required
-                          value={regFullName}
-                          onChange={(e) => setRegFullName(e.target.value)}
-                          placeholder="John Doe"
-                          className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          Work Email
-                        </label>
-                        <input
-                          type="email"
                           required
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="name@company.com"
+                          placeholder="name@company.com or (555) 000-0000"
                           className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                         />
                       </div>
 
-                      <div>
-                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          Company Name <span className="text-neutral-400 font-normal lowercase">(optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={regCompanyName}
-                          onChange={(e) => setRegCompanyName(e.target.value)}
-                          placeholder="Acme Corp"
-                          className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                          Phone Number
-                        </label>
-                        <div className="flex h-10 overflow-hidden rounded-md border border-[#e5e5e5] bg-white focus-within:border-2 focus-within:border-[#00d4a4]">
-                          <select
-                            value={regCountryCode}
-                            onChange={(e) => setRegCountryCode(e.target.value)}
-                            className="w-[104px] shrink-0 border-0 border-r border-[#e5e5e5] bg-[#f7f7f7] px-2.5 font-body-md text-sm font-semibold text-[#0a0a0a] outline-none focus:ring-0"
-                          >
-                            {countryCodes.map((country) => (
-                              <option key={country} value={country}>
-                                {country}
-                              </option>
-                            ))}
-                          </select>
+                      {isPhone && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                        >
+                          <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                            Username
+                          </label>
                           <input
-                            type="tel"
+                            type="text"
                             required
-                            value={regPhone}
-                            onChange={(e) => setRegPhone(e.target.value)}
-                            placeholder="(555) 000-0000"
-                            className="min-w-0 flex-1 border-0 bg-transparent px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none placeholder:text-[#a8a8aa] placeholder:font-normal focus:ring-0"
+                            value={regFullName}
+                            onChange={(e) => setRegFullName(e.target.value)}
+                            placeholder="Choose a username"
+                            className="h-10 w-full rounded-md border border-[#e5e5e5] bg-white px-3.5 font-body-md text-base font-medium text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] placeholder:font-normal focus:border-2 focus:border-[#00d4a4]"
                           />
-                        </div>
-                      </div>
+                        </motion.div>
+                      )}
 
                       <div>
                         <label className="mb-1 block font-label-caps text-xs font-bold uppercase tracking-[0.05em] text-[#3a3a3c]">
