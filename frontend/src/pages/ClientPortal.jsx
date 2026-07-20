@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   PlusCircle,
@@ -35,6 +35,74 @@ export default function ClientPortal() {
   const [newProjBudget, setNewProjBudget] = useState("");
   const [newProjTimeline, setNewProjTimeline] = useState("");
   const [newProjComm, setNewProjComm] = useState("Slack");
+
+  const recognitionModalRef = useRef(null);
+  const [isListeningModal, setIsListeningModal] = useState(false);
+
+  const handleModalVoiceClick = () => {
+    if (isListeningModal) {
+      if (recognitionModalRef.current) {
+        recognitionModalRef.current.stop();
+      }
+      setIsListeningModal(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in your browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = window.navigator.language || 'en-US';
+    recognitionModalRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListeningModal(true);
+    };
+
+    let finalTranscriptAtStart = newProjDesc;
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      const newText = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript + interimTranscript;
+      setNewProjDesc(newText);
+      
+      if (finalTranscript) {
+         finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      if (event.error === 'network') {
+        alert("Network Error: Speech recognition failed. This could be due to browser restrictions or network issues.");
+      } else if (event.error === 'not-allowed') {
+        alert("Microphone access denied. Please allow permissions in your browser.");
+      } else {
+        alert(`Speech recognition error: ${event.error}`);
+      }
+      setIsListeningModal(false);
+    };
+
+    recognition.onend = () => {
+      setIsListeningModal(false);
+    };
+
+    recognition.start();
+  };
 
   // Filtering states for requests list
   const [statusFilter, setStatusFilter] = useState("All");
@@ -1045,14 +1113,28 @@ export default function ClientPortal() {
                 <label className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant block mb-1">
                   Project Description
                 </label>
-                <textarea
-                  required
-                  value={newProjDesc}
-                  onChange={(e) => setNewProjDesc(e.target.value)}
-                  placeholder="Describe target features..."
-                  rows={3}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 outline-none focus:border-primary resize-none"
-                />
+                <div className="relative">
+                  <textarea
+                    required
+                    value={newProjDesc}
+                    onChange={(e) => setNewProjDesc(e.target.value)}
+                    placeholder="Describe target features..."
+                    rows={3}
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-3 outline-none focus:border-primary resize-none pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleModalVoiceClick}
+                    className={`absolute bottom-2.5 right-2.5 p-1.5 rounded-full transition-colors ${
+                      isListeningModal 
+                        ? "bg-red-100 text-red-500 animate-pulse" 
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    }`}
+                    title={isListeningModal ? "Stop listening" : "Start voice dictation"}
+                  >
+                    <Mic size={16} />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

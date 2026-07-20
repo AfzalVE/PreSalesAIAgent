@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ArrowLeft, ChevronRight, Loader2, Mic } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
@@ -60,6 +60,9 @@ export default function Onboarding() {
   const { updateProjectData, generateProposalsFromBackend } = useAppStore();
   const navigate = useNavigate();
 
+  const recognitionRef = useRef(null);
+  const [isListening, setIsListening] = useState(false);
+
   // Single-page form states
   const [formName, setFormName] = useState("");
   const [formDomain, setFormDomain] = useState("E-Commerce");
@@ -77,6 +80,71 @@ export default function Onboarding() {
   const [customWorkforce, setCustomWorkforce] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleVoiceClick = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice input is not supported in your browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = window.navigator.language || 'en-US';
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    let finalTranscriptAtStart = formDescription;
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      const newText = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript + interimTranscript;
+      setFormDescription(newText);
+      
+      if (finalTranscript) {
+         finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      if (event.error === 'network') {
+        toast.error("Network Error: Speech recognition failed. This could be due to browser restrictions or network issues.");
+      } else if (event.error === 'not-allowed') {
+        toast.error("Microphone access denied. Please allow permissions in your browser.");
+      } else {
+        toast.error(`Speech recognition error: ${event.error}`);
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   const handleSinglePageSubmit = async (e) => {
     e.preventDefault();
@@ -212,14 +280,28 @@ export default function Onboarding() {
             <label className="text-[11px] uppercase font-bold text-[#5a5a5c] tracking-wider mb-1.5 block">
               Project Description <span className="text-red-500">*</span>
             </label>
-            <textarea
-              required
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="Describe core features, user roles, or business goals..."
-              rows={4}
-              className="px-3 py-2.5 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] resize-none"
-            />
+            <div className="relative">
+              <textarea
+                required
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Describe core features, user roles, or business goals..."
+                rows={4}
+                className="px-3 py-2.5 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] resize-none pr-10"
+              />
+              <button
+                type="button"
+                onClick={handleVoiceClick}
+                className={`absolute bottom-2.5 right-2.5 p-1.5 rounded-full transition-colors ${
+                  isListening 
+                    ? "bg-red-100 text-red-500 animate-pulse" 
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+                title={isListening ? "Stop listening" : "Start voice dictation"}
+              >
+                <Mic size={16} />
+              </button>
+            </div>
           </div>
 
           <div>
