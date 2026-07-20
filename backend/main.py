@@ -27,13 +27,15 @@ async def lifespan(app: FastAPI):
     print("[DB] Creating database tables...")
     Base.metadata.create_all(bind=engine)
     
-    # Run manual migration for timeline_phases
+    # Run manual migration for timeline_phases and employee columns
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS timeline_phases JSONB"))
+            conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)"))
+            conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100)"))
             conn.commit()
-            print("[DB] Database migration: proposals.timeline_phases verified/created.")
+            print("[DB] Database migration: tables verified/created.")
     except Exception as e:
         print(f"[DB] Migration failed: {e}")
 

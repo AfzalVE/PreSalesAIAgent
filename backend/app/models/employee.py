@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean
 from sqlalchemy import DateTime
@@ -120,6 +120,16 @@ class Employee(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+    )
+
+    pdf_path: Mapped[Optional[str]] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    password: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
     )
 
     resource_allocations: Mapped[list["ResourceAllocation"]] = relationship(
