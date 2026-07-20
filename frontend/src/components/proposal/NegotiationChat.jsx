@@ -7,6 +7,10 @@ import {
   RefreshCw,
   ChevronRight,
   Mic,
+  DollarSign,
+  Clock3,
+  Briefcase,
+  Cpu,
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 // Access it directly where you need it
@@ -51,7 +55,6 @@ export default function NegotiationChat() {
     updateProjectData,
     user,
   } = useAppStore();
-
   const [inputPrompt, setInputPrompt] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [completedStreams, setCompletedStreams] = useState({});
@@ -72,7 +75,6 @@ export default function NegotiationChat() {
   const [proposalData, setProposalData] = useState(null);
   const [activeTab, setActiveTab] = useState("mvp");
   const [finalizedProposals, setFinalizedProposals] = useState({});
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing]);
@@ -213,6 +215,7 @@ export default function NegotiationChat() {
       if (data.ready_for_proposal_generation) {
         if (data.proposal_data) {
           setProposalData(data.proposal_data);
+          console.log(data.proposal_data, "proposal_data in NegotiationChat.jsx");
           useAppStore.getState().setIsDemoReady(true);
         }
       }
@@ -428,8 +431,131 @@ export default function NegotiationChat() {
               </div>
 
               <div className="flex-1 overflow-y-auto pr-2 space-y-6 text-xs text-neutral-300 custom-scrollbar pb-20">
+
+                {/* ======================================================= */}
+                {/* Project Overview & Preferred Technologies                */}
+                {/* Shown once above the MVP / FULL tab content, since these */}
+                {/* fields live at the top level of the proposal response.   */}
+                {/* ======================================================= */}
+                <div className="space-y-5 pb-5 border-b border-white/10">
+                  <div>
+                    <h5 className="text-primary-container font-bold mb-3 flex items-center gap-1.5">
+                      <Sparkles size={12} /> Project Overview
+                    </h5>
+                    <div className="grid grid-cols-2 gap-2.5 mb-3">
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Project Name</div>
+                        <div className="font-semibold text-white text-[11px]">{proposalData.project_name || "—"}</div>
+                      </div>
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Business Domain</div>
+                        <div className="font-semibold text-white text-[11px]">{proposalData.business_domain || "—"}</div>
+                      </div>
+                    </div>
+                    {proposalData.inferred_project_description && (
+                      <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                        <div className="text-[9px] text-neutral-400 uppercase tracking-wider font-bold mb-1">Description</div>
+                        <p className="text-[11px] leading-relaxed opacity-90">{proposalData.inferred_project_description}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {proposalData.preferred_technology && proposalData.preferred_technology.length > 0 && (
+                    <div>
+                      <h5 className="text-primary-container font-bold mb-2 flex items-center gap-1.5">
+                        <Cpu size={12} /> Preferred Technologies
+                      </h5>
+                      <div className="flex flex-wrap gap-1.5">
+                        {proposalData.preferred_technology.map((technology, index) => (
+                          <span
+                            key={index}
+                            className="px-2.5 py-1 rounded-full bg-primary/15 text-primary-container font-semibold text-[10px]"
+                          >
+                            {technology}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {activeTab === "mvp" && mvpProposal && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+
+                    {/* ======================================================= */}
+                    {/* Budget / Timeline / Type stat cards                     */}
+                    {/* ======================================================= */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <DollarSign size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Budget</div>
+                        <div className="font-bold text-white text-[11px]">${Number(mvpProposal.estimated_cost || 0).toLocaleString()}</div>
+                      </div>
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <Clock3 size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Timeline</div>
+                        <div className="font-bold text-white text-[11px]">{mvpProposal.estimated_duration}</div>
+                      </div>
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <Briefcase size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Type</div>
+                        <div className="font-bold text-white text-[11px]">{mvpProposal.proposal_type || "MVP"}</div>
+                      </div>
+                    </div>
+
+                    {/* ======================================================= */}
+                    {/* Detailed Budget Breakdown / Team Allocation             */}
+                    {/* ======================================================= */}
+                    {mvpProposal.selected_resources?.selected_resources?.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-primary-container font-bold flex items-center gap-1.5">
+                            <DollarSign size={12} /> Detailed Budget Breakdown
+                          </h5>
+                          <span className="text-[9px] font-semibold text-neutral-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                            {mvpProposal.selected_resources.selected_resources.length} Experts
+                          </span>
+                        </div>
+                        <div className="space-y-2.5">
+                          {mvpProposal.selected_resources.selected_resources.map((dev, index) => (
+                            <div key={index} className="bg-white/5 p-3 rounded-xl border border-white/10 relative">
+                              <div className="absolute top-2.5 right-3 text-primary-container font-bold text-[11px]">
+                                ${Number(dev.estimated_cost).toLocaleString()}
+                              </div>
+                              <div className="flex items-start gap-2.5 pr-14">
+                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-neutral-300">
+                                  {dev.name?.charAt(0) || "D"}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-white text-[11px] leading-tight">{dev.name}</div>
+                                  <div className="text-primary-container text-[10px] font-semibold">{dev.role}</div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-2.5 bg-white/5 rounded-lg p-2 border border-white/5">
+                                <div>
+                                  <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Experience</div>
+                                  <div className="text-[10px] font-semibold text-neutral-200">{dev.experience_years}+ Years</div>
+                                </div>
+                                <div>
+                                  <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Rate</div>
+                                  <div className="text-[10px] font-semibold text-neutral-200">${dev.hourly_cost}/hr</div>
+                                </div>
+                              </div>
+                              {dev.skills?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {dev.skills.map((skill, skillIndex) => (
+                                    <span key={skillIndex} className="px-2 py-0.5 rounded-full bg-white/10 text-neutral-200 text-[9px] font-semibold">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
                       <p className="text-[11px] leading-relaxed opacity-90">{mvpProposal.executive_summary}</p>
@@ -513,6 +639,81 @@ export default function NegotiationChat() {
                 )}
                 {activeTab === "full" && fullProposal && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-5">
+
+                    {/* ======================================================= */}
+                    {/* Budget / Timeline / Type stat cards                     */}
+                    {/* ======================================================= */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <DollarSign size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Budget</div>
+                        <div className="font-bold text-white text-[11px]">${Number(fullProposal.estimated_cost || 0).toLocaleString()}</div>
+                      </div>
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <Clock3 size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Timeline</div>
+                        <div className="font-bold text-white text-[11px]">{fullProposal.estimated_duration}</div>
+                      </div>
+                      <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 flex flex-col items-start gap-1">
+                        <Briefcase size={12} className="text-primary-container" />
+                        <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Type</div>
+                        <div className="font-bold text-white text-[11px]">{fullProposal.proposal_type || "FULL"}</div>
+                      </div>
+                    </div>
+
+                    {/* ======================================================= */}
+                    {/* Detailed Budget Breakdown / Team Allocation             */}
+                    {/* ======================================================= */}
+                    {fullProposal.selected_resources?.selected_resources?.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-primary-container font-bold flex items-center gap-1.5">
+                            <DollarSign size={12} /> Detailed Budget Breakdown
+                          </h5>
+                          <span className="text-[9px] font-semibold text-neutral-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                            {fullProposal.selected_resources.selected_resources.length} Experts
+                          </span>
+                        </div>
+                        <div className="space-y-2.5">
+                          {fullProposal.selected_resources.selected_resources.map((dev, index) => (
+                            <div key={index} className="bg-white/5 p-3 rounded-xl border border-white/10 relative">
+                              <div className="absolute top-2.5 right-3 text-primary-container font-bold text-[11px]">
+                                ${Number(dev.estimated_cost).toLocaleString()}
+                              </div>
+                              <div className="flex items-start gap-2.5 pr-14">
+                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-neutral-300">
+                                  {dev.name?.charAt(0) || "D"}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-white text-[11px] leading-tight">{dev.name}</div>
+                                  <div className="text-primary-container text-[10px] font-semibold">{dev.role}</div>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-2.5 bg-white/5 rounded-lg p-2 border border-white/5">
+                                <div>
+                                  <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Experience</div>
+                                  <div className="text-[10px] font-semibold text-neutral-200">{dev.experience_years}+ Years</div>
+                                </div>
+                                <div>
+                                  <div className="text-[8px] text-neutral-400 uppercase tracking-wider font-bold">Rate</div>
+                                  <div className="text-[10px] font-semibold text-neutral-200">${dev.hourly_cost}/hr</div>
+                                </div>
+                              </div>
+                              {dev.skills?.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {dev.skills.map((skill, skillIndex) => (
+                                    <span key={skillIndex} className="px-2 py-0.5 rounded-full bg-white/10 text-neutral-200 text-[9px] font-semibold">
+                                      {skill}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <h5 className="text-primary-container font-bold mb-2">Executive Summary</h5>
                       <p className="text-[11px] leading-relaxed opacity-90">{fullProposal.executive_summary}</p>
