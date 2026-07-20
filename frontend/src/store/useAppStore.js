@@ -20,6 +20,7 @@ export const useAppStore = create((set, get) => ({
   usersList: [],
   otpLogs: [],
   dashboardStats: null,
+  employeeChats: [],
 
   updateEmployee: (empId, updatedFields) => set((state) => ({
     employees: state.employees.map(emp => emp.id === empId ? { ...emp, ...updatedFields } : emp)
@@ -371,6 +372,9 @@ Timeline: ${store.projectData.timeline}`;
     safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/otp-logs`).then((logsData) => {
       if (logsData !== null) set({ otpLogs: logsData });
     });
+    safeFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees/chats`).then((chatsData) => {
+      if (chatsData !== null) set({ employeeChats: chatsData });
+    });
 
     return { success: true };
   },
@@ -394,6 +398,75 @@ Timeline: ${store.projectData.timeline}`;
       console.error("Failed to update employee on backend:", e);
     }
     return { success: false };
+  },
+
+  uploadEmployeePdfOnBackend: async (empId, file) => {
+    try {
+      const token = get().user?.accessToken;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees/${empId}/upload-pdf`, {
+        method: "POST",
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
+        body: formData
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        const data = await response.json();
+        return { success: true, pdfPath: data.pdfPath };
+      }
+    } catch (e) {
+      console.error("Failed to upload employee PDF:", e);
+    }
+    return { success: false };
+  },
+
+  sendEmployeeChatOnBackend: async (employeeId, clientId, sender, message) => {
+    try {
+      const token = get().user?.accessToken;
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees/chats`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
+        body: JSON.stringify({ employeeId, clientId, sender, message })
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        return { success: true };
+      }
+    } catch (e) {
+      console.error("Failed to send employee chat:", e);
+    }
+    return { success: false };
+  },
+
+  createEmployeeOnBackend: async (newEmployeeFields) => {
+    try {
+      const token = get().user?.accessToken;
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/employees`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
+        body: JSON.stringify(newEmployeeFields)
+      });
+      if (response.ok) {
+        await get().fetchAdminData();
+        return { success: true };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail || "Failed to create employee" };
+      }
+    } catch (e) {
+      console.error("Failed to create employee on backend:", e);
+    }
+    return { success: false, error: "Network error occurred" };
   },
 
   toggleUserStatusOnBackend: async (email) => {

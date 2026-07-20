@@ -652,42 +652,36 @@ export default function NegotiationChat() {
                 </div>
 
                 <div className="space-y-4 max-h-[250px] overflow-y-auto pr-1">
-                  {negotiationHistory.length > 0 ? (
-                    negotiationHistory.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="pb-3.5 border-b border-white/5 last:border-0"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-primary-container">
-                            {item.version}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 font-semibold">
-                            {item.date}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-neutral-300 font-medium mt-1">
-                          {item.changeDescription}
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
-                          <span>By: {item.author}</span>
-                          <span className="text-white/80">
-                            ${item.budget.toLocaleString()} • {item.timeline}
-                          </span>
-                        </div>
+                  {negotiationHistory.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="pb-3.5 border-b border-white/5 last:border-0"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary-container">
+                          {item.version}
+                        </span>
+                        <span className="text-[9px] text-neutral-400 font-semibold">
+                          {item.date}
+                        </span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-neutral-400 italic text-center py-4">
-                      generated proposals will appear here
+                      <div className="text-[11px] text-neutral-300 font-medium mt-1">
+                        {item.changeDescription}
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-neutral-500 mt-1 font-semibold">
+                        <span>By: {item.author}</span>
+                        <span className="text-white/80">
+                          ${item.budget.toLocaleString()} • {item.timeline}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
 
               <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs z-10 relative">
                 <span className="text-neutral-400 font-medium">
-                  Review Proposals
+                  Review Proposal
                 </span>
                 {/* <span className="text-primary-container font-bold flex items-center">
                   Ready to Sign
