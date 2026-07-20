@@ -324,12 +324,21 @@ export default function ProposalPreviewPage() {
                         <div className="text-[10px] text-amber-600 font-bold bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg">
                           5-Day Contact Trial Active
                         </div>
-                        <button
-                          onClick={() => navigate(`/client/resource-contact?employeeId=${dev.employee_id}&employeeName=${encodeURIComponent(dev.name)}&role=${encodeURIComponent(dev.role)}`)}
-                          className="px-3.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          Connect with {dev.name?.split(" ")[0]}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <a
+                            href={(dev.name || "").toLowerCase().includes("jane") || (dev.name || "").toLowerCase().includes("miller") ? "/JaneMillerResume.pdf" : "/JohnDoeResume.pdf"}
+                            download={`${dev.name.replace(/\s+/g, "_")}_Resume.pdf`}
+                            className="px-3.5 py-1.5 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            Download Resume
+                          </a>
+                          <button
+                            onClick={() => navigate(`/client/resource-contact?employeeId=${dev.employee_id}&employeeName=${encodeURIComponent(dev.name)}&role=${encodeURIComponent(dev.role)}`)}
+                            className="px-3.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            Connect with {dev.name?.split(" ")[0]}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
