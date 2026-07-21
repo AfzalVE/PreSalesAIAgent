@@ -327,22 +327,42 @@ Do not include any additional text.
             "full": None
         }
 
-    # 3. Create ProposalRequest record in the database
-    proposal_request = ProposalRequest(
-        id=uuid.uuid4(),
-        client_id=client_id,
-        project_name=final_project_name,
-        project_description=final_desc,
-        business_domain=final_domain,
-        preferred_technology=final_tech,
-        budget=final_budget,
-        timeline=final_timeline,
-        communication_type=CommunicationType.FORM,
-        extracted_json=generation_content,
-        status=ProposalRequestStatus.PROCESSING
-    )
-    db.add(proposal_request)
-    db.flush()
+    # 3. Create or Update ProposalRequest record in the database
+    existing_request_id = kwargs.get("existing_request_id")
+    proposal_request = None
+    
+    if existing_request_id:
+        proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == existing_request_id).first()
+        if proposal_request:
+            proposal_request.project_name = final_project_name
+            proposal_request.project_description = final_desc
+            proposal_request.business_domain = final_domain
+            proposal_request.preferred_technology = final_tech
+            proposal_request.budget = final_budget
+            proposal_request.timeline = final_timeline
+            proposal_request.extracted_json = generation_content
+            proposal_request.status = ProposalRequestStatus.PROCESSING
+            
+            # Delete old proposals to replace them with the regenerated ones
+            db.query(Proposal).filter(Proposal.request_id == existing_request_id).delete()
+            db.flush()
+
+    if not proposal_request:
+        proposal_request = ProposalRequest(
+            id=uuid.uuid4(),
+            client_id=client_id,
+            project_name=final_project_name,
+            project_description=final_desc,
+            business_domain=final_domain,
+            preferred_technology=final_tech,
+            budget=final_budget,
+            timeline=final_timeline,
+            communication_type=CommunicationType.FORM,
+            extracted_json=generation_content,
+            status=ProposalRequestStatus.PROCESSING
+        )
+        db.add(proposal_request)
+        db.flush()
 
     # 4. Generate MVP Proposal
     mvp_data = generation_content["mvp"]

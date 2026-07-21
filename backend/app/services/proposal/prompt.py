@@ -150,10 +150,11 @@ The reader should clearly understand how the system will work from start to fini
 3. Technology Stack
 
 Return technologies only.
+Use the exact technologies provided in the "Technology Stack" section of the PROJECT INFORMATION. Do NOT randomly output the example stack unless the client's requirements specifically ask for it.
 
-For each technology choose the most suitable enterprise option.
+For each technology choose the most suitable enterprise option matching the requested stack.
 
-Examples:
+Examples of formatting (DO NOT just copy these, use the actual requested stack):
 
 Database:
 PostgreSQL
