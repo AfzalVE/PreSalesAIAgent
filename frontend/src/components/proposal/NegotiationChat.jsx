@@ -357,15 +357,28 @@ export default function NegotiationChat() {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="flex items-center space-x-2 border border-neutral-200/80 rounded-2xl p-1.5 bg-[#fcfdfe] focus-within:bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 shadow-inner transition-all duration-200"
+            className="flex items-end space-x-2 border border-neutral-200/80 rounded-2xl p-1.5 bg-[#fcfdfe] focus-within:bg-white focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/5 shadow-inner transition-all duration-200"
           >
-            <input
-              type="text"
+            <textarea
               value={inputPrompt}
-              onChange={(e) => setInputPrompt(e.target.value)}
+              onChange={(e) => {
+                setInputPrompt(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (inputPrompt.trim() && !isProcessing) {
+                    handleSendMessage();
+                    e.target.style.height = 'auto';
+                  }
+                }
+              }}
               placeholder="e.g. Reduce budget by 15% or use React..."
               disabled={isProcessing}
-              className="flex-1 bg-transparent py-2.5 px-4 text-xs border-none focus:border-none outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 text-neutral-800 disabled:opacity-50 placeholder-neutral-400 font-medium"
+              rows={1}
+              className="flex-1 bg-transparent py-2.5 px-4 text-xs border-none focus:border-none outline-none focus:outline-none focus:ring-0 focus:ring-offset-0 text-neutral-800 disabled:opacity-50 placeholder-neutral-400 font-medium resize-none overflow-y-auto max-h-[120px] leading-relaxed"
             />
 
             {/* Mic voice input simulator */}
