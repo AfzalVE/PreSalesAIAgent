@@ -33,8 +33,19 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
             # Format match summary into the chat message
             mvp_cost = match_response.get("mvp", {}).get("total_project_cost", "N/A")
             full_cost = match_response.get("full_project", {}).get("total_project_cost", "N/A")
-            timeline = match_response.get("mvp", {}).get("timeline_weeks", "N/A")
-            match_summary = f"\n\n**Estimation Complete!**\n- MVP Budget: ${mvp_cost}\n- Full Product Budget: ${full_cost}\n- Timeline: {timeline} Weeks\n\nWould you like me to generate the proposal based on these estimates?"
+            mvp_timeline = match_response.get("mvp", {}).get("timeline_weeks", "N/A")
+            full_timeline = match_response.get("full_project", {}).get("timeline_weeks", "N/A")
+            client_budget = match_response.get("client_budget")
+            
+            match_summary = f"\n\n**Estimation Complete!**\n- MVP Budget: ${mvp_cost}\n- Full Product Budget: ${full_cost}\n- MVP Timeline: {mvp_timeline} Weeks\n- Full Product Timeline: {full_timeline} Weeks\n"
+            
+            if client_budget is not None and mvp_cost != "N/A":
+                if mvp_cost > client_budget:
+                    match_summary += f"\n**Notice:** The estimated cost for the MVP (${mvp_cost}) exceeds your approved budget (${client_budget}). The project is not feasible within the current budget constraints.\n"
+                elif full_cost != "N/A" and full_cost > client_budget:
+                    match_summary += f"\n**Notice:** The estimated cost for the Full Product (${full_cost}) exceeds your approved budget (${client_budget}), although the MVP is feasible.\n"
+                    
+            match_summary += "\nWould you like me to generate the proposal based on these estimates?"
             extracted_data.follow_up_message += match_summary
             
             # Save the match data to the database so the LLM has context in the next turn
