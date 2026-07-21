@@ -94,7 +94,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     - For BUDGET, if the client/user provides any budget explicitly then use it and then use that budget to evaluate the project complexity and development aspects nd check whether the project is feasible with the given budget and timeline. If not then suggest a realistic and appropriate budget and if the client agrees with the negotiated budget then update the 'client_budget' field with the revised budget.
 
     Step 3: TECH STACK
-    - If `preferred_technology` is missing: Suggest a suitable technology stack (based on project type/scale) and format it as a list of lists (e.g. [["React", "FastAPI", "PostgreSQL", "AWS"]]). 
+    - If `preferred_technology` is missing: Suggest a suitable technology stack (based on project type/scale) and format it as a list of lists (e.g. [["Technology_1", "Technology_2", "Technology_3", "Technology_4"]]). 
     - If the budget of the user is too low then recommend the user a techstack based on that low budget and if the budget of the user is high then recommend the user a techstack based on that high budget.
     - You MUST ask the user: "Would you like to proceed with this technology stack?"
     - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true. If the user asks for suggesting a tech stack then suggest a realistic and appropriate technology stack and  set the 'tech_stack_confirmed' to true.
