@@ -85,19 +85,20 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     STATE MACHINE & CONVERSATION FLOW:
     
     Step 1: GATHERING INFO
-    Required fields: project_name, business_domain, project_description, timeline_weeks, client_budget.
-    - If any of these are missing, you MUST ask follow-up questions to gather them (e.g. "What would you like to call this project?", "What is your expected budget?").
-    - NEVER assume a budget or timeline or technology stack unless the user explicitly says "You suggest" or "Recommend one". If the user says any of this phrase then recommend the user a realistic and appropriate budget or timeline or technology stack.
-    - Once ALL required fields are present, set `is_gathering_info_complete` to true.
+    Required fields: project_name, business_domain, project_description, and client_budget.
+    - If any of these are missing, you MUST ask follow-up questions to gather them.
+    - NEVER assume values unless the user explicitly asks you to "suggest" or "recommend" them.
+    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
+    - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
 
     Step 2: PROJECT BUDGET
-    - For BUDGET, if the client/user provides any budget explicitly then use it and then use that budget to evaluate the project complexity and development aspects nd check whether the project is feasible with the given budget and timeline. If not then suggest a realistic and appropriate budget and if the client agrees with the negotiated budget then update the 'client_budget' field with the revised budget.
+    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one. If the user asks you to suggest a budget, provide one based on the description and populate the `client_budget` field.
 
     Step 3: TECH STACK
     - If `preferred_technology` is missing: Suggest a suitable technology stack (based on project type/scale) and format it as a list of lists (e.g. [["Technology_1", "Technology_2", "Technology_3", "Technology_4"]]). 
     - If the budget of the user is too low then recommend the user a techstack based on that low budget and if the budget of the user is high then recommend the user a techstack based on that high budget.
     - You MUST ask the user: "Would you like to proceed with this technology stack?"
-    - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true. If the user asks for suggesting a tech stack then suggest a realistic and appropriate technology stack and  set the 'tech_stack_confirmed' to true.
+    - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true.
     - If `is_gathering_info_complete` is true AND `tech_stack_confirmed` is true, set `ready_for_match` to true.
 
     Step 4: AFTER MATCH FUNCTION (Reviewing Estimates)
@@ -105,9 +106,9 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     - Then ask: "Would you like me to generate the proposal?"
     - Only after the user explicitly confirms, set `ready_for_proposal_generation` to true.
 
-    Step 5: PROJECT NAME
-    - Suggest a project name to the user based on the project description that the user will provide and update the project_name and business_domain. 
-    - If the user provides any other name and business domain then update those fields according to the user's choice.
+    Step 5: SUGGESTIONS & AUTODETECT
+    - If the user asks for a project name or business domain suggestion, generate one based on the description and output it directly in the JSON.
+    - If the user provides a project name and business domain, update those fields accordingly.
 
     
 
@@ -135,17 +136,33 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         extracted_dict = json.loads(response_content)
         
         if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
-            extracted_dict["proposal_id"] = f"PROP-{uuid.uuid4().hex[:6].upper()}"
+            if proposal_request.extracted_json and "proposal_id" in proposal_request.extracted_json:
+                extracted_dict["proposal_id"] = proposal_request.extracted_json["proposal_id"]
+            else:
+                extracted_dict["proposal_id"] = f"PROP-{uuid.uuid4().hex[:6].upper()}"
             
         extracted_dict["request_id"] = str(proposal_request.id)
         
-        proposal_request.extracted_json = extracted_dict
-        if extracted_dict.get("project_name"):
-            proposal_request.project_name = extracted_dict.get("project_name")
-        if extracted_dict.get("client_budget"):
-            proposal_request.budget = float(extracted_dict.get("client_budget"))
-        if extracted_dict.get("timeline_weeks"):
-            proposal_request.timeline = f"{extracted_dict.get('timeline_weeks')} Weeks"
+        # Merge with existing data so we don't lose context
+        existing_json = proposal_request.extracted_json or {}
+        merged_json = existing_json.copy()
+        
+        for k, v in extracted_dict.items():
+            if v is not None:
+                if isinstance(v, list) and not v and merged_json.get(k):
+                    continue
+                if isinstance(v, str) and not v.strip() and merged_json.get(k):
+                    continue
+                merged_json[k] = v
+                
+        proposal_request.extracted_json = merged_json
+        
+        if merged_json.get("project_name"):
+            proposal_request.project_name = merged_json.get("project_name")
+        if merged_json.get("client_budget"):
+            proposal_request.budget = float(merged_json.get("client_budget"))
+        if merged_json.get("timeline_weeks"):
+            proposal_request.timeline = f"{merged_json.get('timeline_weeks')} Weeks"
             
         user_convo = AIConversation(
             request_id=proposal_request.id,
@@ -156,7 +173,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         ai_convo = AIConversation(
             request_id=proposal_request.id,
             sender=SenderType.AI,
-            message=extracted_dict.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
+            message=merged_json.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
             message_type=MessageType.TEXT
         )
         db.add(user_convo)
@@ -164,7 +181,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         db.commit()
         
         # Validate against our Pydantic model
-        extracted_data = AgentExtractionResponse(**extracted_dict)
+        extracted_data = AgentExtractionResponse(**merged_json)
         print(extracted_data)
         
         return extracted_data

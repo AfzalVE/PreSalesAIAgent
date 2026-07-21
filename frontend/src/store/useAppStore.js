@@ -62,6 +62,9 @@ export const useAppStore = create((set, get) => ({
   generatedDemos: [],
   setGeneratedDemos: (demos) => set({ generatedDemos: demos }),
 
+  activeRequestId: null,
+  setActiveRequestId: (id) => set({ activeRequestId: id }),
+
   // Proposals & Stages
   proposalStages: null,
   selectedProposalStage: null, // 'mvp' | 'growth' | 'enterprise'
@@ -220,6 +223,7 @@ Timeline: ${store.projectData.timeline}`;
       console.log("Extraction Data:", extractionData);
 
       set((state) => ({
+        activeRequestId: extractionData.request_id,
         jsonPocs: {
           ...state.jsonPocs,
           extraction: extractionData
@@ -516,7 +520,8 @@ Timeline: ${store.projectData.timeline}`;
       activeProposal: null,
       negotiationHistory: [],
       negotiationError: '',
-      proposalStages: null
+      proposalStages: null,
+      activeRequestId: null
     });
   },
 
