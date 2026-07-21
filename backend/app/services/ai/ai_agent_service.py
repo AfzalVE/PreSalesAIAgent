@@ -66,7 +66,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
             for msg in conversations:
                 recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
+    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM 
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
 
     system_prompt = f"""
