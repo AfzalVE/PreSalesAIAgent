@@ -34,6 +34,12 @@ async def lifespan(app: FastAPI):
             conn.execute(text("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS timeline_phases JSONB"))
             conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)"))
             conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100)"))
+            
+            # LangGraph Migrations
+            conn.execute(text("ALTER TABLE proposal_requests ADD COLUMN IF NOT EXISTS workflow_state JSONB"))
+            conn.execute(text("ALTER TABLE proposal_requests ADD COLUMN IF NOT EXISTS comparison_data JSONB"))
+            conn.execute(text("ALTER TABLE proposal_requests ADD COLUMN IF NOT EXISTS selected_proposal_id UUID REFERENCES proposals(id) ON DELETE SET NULL"))
+            
             conn.commit()
             print("[DB] Database migration: tables verified/created.")
     except Exception as e:
@@ -57,8 +63,8 @@ app = FastAPI(
     title="AI Proposal Generator API",
     version="1.0.0",
     description="Backend API for AI Proposal Generator Platform",
-#     lifespan=lifespan,
- )
+    lifespan=lifespan,
+)
 
 # ----------------------------
 # CORS

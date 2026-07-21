@@ -122,6 +122,7 @@ class Proposal(Base):
     proposal_request: Mapped["ProposalRequest"] = relationship(
         "ProposalRequest",
         back_populates="proposals",
+        foreign_keys=[request_id]
     )
 
     resource_allocations: Mapped[list["ResourceAllocation"]] = relationship(

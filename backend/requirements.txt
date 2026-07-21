@@ -71,3 +71,12 @@ loguru==0.7.3
 # Utilities
 # ==========================
 python-dateutil==2.9.0.post0
+
+# ==========================
+# LangGraph / AI Workflow
+# ==========================
+langgraph
+langchain-openai
+langchain-core
+
+faker

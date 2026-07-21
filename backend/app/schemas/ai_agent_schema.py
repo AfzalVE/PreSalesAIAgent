@@ -43,3 +43,66 @@ class NegotiationResponse(BaseModel):
     response_message: str = Field(..., description="The AI's conversational response explaining the adjustments.")
     success: bool = Field(..., description="Whether the negotiation was successful (e.g. false if budget requested is impossibly low).")
     error_message: Optional[str] = Field(None, description="Warning or error message if success is false.")
+
+# --- LangGraph Node Output Schemas ---
+
+class RequirementPatch(BaseModel):
+    project_name: Optional[str] = Field(None, description="The name of the project.")
+    business_domain: Optional[str] = Field(None, description="The business domain of the project.")
+    project_description: Optional[str] = Field(None, description="The description of the project.")
+    client_budget: Optional[float] = Field(None, description="The budget of the client in USD.")
+    timeline_weeks: Optional[int] = Field(None, description="The timeline of the project in weeks.")
+    preferred_technology: Optional[List[str]] = Field(None, description="List of technologies preferred by the user.")
+    wants_suggestion: Optional[bool] = Field(False, description="True ONLY if the user explicitly asks you to suggest or guess the missing parameters (e.g., 'suggest me the best', 'I have no idea').")
+    
+class AutoSuggestPlan(BaseModel):
+    timeline_weeks: int = Field(..., description="Suggested timeline in weeks.")
+    preferred_technology: List[str] = Field(..., description="Suggested technology stack.")
+    resource_requirements: List[ResourceRequirement] = Field(..., description="List of suggested roles and counts required to build the project.")
+
+class MissingInfoQuestion(BaseModel):
+    question: str = Field(..., description="The follow-up question to ask the user to gather missing requirements.")
+
+class TechRecommendation(BaseModel):
+    recommended_stack: List[str] = Field(..., description="The recommended technology stack for the project.")
+    explanation: str = Field(..., description="Explanation of why this stack was chosen.")
+    question: str = Field(..., description="Question asking the client to confirm this stack.")
+
+class ConfirmationIntent(BaseModel):
+    intent: str = Field(..., description="One of: 'CONFIRMED', 'MODIFICATION_REQUESTED', 'AMBIGUOUS'")
+    modification_details: Optional[str] = Field(None, description="If MODIFICATION_REQUESTED, what changes the user wants.")
+    clarification_question: Optional[str] = Field(None, description="If AMBIGUOUS, the question to ask for clarification.")
+
+class ProjectDecomposition(BaseModel):
+    business_objective: str = Field(..., description="The core business objective of the project.")
+    core_features: List[str] = Field(..., description="List of core features required for the project.")
+    deferred_features: List[str] = Field(..., description="List of features that can be deferred to a later phase.")
+    integrations: List[str] = Field(..., description="Required third-party integrations.")
+    compliance_requirements: List[str] = Field(..., description="Required compliance or security standards.")
+
+class Phase(BaseModel):
+    phase: str = Field(..., description="Name of the phase")
+    duration: str = Field(..., description="Duration of the phase (e.g., '2 Weeks')")
+    output: str = Field(..., description="Deliverable or output of this phase")
+
+class ProposalPlan(BaseModel):
+    executive_summary: str = Field(..., description="Executive summary of the proposal")
+    architecture: str = Field(..., description="Description of the system architecture")
+    scope: str = Field(..., description="Scope of the proposal")
+    key_features: List[str] = Field(..., description="List of key features")
+    deliverables: List[str] = Field(..., description="List of deliverables")
+    assumptions: str = Field(..., description="Key assumptions")
+    risks: str = Field(..., description="Identified risks")
+    acceptance_criteria: List[str] = Field(..., description="Acceptance criteria")
+    timeline_phases: List[Phase] = Field(..., description="Timeline breakdown")
+    resource_requirements: List[ResourceRequirement] = Field(..., description="Required team structure")
+
+class ProposalComparisonItem(BaseModel):
+    category: str = Field(..., description="Comparison category (e.g., 'Features', 'Architecture')")
+    mvp: str = Field(..., description="How the MVP handles this category")
+    scalable: str = Field(..., description="How the Scalable solution handles this category")
+
+class ProposalComparison(BaseModel):
+    differences: List[ProposalComparisonItem] = Field(..., description="List of differences between the proposals")
+    upgrade_path: str = Field(..., description="Explanation of how to upgrade from MVP to Scalable later")
+    summary: str = Field(..., description="A conversational summary presenting both options to the client")

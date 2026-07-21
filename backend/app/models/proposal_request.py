@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime
 from sqlalchemy import Enum
@@ -95,6 +95,22 @@ class ProposalRequest(Base):
         nullable=False,
     )
 
+    workflow_state: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    comparison_data: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    selected_proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("proposals.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     status: Mapped[ProposalRequestStatus] = mapped_column(
         Enum(ProposalRequestStatus),
         default=ProposalRequestStatus.DRAFT,
@@ -114,6 +130,12 @@ class ProposalRequest(Base):
         "Proposal",
         back_populates="proposal_request",
         cascade="all, delete-orphan",
+        foreign_keys="[Proposal.request_id]"
+    )
+
+    selected_proposal: Mapped[Optional["Proposal"]] = relationship(
+        "Proposal",
+        foreign_keys=[selected_proposal_id]
     )
 
     conversations: Mapped[list["AIConversation"]] = relationship(

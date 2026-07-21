@@ -37,7 +37,14 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
             full_timeline = match_response.get("full_project", {}).get("timeline_weeks", "N/A")
             client_budget = match_response.get("client_budget")
             
-            match_summary = f"\n\n**Estimation Complete!**\n- MVP Budget: ${mvp_cost}\n- Full Product Budget: ${full_cost}\n- MVP Timeline: {mvp_timeline} Weeks\n- Full Product Timeline: {full_timeline} Weeks\n"
+            mvp_team = len(match_response.get("mvp", {}).get("selected_resources", []))
+            full_team = len(match_response.get("full_project", {}).get("selected_resources", []))
+            
+            match_summary = (
+                f"\n\n**Estimation Complete!**\n"
+                f"- MVP Budget: ${mvp_cost} (Team of {mvp_team}, Timeline: {mvp_timeline} Weeks)\n"
+                f"- Full Product Budget: ${full_cost} (Team of {full_team}, Timeline: {full_timeline} Weeks)\n"
+            )
             
             if client_budget is not None and mvp_cost != "N/A":
                 if mvp_cost > client_budget:

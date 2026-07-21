@@ -753,8 +753,8 @@ def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
     print("Fetching employee for calculating budget from CSV")
     employees = []
     
-    # Path to employees.csv at the root of the backend directory
-    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../employees.csv"))
+    # Path to employees.csv in the same directory
+    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "employees.csv"))
     
     try:
         with open(csv_path, mode="r", encoding="utf-8") as file:

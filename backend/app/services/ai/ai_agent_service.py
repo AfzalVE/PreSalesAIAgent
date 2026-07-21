@@ -17,20 +17,19 @@ client = AsyncOpenAI(
 
 async def extract_proposal_requirements(input_data: AgentTextInput, db: Session) -> AgentExtractionResponse:
     """
-    Calls the OpenAI API in JSON mode to parse unstructured text
+    Calls the LangGraph workflow to parse unstructured text
     and extract the proposal requirements.
     """
+    from app.services.ai.workflow.graph import app_graph
+    from app.services.ai.workflow.state import AgentState
     
     request_id = input_data.request_id
     proposal_request = None
-    existing_data_str = "{}"
     
     if request_id:
         try:
             req_uuid = uuid.UUID(request_id)
             proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == req_uuid).first()
-            if proposal_request:
-                existing_data_str = json.dumps(proposal_request.extracted_json)
         except ValueError:
             pass
             
@@ -49,132 +48,67 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
             budget=0.0,
             timeline="TBD",
             communication_type=CommunicationType.FORM,
-            extracted_json={}
+            extracted_json={},
+            workflow_state={}
         )
         db.add(proposal_request)
         db.commit()
         db.refresh(proposal_request)
     
     recent_messages_context = ""
-    if proposal_request:
-        conversations = db.query(AIConversation).filter(
-            AIConversation.request_id == proposal_request.id
-        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
-        if conversations:
-            conversations.reverse()
-            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
-            for msg in conversations:
-                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
+    conversations = db.query(AIConversation).filter(
+        AIConversation.request_id == proposal_request.id
+    ).order_by(AIConversation.timestamp.desc()).limit(10).all()
+    if conversations:
+        conversations.reverse()
+        recent_messages_context = "Here is the conversation history (last 10 messages):\n"
+        for msg in conversations:
+            recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
-    schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
-
-    system_prompt = f"""
-    You are an expert Pre-Sales AI Agent for a software development company.
-    Your job is to read unstructured text from a user and extract project requirements into a structured JSON format following a strict multi-step conversation flow.
+    # Prepare input state for LangGraph
+    current_state = proposal_request.workflow_state or {}
+    input_state: AgentState = {
+        "user_input": input_data.text,
+        "request_id": str(proposal_request.id),
+        "conversation_history": recent_messages_context,
+        "is_gathering_info_complete": current_state.get("is_gathering_info_complete", False),
+        "tech_stack_confirmed": current_state.get("tech_stack_confirmed", False),
+        "ready_for_match": current_state.get("ready_for_match", False),
+        "ready_for_proposal_generation": current_state.get("ready_for_proposal_generation", False),
+        "requirements": proposal_request.extracted_json or {},
+        "recommended_tech_stack": current_state.get("recommended_tech_stack", []),
+    }
     
-    IMPORTANT: You are continuing a conversation. Here is the previously extracted data:
-    {existing_data_str}
-    {recent_messages_context}
-
-    GENERAL RULES:
-    1. NEVER use generic placeholder values. Your suggestions for budget, timeline, and tech stack MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned in the project description.
-    2. Every value must either come from the user, be inferred ONLY when explicitly asked to suggest it, or come from the Resource Matching Engine.
-    3. You MUST generate the required developers for the project initially in the `resource_requirements` field based on the project description and tech stack. Include the role, count, and required skills (e.g.
-    
-    Example:
-
-[
-    {{
-        "role": "<developer_role>",
-        "count": <value>,
-        "skills": ["<skill1>", "<skill2>"]
-    }}
-]).
-
-    STATE MACHINE & CONVERSATION FLOW:
-    
-    Step 1: GATHERING INFO
-    Required fields: project_name, business_domain, project_description, and client_budget.
-    - If any of these are missing, you MUST ask follow-up questions to gather them.
-    - NEVER assume values unless the user explicitly asks you to "suggest" or "recommend" them.
-    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion tailored to their specific project concept, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
-    - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
-
-    Step 2: PROJECT BUDGET
-    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one based on the exact features requested. If the user asks you to suggest a budget, calculate a logical estimate based on the scope and populate the `client_budget` field.
-
-    Step 3: TECH STACK
-    - If `preferred_technology` is missing: Suggest a suitable technology stack (based on project type/scale) and format it as a list of lists (e.g. [["Technology_1", "Technology_2", "Technology_3", "Technology_4"]]). 
-    - If the budget of the user is too low then recommend the user a techstack based on that low budget and if the budget of the user is high then recommend the user a techstack based on that high budget.
-    - If `preferred_technology` is missing: Suggest a highly specific and optimized technology stack based purely on the unique requirements of the project. Format it as a list of lists (e.g. [["Frontend", "Backend", "Database", "Cloud"]]).
-    - You MUST ask the user: "Would you like to proceed with this technology stack?"
-    - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true.
-    - If `is_gathering_info_complete` is true AND `tech_stack_confirmed` is true, set `ready_for_match` to true.
-
-    Step 4: AFTER MATCH FUNCTION (Reviewing Estimates)
-    - If the backend has provided match results (see previously extracted data for `match_data`), you must present the Estimated Cost, Recommended Budget, Timeline, and Selected Developers to the user.
-    - Then ask: "Would you like me to generate the proposal?"
-    - Only after the user explicitly confirms, set `ready_for_proposal_generation` to true.
-
-    Step 5: SUGGESTIONS & AUTODETECT
-    - If the user asks for a project name or business domain suggestion, generate a creative and relevant one based on the description and output it directly in the JSON.
-    - If the user provides a project name and business domain, update those fields accordingly.
-
-    
-
-    OUTPUT FORMAT:
-    - `follow_up_message` must ALWAYS contain your conversational response.
-    - Ensure your output strictly follows this JSON schema:
-    {schema_str}
-    
-    Return ONLY valid JSON.
-    """
-
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": input_data.text}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.4
-        )
+        # Run LangGraph workflow
+        output_state = app_graph.invoke(input_state)
+        print("DEBUG OUTPUT STATE:", output_state)
         
-        # Parse the JSON string returned by OpenAI
-        response_content = response.choices[0].message.content
-        extracted_dict = json.loads(response_content)
+        # Save updated requirements
+        merged_reqs = output_state.get("requirements", {})
+        proposal_request.extracted_json = merged_reqs
         
-        if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
-            if proposal_request.extracted_json and "proposal_id" in proposal_request.extracted_json:
-                extracted_dict["proposal_id"] = proposal_request.extracted_json["proposal_id"]
-            else:
-                extracted_dict["proposal_id"] = f"PROP-{uuid.uuid4().hex[:6].upper()}"
+        if merged_reqs.get("project_name"):
+            proposal_request.project_name = merged_reqs.get("project_name")
+        if merged_reqs.get("client_budget"):
+            proposal_request.budget = float(merged_reqs.get("client_budget"))
+        if merged_reqs.get("timeline_weeks"):
+            proposal_request.timeline = f"{merged_reqs.get('timeline_weeks')} Weeks"
             
-        extracted_dict["request_id"] = str(proposal_request.id)
+        # Save workflow state
+        new_workflow_state = {
+            "is_gathering_info_complete": output_state.get("is_gathering_info_complete", False),
+            "tech_stack_confirmed": output_state.get("tech_stack_confirmed", False),
+            "ready_for_match": output_state.get("ready_for_match", False),
+            "ready_for_proposal_generation": output_state.get("ready_for_proposal_generation", False),
+            "recommended_tech_stack": output_state.get("recommended_tech_stack", []),
+            "tech_explanation": output_state.get("tech_explanation", ""),
+        }
+        proposal_request.workflow_state = new_workflow_state
         
-        # Merge with existing data so we don't lose context
-        existing_json = proposal_request.extracted_json or {}
-        merged_json = existing_json.copy()
+        if output_state.get("proposal_comparison"):
+            proposal_request.comparison_data = output_state["proposal_comparison"]
         
-        for k, v in extracted_dict.items():
-            if v is not None:
-                if isinstance(v, list) and not v and merged_json.get(k):
-                    continue
-                if isinstance(v, str) and not v.strip() and merged_json.get(k):
-                    continue
-                merged_json[k] = v
-                
-        proposal_request.extracted_json = merged_json
-        
-        if merged_json.get("project_name"):
-            proposal_request.project_name = merged_json.get("project_name")
-        if merged_json.get("client_budget"):
-            proposal_request.budget = float(merged_json.get("client_budget"))
-        if merged_json.get("timeline_weeks"):
-            proposal_request.timeline = f"{merged_json.get('timeline_weeks')} Weeks"
-            
         user_convo = AIConversation(
             request_id=proposal_request.id,
             sender=SenderType.CLIENT,
@@ -184,26 +118,40 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         ai_convo = AIConversation(
             request_id=proposal_request.id,
             sender=SenderType.AI,
-            message=merged_json.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
+            message=output_state.get("follow_up_message") or "I've extracted your requirements.",
             message_type=MessageType.TEXT
         )
         db.add(user_convo)
         db.add(ai_convo)
         db.commit()
         
-        # Validate against our Pydantic model
-        extracted_data = AgentExtractionResponse(**merged_json)
-        print(extracted_data)
+        # Build backward-compatible AgentExtractionResponse
+        extracted_data = AgentExtractionResponse(
+            request_id=str(proposal_request.id),
+            proposal_id=merged_reqs.get("proposal_id", f"PROP-{uuid.uuid4().hex[:6].upper()}"),
+            project_name=merged_reqs.get("project_name"),
+            business_domain=merged_reqs.get("business_domain"),
+            project_description=merged_reqs.get("project_description"),
+            preferred_technology=[output_state.get("recommended_tech_stack", [])] if output_state.get("recommended_tech_stack") else None,
+            timeline_weeks=merged_reqs.get("timeline_weeks"),
+            client_budget=merged_reqs.get("client_budget"),
+            is_gathering_info_complete=output_state.get("is_gathering_info_complete", False),
+            tech_stack_confirmed=output_state.get("tech_stack_confirmed", False),
+            ready_for_match=output_state.get("ready_for_match", False),
+            ready_for_proposal_generation=output_state.get("ready_for_proposal_generation", False),
+            follow_up_message=output_state.get("follow_up_message") or "I've processed your request.",
+            proposal_data=output_state.get("proposal_comparison") # Passing the comparison block instead of the old full proposal
+        )
         
         return extracted_data
         
     except ValidationError as ve:
         db.rollback()
         print(f"Pydantic Validation Error: {ve}")
-        raise ValueError(f"The LLM returned invalid data: {ve}")
+        raise ValueError(f"The LangGraph node returned invalid data: {ve}")
     except Exception as e:
         db.rollback()
-        print(f"Error calling OpenAI API: {str(e)}")
+        print(f"Error executing LangGraph: {str(e)}")
         raise e
 async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationResponse:
     """
