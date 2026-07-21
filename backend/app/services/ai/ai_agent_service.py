@@ -80,7 +80,17 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     GENERAL RULES:
     1. NEVER use generic placeholder values. Your suggestions for budget, timeline, and tech stack MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned in the project description.
     2. Every value must either come from the user, be inferred ONLY when explicitly asked to suggest it, or come from the Resource Matching Engine.
-    3. NEVER estimate developer cost or team size yourself. The Resource Matching Engine handles this.
+    3. You MUST generate the required developers for the project initially in the `resource_requirements` field based on the project description and tech stack. Include the role, count, and required skills (e.g.
+    
+    Example:
+
+[
+    {{
+        "role": "<developer_role>",
+        "count": <value>,
+        "skills": ["<skill1>", "<skill2>"]
+    }}
+]).
 
     STATE MACHINE & CONVERSATION FLOW:
     
