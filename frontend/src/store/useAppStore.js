@@ -6,11 +6,11 @@ const INITIAL_PROJECT_DATA = {
   domain: '',
   description: '',
   techStack: [],
-  budget: 75000,
-  timeline: '12 Weeks',
+  budget: null,
+  timeline: '',
   notes: '',
-  complexity: 'Medium',
-  estimatedTeam: 4
+  complexity: '',
+  estimatedTeam: 0
 };
 
 export const useAppStore = create((set, get) => ({
@@ -63,11 +63,11 @@ export const useAppStore = create((set, get) => ({
   setGeneratedDemos: (demos) => set({ generatedDemos: demos }),
 
   // Proposals & Stages
-  proposalStages: { ...MOCK_PROPOSAL_STAGES },
-  selectedProposalStage: 'growth', // 'mvp' | 'growth' | 'enterprise'
+  proposalStages: null,
+  selectedProposalStage: null, // 'mvp' | 'growth' | 'enterprise'
 
   // Active (negotiated) versions
-  activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
+  activeProposal: null,
   negotiationHistory: [],
   negotiationError: '',
   jsonPocs: {
@@ -95,13 +95,16 @@ export const useAppStore = create((set, get) => ({
     const updated = { ...state.projectData, ...data };
 
     // Automatically update proposals based on user onboarding choices
-    const currentGrowth = { ...state.proposalStages.growth };
-    currentGrowth.budget = updated.budget || currentGrowth.budget;
-    currentGrowth.timeline = updated.timeline || currentGrowth.timeline;
+    let currentGrowth = null;
+    if (state.proposalStages && state.proposalStages.growth) {
+      currentGrowth = { ...state.proposalStages.growth };
+      currentGrowth.budget = updated.budget || currentGrowth.budget;
+      currentGrowth.timeline = updated.timeline || currentGrowth.timeline;
+    }
 
     return {
       projectData: updated,
-      activeProposal: currentGrowth
+      activeProposal: currentGrowth || state.activeProposal
     };
   }),
 
@@ -111,7 +114,7 @@ export const useAppStore = create((set, get) => ({
 
   setSelectedProposalStage: (stage) => set((state) => ({
     selectedProposalStage: stage,
-    activeProposal: { ...state.proposalStages[stage] }
+    activeProposal: state.proposalStages ? { ...state.proposalStages[stage] } : null
   })),
 
   addNegotiationHistory: (entry) => set((state) => ({
@@ -509,10 +512,11 @@ Timeline: ${store.projectData.timeline}`;
       user: { emailOrPhone: '', isVerified: false },
       activeStep: 0,
       projectData: { ...INITIAL_PROJECT_DATA },
-      selectedProposalStage: 'growth',
-      activeProposal: { ...MOCK_PROPOSAL_STAGES.growth },
+      selectedProposalStage: null,
+      activeProposal: null,
       negotiationHistory: [],
-      negotiationError: ''
+      negotiationError: '',
+      proposalStages: null
     });
   },
 

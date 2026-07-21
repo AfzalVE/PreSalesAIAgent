@@ -658,6 +658,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 import copy
 import uuid
+import csv
+import os
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -743,53 +745,69 @@ FULL_EXTRA_ROLES: List[Dict[str, Any]] = [
 
 def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
     """
-    Fetch all active employees from the PostgreSQL database (`Employee` table).
+    Fetch all active employees from employees.csv file.
 
     Returns a plain list of dictionaries so the matching
     logic remains independent of SQLAlchemy ORM instances.
     """
-    print("Fetching employee for calculating budget")
-    close_db_when_done = False
-    if db is None:
-        db = SessionLocal()
-        close_db_when_done = True
-
+    print("Fetching employee for calculating budget from CSV")
+    employees = []
+    
+    # Path to employees.csv at the root of the backend directory
+    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../employees.csv"))
+    
     try:
-        developers = (
-            db.query(Employee)
-            .filter(
-                (Employee.employment_status == EmploymentStatus.ACTIVE)
-                | (Employee.employment_status == "ACTIVE")
-            )
-            .all()
-        )
+        with open(csv_path, mode="r", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                status = row.get("employment_status", "").upper()
+                if status == "ACTIVE":
+                    # Parse comma-separated skill string to list
+                    skill_names = row.get("skill_names", "")
+                    skills_list = [s.strip() for s in skill_names.split(",") if s.strip()] if skill_names else []
 
-        employees = []
-        for dev in developers:
-            # Parse comma-separated skill string to list
-            skills_list = [s.strip() for s in dev.skill_names.split(",") if s.strip()] if dev.skill_names else []
+                    experience = int(row.get("experience_years") or row.get("years_experience") or 0)
+                    hourly_cost = float(row.get("hourly_cost") or 0.0)
+                    
+                    try:
+                        daily_capacity_hours = int(row.get("daily_capacity_hours") or 8)
+                    except:
+                        daily_capacity_hours = 8
+                        
+                    try:
+                        allocated_hours = int(row.get("allocated_hours") or 0)
+                    except:
+                        allocated_hours = 0
+                        
+                    try:
+                        available_hours = int(row.get("available_hours") or 8)
+                    except:
+                        available_hours = 8
 
-            employees.append(
-                {
-                    "employee_id": str(dev.id),
-                    "name": dev.full_name,
-                    "role": dev.designation,
-                    "skills": skills_list,
-                    "experience": dev.experience_years or dev.years_experience or 0,
-                    "hourly_cost": float(dev.hourly_cost),
-                    "daily_capacity_hours": dev.daily_capacity_hours or DEFAULT_DAILY_CAPACITY,
-                    "allocated_hours": dev.allocated_hours or 0,
-                    "available_hours": dev.available_hours or DEFAULT_DAILY_CAPACITY,
-                    "bench_status": bool(dev.bench_status),
-                    "global_bench": bool(dev.global_bench),
-                }
-            )
-        print("Employees:", employees)
+                    bench_status = str(row.get("bench_status", "")).lower() == "true"
+                    global_bench = str(row.get("global_bench", "")).lower() == "true"
+
+                    employees.append(
+                        {
+                            "employee_id": str(row.get("id")),
+                            "name": row.get("full_name"),
+                            "role": row.get("designation"),
+                            "skills": skills_list,
+                            "experience": experience,
+                            "hourly_cost": hourly_cost,
+                            "daily_capacity_hours": daily_capacity_hours,
+                            "allocated_hours": allocated_hours,
+                            "available_hours": available_hours,
+                            "bench_status": bench_status,
+                            "global_bench": global_bench,
+                        }
+                    )
+        print("Employees fetched from CSV")
         return employees
 
-    finally:
-        if close_db_when_done:
-            db.close()
+    except Exception as e:
+        print(f"Error reading employees.csv: {e}")
+        return []
 
 
 def fetch_proposal_json_from_db(proposal_id_or_request_id: str, db: Optional[Session] = None) -> Dict[str, Any]:
