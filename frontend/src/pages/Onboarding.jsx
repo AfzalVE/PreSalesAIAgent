@@ -65,18 +65,18 @@ export default function Onboarding() {
 
   // Single-page form states
   const [formName, setFormName] = useState("");
-  const [formDomain, setFormDomain] = useState("E-Commerce");
+  const [formDomain, setFormDomain] = useState("");
   const [customDomain, setCustomDomain] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTechStack, setFormTechStack] = useState("");
 
-  const [formBudget, setFormBudget] = useState(75000);
+  const [formBudget, setFormBudget] = useState("");
   const [customBudget, setCustomBudget] = useState("");
 
-  const [formTimeline, setFormTimeline] = useState("12 Weeks");
+  const [formTimeline, setFormTimeline] = useState("");
   const [customTimeline, setCustomTimeline] = useState("");
 
-  const [formWorkforce, setFormWorkforce] = useState(4);
+  const [formWorkforce, setFormWorkforce] = useState("");
   const [customWorkforce, setCustomWorkforce] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -251,6 +251,7 @@ export default function Onboarding() {
                 onChange={(e) => setFormDomain(e.target.value)}
                 className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] cursor-pointer"
               >
+                <option value="" disabled>Select domain...</option>
                 <option value="E-Commerce">E-Commerce</option>
                 <option value="Fintech">Fintech / Financial Services</option>
                 <option value="Healthcare">Healthcare & Biotech</option>
@@ -326,6 +327,7 @@ export default function Onboarding() {
                 onChange={(e) => setFormBudget(e.target.value === "Custom" ? "Custom" : Number(e.target.value))}
                 className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] cursor-pointer"
               >
+                <option value="" disabled>Select budget...</option>
                 <option value={20000}>$10,000 - $25,000</option>
                 <option value={40000}>$25,000 - $50,000</option>
                 <option value={75000}>$50,000 - $100,000</option>
@@ -354,6 +356,7 @@ export default function Onboarding() {
                 onChange={(e) => setFormTimeline(e.target.value)}
                 className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] cursor-pointer"
               >
+                <option value="" disabled>Select timeline...</option>
                 <option value="4 Weeks">4 Weeks</option>
                 <option value="8 Weeks">8 Weeks</option>
                 <option value="12 Weeks">12 Weeks</option>
@@ -382,6 +385,7 @@ export default function Onboarding() {
                 onChange={(e) => setFormWorkforce(e.target.value === "Custom" ? "Custom" : Number(e.target.value))}
                 className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] cursor-pointer"
               >
+                <option value="" disabled>Select team size...</option>
                 <option value={2}>1 - 2 Engineers</option>
                 <option value={4}>3 - 5 Engineers</option>
                 <option value={8}>6 - 10 Engineers</option>
@@ -410,9 +414,9 @@ export default function Onboarding() {
                 setFormDomain("");
                 setFormDescription("");
                 setFormTechStack("");
-                setFormBudget(75000);
-                setFormTimeline("12 Weeks");
-                setFormWorkforce(4);
+                setFormBudget("");
+                setFormTimeline("");
+                setFormWorkforce("");
               }}
               className="px-5 py-2.5 rounded-full border border-neutral-300 hover:border-neutral-800 text-neutral-600 hover:text-neutral-900 transition-all font-bold text-xs w-full sm:w-auto text-center"
             >
