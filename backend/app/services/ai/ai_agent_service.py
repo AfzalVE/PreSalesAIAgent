@@ -3,12 +3,14 @@ import uuid
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from app.core.config import settings
 from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 from app.models.user import User
 from app.models.enums import UserRole
 from app.models.proposal_request import ProposalRequest, CommunicationType
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
+from app.models.employee import Employee
 
 # Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
@@ -55,99 +57,104 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         db.commit()
         db.refresh(proposal_request)
     
-    recent_messages_context = ""
+    # Fetch developer costs
+    costs = db.query(
+        Employee.designation,
+        func.avg(Employee.hourly_cost).label('avg_cost')
+    ).group_by(Employee.designation).all()
+    
+    cost_context_lines = []
+    for cost in costs:
+        if cost.avg_cost is not None:
+            cost_context_lines.append(f"- {cost.designation}: ${float(cost.avg_cost):.2f}/hr")
+    developer_costs_str = "\n".join(cost_context_lines) if cost_context_lines else "No cost data available."
+
+    history_messages = []
     if proposal_request:
         conversations = db.query(AIConversation).filter(
             AIConversation.request_id == proposal_request.id
-        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
+        ).order_by(AIConversation.timestamp.desc()).limit(20).all()
         if conversations:
             conversations.reverse()
-            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
             for msg in conversations:
-                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
+                role = "user" if msg.sender == SenderType.CLIENT else "assistant"
+                history_messages.append({"role": role, "content": msg.message})
 
     # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
 
-    system_prompt = f"""
+    chat_system_prompt = f"""
     You are an expert Pre-Sales AI Agent for a software development company.
-    Your job is to read unstructured text from a user and extract project requirements into a structured JSON format following a strict multi-step conversation flow.
+    Your job is to read unstructured text from a user and converse with them to gather project requirements.
     
-    IMPORTANT: You are continuing a conversation. Here is the previously extracted data:
-    {existing_data_str}
-    {recent_messages_context}
+    # 1. DEVELOPER COSTS (INTERNAL DB DATA)
+    Here are the average hourly costs for our developers:
+    {developer_costs_str}
 
-    GENERAL RULES:
-    1. NEVER use generic placeholder values. Your suggestions for budget, timeline, and tech stack MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned in the project description.
-    2. Every value must either come from the user, be inferred ONLY when explicitly asked to suggest it, or come from the Resource Matching Engine.
-    3. You MUST generate the required developers for the project initially in the `resource_requirements` field based on the project description and tech stack. Include the role, count, and required skills (e.g.
-    
-    Example:
-
-[
-    {{
-        "role": "<developer_role>",
-        "count": <value>,
-        "skills": ["<skill1>", "<skill2>"]
-    }}
-]).
-
-    STATE MACHINE & CONVERSATION FLOW:
-    
-    Step 1: GATHERING INFO
-    Required fields: project_name, business_domain, project_description, client_budget, and timeline_weeks.
-    - If any of these are missing (except timeline_weeks), you MUST ask follow-up questions to gather them.
-    - NEVER assume values unless the user explicitly asks you to "suggest" or "recommend" them.
-    - For `timeline_weeks`, you MUST estimate and provide a realistic timeline in weeks based on the project scope and complexity.
-    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion tailored to their specific project concept, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
-    - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
-
-    Step 2: PROJECT BUDGET & TIMELINE
-    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one based on the exact features requested. If the user asks you to suggest a budget, calculate a logical estimate based on the scope and populate the `client_budget` field.
-    - If `timeline_weeks` is missing, you MUST calculate and suggest a realistic timeline based on the project's complexity and scope, and populate the `timeline_weeks` field. Do not leave it null; always provide a logical estimate.
-
-    Step 3: TECH STACK
-    - If `preferred_technology` is missing: Suggest a highly specific and optimized technology stack based purely on the unique requirements of the project.
-    - CRITICAL INSTRUCTION FOR TECH STACK: You MUST diversify your technology recommendations based on the project domain and scale. Do NOT default to generic stacks like React, Node.js, PostgreSQL, Docker, AWS, Figma, or Jenkins every time. Instead, deeply analyze the project domain (e.g., use Python/Django for data-heavy apps, Vue/Laravel for traditional web, Swift/Kotlin for mobile, Go/Rust for high performance, Azure/GCP for cloud) and suggest a highly customized tech stack.
-    - Format it as a list of lists (e.g. [["Frontend", "Backend", "Database", "Cloud"]]).
-    - If the budget is low, recommend a cost-effective tech stack. If the budget is high, recommend an enterprise-grade scalable stack.
-    - You MUST ask the user: "Would you like to proceed with this technology stack?"
-    - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true.
-    - If `is_gathering_info_complete` is true AND `tech_stack_confirmed` is true, set `ready_for_match` to true.
-
-    Step 4: AFTER MATCH FUNCTION (Reviewing Estimates)
-    - If the backend has provided match results (see previously extracted data for `match_data`), you must present the Estimated Cost, Recommended Budget, Timeline, and Selected Developers to the user.
-    - Then ask: "Would you like me to generate the proposal?"
-    - Only after the user explicitly confirms, set `ready_for_proposal_generation` to true.
-
-    Step 5: SUGGESTIONS & AUTODETECT
-    - If the user asks for a project name or business domain suggestion, generate a creative and relevant one based on the description and output it directly in the JSON.
-    - If the user provides a project name and business domain, update those fields accordingly.
-
-    
-
-    OUTPUT FORMAT:
-    - `follow_up_message` must ALWAYS contain your conversational response.
-    - Ensure your output strictly follows this JSON schema:
-    {schema_str}
-    
-    Return ONLY valid JSON.
+    # 2. CONVERSATIONAL GUIDELINES
+    - Be helpful and natural.
+    - Actively infer details from the user's input. For example, if they say 'ecommerce' or 'WooCommerce', infer that the business domain is E-Commerce. DO NOT interrogate the user for information that is obvious from context.
+    - COST & TIMELINE ESTIMATION: Do NOT calculate or invent cost estimates yourself. If the user asks for a cost or time estimate, simply suggest a realistic timeline and team size based on their requirements, and state: "I will run our resource engine to calculate the exact cost for this."
+    - The backend engine will automatically append the real, database-backed cost estimate to your message. DO NOT invent or output dollar amounts yourself.
+    - DO NOT expose the raw internal hourly rates to the client.
+    - If the user provides a budget, gently acknowledge it, but rely on the backend engine to evaluate its feasibility.
+    - Keep track of what information is still missing (project name, business domain, description, budget, timeline) and gently ask for it, but only 1 or 2 questions at a time.
+    - PROPOSAL/POC GENERATION: If the user asks to "generate POC", "create proposal", or indicates they want to proceed, DO NOT ask any more questions or require further confirmation. Immediately confirm that you are generating it and provide a brief summary of the final scope.
+    - If the user asks for suggestions on tech stack, provide a specific and tailored one (not just generic stacks).
     """
 
     try:
-        response = await client.chat.completions.create(
+        user_content = f"CURRENT PROJECT STATE (if any):\n{existing_data_str}\n\nUSER INPUT:\n{input_data.text}"
+        chat_messages = [{"role": "system", "content": chat_system_prompt}]
+        chat_messages.extend(history_messages)
+        chat_messages.append({"role": "user", "content": user_content})
+
+        chat_response = await client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": input_data.text}
-            ],
+            messages=chat_messages,
+            temperature=0.7
+        )
+        ai_text_response = chat_response.choices[0].message.content
+
+        extraction_system_prompt = f"""
+        You are an internal JSON state extraction bot.
+        Your job is to review the conversation and the AI's latest response, and extract the current known project state into the required JSON schema.
+        
+        RULES:
+        1. Look at the CURRENT PROJECT STATE provided, the USER INPUT, and the AI RESPONSE.
+        2. Merge or update the state based on new information inferred or provided.
+        3. If the AI response suggests a budget, timeline, or tech stack, include it in the extracted state.
+        4. You MUST map everything exactly to the schema.
+        5. STATE FLAGS: 
+           - If all core info is present, set `is_gathering_info_complete` to true.
+           - If the user asks for a cost estimate, timeline, or resource allocation, you MUST set `ready_for_match` to true immediately, even if all core info is not yet gathered. This will trigger the backend matching engine.
+           - If the user explicitly asks to generate the POC or proposal (e.g., "generate POC"), OR if the AI RESPONSE states that it is now generating the proposal/POC, you MUST set `ready_for_proposal_generation` to true immediately. Do not wait for further confirmation.
+        
+        Ensure your output strictly follows this JSON schema:
+        {schema_str}
+        
+        Return ONLY valid JSON.
+        """
+
+        extraction_user_content = f"CURRENT PROJECT STATE:\n{existing_data_str}\n\nUSER INPUT:\n{input_data.text}\n\nAI RESPONSE:\n{ai_text_response}\n\nExtract the updated JSON state."
+        extraction_messages = [
+            {"role": "system", "content": extraction_system_prompt},
+            {"role": "user", "content": extraction_user_content}
+        ]
+
+        extraction_response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=extraction_messages,
             response_format={"type": "json_object"},
-            temperature=0.4
+            temperature=0.1
         )
         
         # Parse the JSON string returned by OpenAI
-        response_content = response.choices[0].message.content
+        response_content = extraction_response.choices[0].message.content
         extracted_dict = json.loads(response_content)
+        
+        # Force the follow_up_message to exactly match the generated conversational response
+        extracted_dict["follow_up_message"] = ai_text_response
         
         if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
             if proposal_request.extracted_json and "proposal_id" in proposal_request.extracted_json:

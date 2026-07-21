@@ -45,6 +45,9 @@ async def generate_proposals_for_request(
     user_input_summary = {
         "proposal_id": proposal_input.get("proposal_id"),
         "project_name": proposal_input.get("project_name"),
+        "business_domain": proposal_input.get("business_domain"),
+        "project_description": proposal_input.get("project_description"),
+        "preferred_technology": proposal_input.get("preferred_technology"),
         "client_budget": proposal_input.get("client_budget"),
         "mvp_estimation": mvp_data,
         "full_project_estimation": full_data_input
@@ -312,21 +315,6 @@ Do not include any additional text.
     is_within_budget = mvp_data.get("is_within_budget", True)
     budget_variance = mvp_data.get("budget_variance_usd", 0)
     
-    if not is_within_budget:
-        return {
-            "proposal_id": proposal_input.get("proposal_id"),
-            "possible": False,
-            "description": (
-                "The requested project cannot be delivered within the client's "
-                "specified budget. Please increase the budget or reduce the scope."
-            ),
-            "estimated_cost": estimated_cost,
-            "client_budget": final_budget,
-            "budget_variance_usd": budget_variance,
-            "mvp": None,
-            "full": None
-        }
-
     # 3. Create or Update ProposalRequest record in the database
     existing_request_id = kwargs.get("existing_request_id")
     proposal_request = None
