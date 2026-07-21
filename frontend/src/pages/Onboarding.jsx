@@ -156,9 +156,9 @@ export default function Onboarding() {
       return; // Ensure custom domain is provided
     }
 
-    const finalBudget = formBudget === "Custom" ? Number(customBudget) : Number(formBudget);
-    const finalTimeline = formTimeline === "Custom" ? customTimeline.trim() : formTimeline;
-    const finalWorkforce = formWorkforce === "Custom" ? Number(customWorkforce) : Number(formWorkforce);
+    const finalBudget = formBudget === "Custom" ? Number(customBudget) : (formBudget === "" ? null : Number(formBudget));
+    const finalTimeline = formTimeline === "Custom" ? customTimeline.trim() : (formTimeline === "" ? null : formTimeline);
+    const finalWorkforce = formWorkforce === "Custom" ? Number(customWorkforce) : (formWorkforce === "" ? null : Number(formWorkforce));
 
     const techArray = formTechStack
       ? formTechStack.split(',').map(t => t.trim()).filter(Boolean)
