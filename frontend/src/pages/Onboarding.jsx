@@ -328,11 +328,13 @@ export default function Onboarding() {
                 className="h-10 px-3 border border-[#e5e5e5] rounded-md w-full bg-white text-sm text-[#0a0a0a] transition-all outline-none focus:border-[#00d4a4] focus:ring-1 focus:ring-[#00d4a4] cursor-pointer"
               >
                 <option value="" disabled>Select budget...</option>
-                <option value={20000}>$10,000 - $25,000</option>
-                <option value={40000}>$25,000 - $50,000</option>
-                <option value={75000}>$50,000 - $100,000</option>
-                <option value={150000}>$100,000 - $250,000</option>
-                <option value={300000}>$250,000+</option>
+                <option value={15000}>$10,000 - $20,000</option>
+                <option value={25000}>$20,000 - $30,000</option>
+                <option value={35000}>$30,000 - $40,000</option>
+                <option value={45000}>$40,000 - $50,000</option>
+                <option value={55000}>$50,000 - $60,000</option>
+                <option value={65000}>$60,000 - $70,000</option>
+                <option value={80000}>$70,000+</option>
                 <option value="Custom">Custom / Other</option>
               </select>
               {formBudget === "Custom" && (
