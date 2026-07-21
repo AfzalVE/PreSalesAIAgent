@@ -261,7 +261,7 @@ export default function NegotiationChat() {
         </div>
 
         {/* Chat Feed */}
-        <div className="flex-1 overflow-y-auto my-2 space-y-4 pr-1 max-h-[300px]">
+        <div className="flex-1 overflow-y-auto my-2 space-y-4 pr-1 min-h-0">
           {messages.map((msg) => {
             const isLatest = messages[messages.length - 1].id === msg.id;
             const shouldStream =
