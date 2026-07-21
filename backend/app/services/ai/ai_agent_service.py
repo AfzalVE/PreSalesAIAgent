@@ -102,8 +102,9 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion tailored to their specific project concept, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
     - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
 
-    Step 2: PROJECT BUDGET
+    Step 2: PROJECT BUDGET & TIMELINE
     - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one based on the exact features requested. If the user asks you to suggest a budget, calculate a logical estimate based on the scope and populate the `client_budget` field.
+    - If `timeline_weeks` is missing, you MUST calculate and suggest a realistic timeline based on the project's complexity and scope, and populate the `timeline_weeks` field. Do not leave it null; always provide a logical estimate.
 
     Step 3: TECH STACK
     - If `preferred_technology` is missing: Suggest a highly specific and optimized technology stack based purely on the unique requirements of the project.
