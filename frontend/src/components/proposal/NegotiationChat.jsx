@@ -55,6 +55,8 @@ export default function NegotiationChat() {
     projectData,
     updateProjectData,
     user,
+    activeRequestId,
+    setActiveRequestId,
   } = useAppStore();
   const [inputPrompt, setInputPrompt] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -72,7 +74,6 @@ export default function NegotiationChat() {
 
   const [recognition, setRecognition] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [chatRequestId, setChatRequestId] = useState(null);
   const [proposalData, setProposalData] = useState(null);
   const [activeTab, setActiveTab] = useState("mvp");
   const [finalizedProposals, setFinalizedProposals] = useState({});
@@ -153,8 +154,8 @@ export default function NegotiationChat() {
 
     try {
       const payload = { text };
-      if (chatRequestId) {
-        payload.request_id = chatRequestId;
+      if (activeRequestId) {
+        payload.request_id = activeRequestId;
       }
 
       const response = await fetch(
@@ -171,7 +172,7 @@ export default function NegotiationChat() {
       }
 
       if (data.request_id) {
-        setChatRequestId(data.request_id);
+        setActiveRequestId(data.request_id);
       }
 
       // Update store with merged parameters
