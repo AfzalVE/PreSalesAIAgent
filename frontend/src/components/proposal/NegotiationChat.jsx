@@ -26,7 +26,7 @@ const SUGGESTIONS = [
   "Add AI recommendations",
 ];
 
-function StreamingText({ text, onComplete }) {
+function StreamingText({ text, onComplete, onUpdate }) {
   const [displayedText, setDisplayedText] = useState("");
 
   useEffect(() => {
@@ -36,13 +36,14 @@ function StreamingText({ text, onComplete }) {
       if (index < text.length) {
         setDisplayedText((prev) => prev + text.charAt(index));
         index++;
+        if (onUpdate) onUpdate();
       } else {
         clearInterval(interval);
         if (onComplete) onComplete();
       }
     }, 15);
     return () => clearInterval(interval);
-  }, [text, onComplete]);
+  }, [text, onComplete, onUpdate]);
 
   return <span>{displayedText}</span>;
 }
@@ -77,7 +78,7 @@ export default function NegotiationChat() {
   const [finalizedProposals, setFinalizedProposals] = useState({});
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isProcessing]);
+  }, [messages, isProcessing, completedStreams]);
 
   useEffect(() => {
     if (
@@ -290,6 +291,7 @@ export default function NegotiationChat() {
                     {shouldStream ? (
                       <StreamingText
                         text={msg.text}
+                        onUpdate={() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" })}
                         onComplete={() =>
                           setCompletedStreams((prev) => ({
                             ...prev,
