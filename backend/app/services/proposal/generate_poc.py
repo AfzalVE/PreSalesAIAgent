@@ -1,14 +1,14 @@
 import json
 import logging
 
-from groq import Groq
+from openai import OpenAI
 
 from app.core.config import settings
 from .prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-client = Groq(api_key=settings.GROQ_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def build_user_prompt(
@@ -102,10 +102,10 @@ def generate_poc(
         tech_stack,
     )
 
-    logger.info("Generating POC from Groq...")
+    logger.info("Generating POC from OpenAI...")
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         temperature=0.2,
         response_format={"type": "json_object"},
         messages=[

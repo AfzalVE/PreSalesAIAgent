@@ -11,10 +11,9 @@ from app.services.proposal.generate_poc import generate_poc
 from app.services.proposal.docx_generator import generate_proposal_docx
 from app.services.resource.cost_estimation import match_resources
 
-# Initialize the OpenAI client asynchronously, pointing to Groq's API
+# Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
-    base_url="https://api.groq.com/openai/v1",
-    api_key=settings.GROQ_API_KEY
+    api_key=settings.OPENAI_API_KEY
 )
 
 from typing import Dict, Any
@@ -51,6 +50,13 @@ async def generate_proposals_for_request(
         "full_project_estimation": full_data_input
     }
 
+    print("\n--- [DATA FLOW] Proposal Generation Engine Started ---")
+    print(f"MVP Cost Estimation: {mvp_data.get('total_project_cost')}")
+    print(f"Full Project Cost Estimation: {full_data_input.get('total_project_cost')}")
+    print(f"MVP Timeline Extracted: {mvp_data.get('timeline_weeks')} Weeks")
+    print(f"Full Project Timeline Extracted: {full_data_input.get('timeline_weeks')} Weeks")
+    print("------------------------------------------------------\n")
+
     system_prompt = """
     You are a Senior Technical Director and Pre-Sales Solution Architect with extensive experience in enterprise software consulting, solution architecture, and proposal writing.
 
@@ -72,7 +78,8 @@ IMPORTANT RULES
 • The input includes project cost, selected resources, timeline, budget feasibility, and resource requirements.
 • NEVER modify, estimate, calculate, or infer any financial values.
 • NEVER change the provided timeline duration or selected resources.
-• Use the provided resource requirements and timeline as authoritative.
+• Use the exact technology stack that was provided in the input if present.
+• Your timeline breakdown phases MUST add up to exactly the timeline provided for the MVP and Full variants respectively.
 • Your responsibility is only to generate professional proposal content.
 
 INFERENCE RULES
@@ -151,7 +158,7 @@ Example:
     }
 ]
 
-The timeline should completely utilize the provided project duration.
+The timeline phases should completely utilize the exact project duration provided in the estimation data, no more and no less.
 
 ----------------------------------
 
@@ -272,9 +279,8 @@ Do not include markdown.
 Do not include explanations.
 Do not include any additional text.
     """
-    print("HEre")
     response = await client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": json.dumps(user_input_summary)}

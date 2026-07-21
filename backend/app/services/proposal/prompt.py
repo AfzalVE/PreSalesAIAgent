@@ -231,8 +231,7 @@ Deployment
 
 Production Deployment Documentation and User Acceptance Testing
 
-The timeline should match the estimated project duration.
-
+The timeline phases MUST add up to exactly the estimated project duration provided in the input, no more and no less.
 ----------------------------------------
 
 5. Assumptions
