@@ -21,7 +21,7 @@ class AgentExtractionResponse(BaseModel):
     client_budget: Optional[float] = Field(None, description="The budget of the client in USD.")
     
     # State flags
-    is_gathering_info_complete: bool = Field(False, description="True ONLY when project_name, business_domain, project_description, timeline_weeks, and client_budget are ALL present.")
+    is_gathering_info_complete: bool = Field(False, description="True ONLY when project_name, business_domain, project_description, and client_budget are ALL present. Timeline is optional.")
     tech_stack_confirmed: bool = Field(False, description="True ONLY when the user explicitly agrees to the proposed tech stack.")
     ready_for_match: bool = Field(False, description="True when info is complete AND tech stack is confirmed.")
     ready_for_proposal_generation: bool = Field(False, description="True ONLY when the user explicitly says to generate the proposal after seeing the match estimation.")
