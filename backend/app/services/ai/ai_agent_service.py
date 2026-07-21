@@ -78,9 +78,9 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     {recent_messages_context}
 
     GENERAL RULES:
-    1. NEVER hardcode values (e.g. 50000 budget, 12 weeks, 5 engineers, React, etc.).
+    1. NEVER use generic placeholder values. Your suggestions for budget, timeline, and tech stack MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned in the project description.
     2. Every value must either come from the user, be inferred ONLY when explicitly asked to suggest it, or come from the Resource Matching Engine.
-    3. NEVER estimate project cost, developer cost, or team size yourself. The Resource Matching Engine handles this.
+    3. NEVER estimate developer cost or team size yourself. The Resource Matching Engine handles this.
 
     STATE MACHINE & CONVERSATION FLOW:
     
@@ -88,15 +88,16 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Required fields: project_name, business_domain, project_description, and client_budget.
     - If any of these are missing, you MUST ask follow-up questions to gather them.
     - NEVER assume values unless the user explicitly asks you to "suggest" or "recommend" them.
-    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
+    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion tailored to their specific project concept, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
     - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
 
     Step 2: PROJECT BUDGET
-    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one. If the user asks you to suggest a budget, provide one based on the description and populate the `client_budget` field.
+    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one based on the exact features requested. If the user asks you to suggest a budget, calculate a logical estimate based on the scope and populate the `client_budget` field.
 
     Step 3: TECH STACK
     - If `preferred_technology` is missing: Suggest a suitable technology stack (based on project type/scale) and format it as a list of lists (e.g. [["Technology_1", "Technology_2", "Technology_3", "Technology_4"]]). 
     - If the budget of the user is too low then recommend the user a techstack based on that low budget and if the budget of the user is high then recommend the user a techstack based on that high budget.
+    - If `preferred_technology` is missing: Suggest a highly specific and optimized technology stack based purely on the unique requirements of the project. Format it as a list of lists (e.g. [["Frontend", "Backend", "Database", "Cloud"]]).
     - You MUST ask the user: "Would you like to proceed with this technology stack?"
     - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true.
     - If `is_gathering_info_complete` is true AND `tech_stack_confirmed` is true, set `ready_for_match` to true.
@@ -107,7 +108,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     - Only after the user explicitly confirms, set `ready_for_proposal_generation` to true.
 
     Step 5: SUGGESTIONS & AUTODETECT
-    - If the user asks for a project name or business domain suggestion, generate one based on the description and output it directly in the JSON.
+    - If the user asks for a project name or business domain suggestion, generate a creative and relevant one based on the description and output it directly in the JSON.
     - If the user provides a project name and business domain, update those fields accordingly.
 
     
@@ -128,7 +129,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
                 {"role": "user", "content": input_data.text}
             ],
             response_format={"type": "json_object"},
-            temperature=0.1
+            temperature=0.4
         )
         
         # Parse the JSON string returned by OpenAI
