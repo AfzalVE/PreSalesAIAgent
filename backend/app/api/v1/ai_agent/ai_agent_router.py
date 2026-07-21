@@ -73,6 +73,21 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
             match_response = proposal_request.extracted_json.get("match_data") if proposal_request and proposal_request.extracted_json else None
             if not match_response:
                 match_response = match_resources_from_db_request(extracted_data.request_id)
+                
+            # Inject context that might be missing from old match_data saved in DB
+            if proposal_request and proposal_request.extracted_json:
+                match_response["project_name"] = proposal_request.extracted_json.get("project_name", match_response.get("project_name"))
+                match_response["business_domain"] = proposal_request.extracted_json.get("business_domain", match_response.get("business_domain"))
+                match_response["project_description"] = proposal_request.extracted_json.get("project_description", match_response.get("project_description"))
+                match_response["preferred_technology"] = proposal_request.extracted_json.get("preferred_technology", match_response.get("preferred_technology"))
+                
+                # Fix missing timeline in old MVP data
+                extracted_timeline = proposal_request.extracted_json.get("mvp_timeline_weeks") or proposal_request.extracted_json.get("timeline_weeks")
+                extracted_full_timeline = proposal_request.extracted_json.get("full_timeline_weeks") or proposal_request.extracted_json.get("timeline_weeks")
+                if match_response.get("mvp") and not match_response["mvp"].get("timeline_weeks"):
+                    match_response["mvp"]["timeline_weeks"] = extracted_timeline
+                if match_response.get("full_project") and not match_response["full_project"].get("timeline_weeks"):
+                    match_response["full_project"]["timeline_weeks"] = extracted_full_timeline
             
             # 3. Generate Proposal (handles budget validation internally)
             proposals = await generate_proposals_for_request(

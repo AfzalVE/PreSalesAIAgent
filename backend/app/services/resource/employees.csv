@@ -84,7 +84,7 @@ f6cc2337-affe-4521-9371-f0cb6a5f50e3,EMP1581,Sarthak Chowdhury,DevOps Engineer,D
 3b49a4e9-20c3-4ebd-9b52-bf8a4589f375,EMP1583,Rohit Kumar,Lead Software Engineer,Architecture,16,21,8,0,8,True,False,ACTIVE,"System Design, Microservices, Kubernetes, Node.js",EXPERT,16,2023-06-24 17:49:02,,Password@123
 cb3da965-54b1-4353-8276-71ec8673957c,EMP1584,Anu Roy,Senior Software Engineer,Backend,17,22,8,6,2,False,False,ACTIVE,"Node.js, PostgreSQL, System Design, Docker",EXPERT,17,2023-09-20 20:16:33,,Password@123
 b2de836d-6c61-49b1-8c69-c8ba0cd7f586,EMP1585,Sayan Dutta,QA Engineer,QA,2,9,8,3,5,False,True,ACTIVE,"Playwright, TypeScript, CI/CD, Postman",BEGINNER,2,2025-03-05 08:14:50,,Password@123
-c8d22ae9-5eed-47a3-b729-a8b9ef0edaa5,EMP1586,Avijit Pillai,Frontend Developer,Frontend,9,14,8,4,4,False,False,ACTIVE,"React, Redux, Tailwind CSS, TypeScript",EXPERT,9,2024-10-09 20:53:56,,Password@123
+c8d22ae9-5eed-47a3-b729-a8b9ef0edaa5,EMP1586,Avijit Pillai,Frontend Developer,Frontend,9,14,8,4,4,False,False,A CTIVE,"React, Redux, Tailwind CSS, TypeScript",EXPERT,9,2024-10-09 20:53:56,,Password@123
 548ea73e-d1f2-4fba-98a7-5fcc5dba0db8,EMP1587,Ankan Kumar,Project Manager,Management,16,19,8,4,4,False,False,ACTIVE,"Jira, Agile, Scrum, Stakeholder Management",EXPERT,16,2023-04-24 00:12:31,,Password@123
 d419e051-c786-4a8c-9138-05e208bbdd59,EMP1588,Arijit Majumdar,Cloud Engineer,Cloud,5,11,8,4,4,False,False,ACTIVE,"AWS, Terraform, CloudFormation, Lambda",INTERMEDIATE,5,2024-04-09 15:02:44,,Password@123
 7baa63aa-78a6-4261-9df1-b51d863c7104,EMP1589,Abhijit Sinha,Cloud Engineer,Cloud,11,16,8,0,8,True,False,ACTIVE,"Azure, Bicep, AKS, Azure DevOps",EXPERT,11,2025-10-30 02:13:31,,Password@123

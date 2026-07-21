@@ -187,7 +187,7 @@ export default function ClientPortal() {
           name: req.project_name || "Untitled Project",
           domain: req.business_domain || "Enterprise",
           budget: Number(req.budget) || 0,
-          timeline: req.timeline || "12 Weeks",
+          timeline: req.estimated_duration || req.timeline || "TBD",
           status:
             req.status === "COMPLETED"
               ? "Approved"
@@ -682,7 +682,7 @@ export default function ClientPortal() {
                         (activeProposal && activeProposal.budget) || 0,
                       ).toLocaleString()}{" "}
                       for{" "}
-                      {activeProposal ? activeProposal.timeline : "12 Weeks"}
+                      {activeProposal ? (activeProposal.estimated_duration || activeProposal.timeline) : "TBD"}
                     </p>
                   </div>
                 </div>

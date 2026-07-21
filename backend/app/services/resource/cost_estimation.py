@@ -1104,21 +1104,16 @@ def _build_variant_proposal(proposal: Dict[str, Any], variant: str) -> Dict[str,
     """
     variant_proposal = dict(proposal)
 
-    base_requirements = proposal.get("resource_requirements") or _default_resource_requirements()
-
-    base_timeline = proposal.get("timeline_weeks")
-    if not base_timeline or int(base_timeline) <= 0:
-        base_timeline = DEFAULT_TIMELINE_WEEKS
-    base_timeline = int(base_timeline)
+    base_requirements = proposal.get("resource_requirements") or []
 
     if variant == "mvp":
         variant_proposal["resource_requirements"] = build_mvp_requirements(base_requirements)
-        variant_proposal["timeline_weeks"] = max(
-            MVP_MIN_TIMELINE_WEEKS, round(base_timeline * MVP_TIMELINE_RATIO)
-        )
+        mvp_timeline = proposal.get("mvp_timeline_weeks")
+        variant_proposal["timeline_weeks"] = int(mvp_timeline) if mvp_timeline and int(mvp_timeline) > 0 else 0
     elif variant == "full":
         variant_proposal["resource_requirements"] = build_full_requirements(base_requirements)
-        variant_proposal["timeline_weeks"] = base_timeline
+        full_timeline = proposal.get("full_timeline_weeks")
+        variant_proposal["timeline_weeks"] = int(full_timeline) if full_timeline and int(full_timeline) > 0 else 0
     else:
         raise ValueError(f"Unknown variant: {variant}")
 
@@ -1147,11 +1142,11 @@ def allocate_resources(
     """
     estimate = ProjectEstimate()
 
-    timeline_weeks = proposal.get("timeline_weeks")
+    timeline_weeks = proposal.get("timeline_weeks") or proposal.get("full_timeline_weeks")
     if not timeline_weeks or int(timeline_weeks) <= 0:
-        timeline_weeks = DEFAULT_TIMELINE_WEEKS
+        timeline_weeks = 0
 
-    resource_reqs_raw = proposal.get("resource_requirements") or _default_resource_requirements()
+    resource_reqs_raw = proposal.get("resource_requirements") or []
 
     total_developer_cost = 0.0
     already_picked_in_this_call = set(exclude_ids) if exclude_ids else set()
@@ -1297,6 +1292,9 @@ def match_resources(
     return {
         "proposal_id": proposal.get("proposal_id", f"PROP-{uuid.uuid4().hex[:6].upper()}"),
         "project_name": proposal.get("project_name", "Untitled AI Project Proposal"),
+        "business_domain": proposal.get("business_domain"),
+        "project_description": proposal.get("project_description"),
+        "preferred_technology": proposal.get("preferred_technology"),
         "client_budget": client_budget,
         "mvp": mvp_json,
         "full_project": full_json,

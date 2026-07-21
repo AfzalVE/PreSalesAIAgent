@@ -19,37 +19,37 @@ from app.api.v1.admin.admin_router import router as admin_router
 
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Startup events
-    """
-    print("[DB] Creating database tables...")
-    Base.metadata.create_all(bind=engine)
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     """
+#     Startup events
+#     """
+#     print("[DB] Creating database tables...")
+#     Base.metadata.create_all(bind=engine)
     
-    # Run manual migration for timeline_phases and employee columns
-    from sqlalchemy import text
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS timeline_phases JSONB"))
-            conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)"))
-            conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100)"))
-            conn.commit()
-            print("[DB] Database migration: tables verified/created.")
-    except Exception as e:
-        print(f"[DB] Migration failed: {e}")
+#     # Run manual migration for timeline_phases and employee columns
+#     from sqlalchemy import text
+#     try:
+#         with engine.connect() as conn:
+#             conn.execute(text("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS timeline_phases JSONB"))
+#             conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500)"))
+#             conn.execute(text("ALTER TABLE employees ADD COLUMN IF NOT EXISTS password VARCHAR(100)"))
+#             conn.commit()
+#             print("[DB] Database migration: tables verified/created.")
+#     except Exception as e:
+#         print(f"[DB] Migration failed: {e}")
 
     
-    print("[DB] Seeding database...")
-    from app.seed import seed_data
-    try:
-        seed_data()
-    except Exception as e:
-        print(f"[DB] Seeding failed: {e}")
+#     print("[DB] Seeding database...")
+#     from app.seed import seed_data
+#     try:
+#         seed_data()
+#     except Exception as e:
+#         print(f"[DB] Seeding failed: {e}")
         
-    print("[API] AI Proposal Generator API Started")
-    yield
-    print("[API] AI Proposal Generator API Stopped")
+#     print("[API] AI Proposal Generator API Started")
+#     yield
+#     print("[API] AI Proposal Generator API Stopped")
 
 
 
