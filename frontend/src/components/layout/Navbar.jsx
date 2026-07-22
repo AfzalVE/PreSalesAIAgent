@@ -2,11 +2,12 @@ import { ShieldAlert, UserCheck, ArrowLeft, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/useAppStore";
 import JourneyStepper from "../common/JourneyStepper";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Navbar({ isAdmin = false, onToggleMode }) {
   const { activeStep, setActiveStep, user, resetStore } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleBack = () => {
@@ -38,7 +39,7 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
         </div>
 
         {/* Journey Stepper (Only on client journey steps) */}
-        {!isAdmin && activeStep > 0 && activeStep < 4 && (
+        {!isAdmin && activeStep > 0 && activeStep < 4 && !['/broker', '/onboarding'].includes(location.pathname) && (
           <div className="hidden sm:block">
             <JourneyStepper />
           </div>
