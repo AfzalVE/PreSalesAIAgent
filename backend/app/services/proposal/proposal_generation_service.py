@@ -9,7 +9,10 @@ from app.models.proposal_request import ProposalRequest, CommunicationType, Prop
 from app.models.resource_allocation import ResourceAllocation
 from app.services.proposal.generate_poc import generate_poc
 from app.services.proposal.docx_generator import generate_proposal_docx
+import logging
 from app.services.resource.cost_estimation import match_resources
+
+logger = logging.getLogger(__name__)
 
 # Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
@@ -45,8 +48,6 @@ async def generate_proposals_for_request(
     user_input_summary = {
         "proposal_id": proposal_input.get("proposal_id"),
         "project_name": proposal_input.get("project_name"),
-        "business_domain": proposal_input.get("business_domain"),
-        "project_description": proposal_input.get("project_description"),
         "preferred_technology": proposal_input.get("preferred_technology"),
         "client_budget": proposal_input.get("client_budget"),
         "preferred_technology": proposal_input.get("preferred_technology", []),
@@ -205,37 +206,6 @@ The Full Product should include everything from the MVP plus advanced enterprise
 
 ----------------------------------
 
-Key Differences
-
-Generate a comparison highlighting the differences between the MVP and Full Product.
-
-Example:
-
-[
-    {
-        "category": "Features",
-        "mvp": "Core business workflows only",
-        "full": "Advanced workflows, automation, analytics, and integrations"
-    },
-    {
-        "category": "Architecture",
-        "mvp": "Monolithic application",
-        "full": "Scalable modular architecture"
-    },
-    {
-        "category": "Security",
-        "mvp": "JWT Authentication",
-        "full": "JWT, RBAC, Audit Logs, MFA"
-    },
-    {
-        "category": "Deployment",
-        "mvp": "Single production environment",
-        "full": "CI/CD with Development, QA, Staging, and Production"
-    }
-]
-
-----------------------------------
-
 Return ONLY a valid JSON object with the following structure:
 
 {
@@ -272,9 +242,7 @@ Return ONLY a valid JSON object with the following structure:
         "estimated_duration_weeks": 0,
         "timeline_phases": [],
         "resource_requirements": []
-    },
-
-    "key_differences": []
+    }
 }
 
 Return ONLY valid JSON.
@@ -432,7 +400,6 @@ Do not include any additional text.
         "recommended_budget": recommended_budget,
         "estimated_cost": estimated_cost,
         "timeline": final_timeline,
-        "key_differences": generation_content.get("key_differences", []),
         "proposals": [
             {
                 "id": str(mvp_proposal.id),
@@ -514,18 +481,13 @@ def create_proposal_document(
             safe_resources = {"resources": safe_resources}
             
         proposal = {
-            "project_name": project_name or "Zenith Retail Portal",
-            "estimated_cost": float(estimated_budget) if estimated_budget else 75000.0,
-            "estimated_duration": estimated_duration or "12 Weeks",
+            "project_name": project_name or "Unknown Project",
+            "estimated_cost": float(estimated_budget) if estimated_budget else 0.0,
+            "estimated_duration": estimated_duration or "TBD",
             "proposal_type": proposal_type,
             "executive_summary": f"This is an offline generated solution proposal blueprint for {project_name or 'the requested application'}.",
             "scope": f"Scoped development blueprint targeting {project_name or 'the system'} utilizing preferred technologies.",
-            "tech_stack": tech_stack or {
-                "backend": "FastAPI",
-                "frontend": "React",
-                "db": "PostgreSQL",
-                "cloud": "AWS"
-            },
+            "tech_stack": tech_stack or {},
             "timeline_phases": [
                 {"Phase": "Architecture Design & Setup", "Duration": "2 Weeks", "Output": "System Blueprint Design"},
                 {"Phase": "Core Feature Development", "Duration": "6 Weeks", "Output": "Tested Core APIs and UI"},

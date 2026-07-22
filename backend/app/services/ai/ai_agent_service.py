@@ -54,7 +54,10 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         db.add(proposal_request)
         db.commit()
         db.refresh(proposal_request)
-    
+        existing_json = {}
+    else:
+        existing_json = proposal_request.extracted_json if proposal_request and proposal_request.extracted_json else {}
+        
     recent_messages_context = ""
     if proposal_request:
         conversations = db.query(AIConversation).filter(
@@ -188,7 +191,6 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         extracted_dict["request_id"] = str(proposal_request.id)
         
         # Merge with existing data so we don't lose context
-        existing_json = proposal_request.extracted_json or {}
         merged_json = existing_json.copy()
         
         for k, v in extracted_dict.items():
