@@ -106,13 +106,13 @@ Each proposal MUST include:
 1. Executive Summary
    - A concise overview of the proposed solution.
 
-2. Technology Stack
+2. Technology Stack (MUST be populated based on preferred_technology)
    {
-      "backend": "",
-      "frontend": "",
-      "database": "",
-      "cloud": "",
-      "other_tools": []
+      "backend": "e.g. Python/Node.js",
+      "frontend": "e.g. React/Vue",
+      "database": "e.g. PostgreSQL/MongoDB",
+      "cloud": "e.g. AWS/Azure",
+      "other_tools": ["e.g. Docker"]
    }
 
 3. Solution Architecture
@@ -217,7 +217,13 @@ Return ONLY a valid JSON object with the following structure:
 
     "mvp": {
         "executive_summary": "",
-        "tech_stack": {},
+        "tech_stack": {
+            "backend": "Populate from preferred_technology",
+            "frontend": "Populate from preferred_technology",
+            "database": "Populate from preferred_technology",
+            "cloud": "Populate from preferred_technology",
+            "other_tools": []
+        },
         "architecture": "",
         "scope": "",
         "key_features": [],
@@ -232,7 +238,13 @@ Return ONLY a valid JSON object with the following structure:
 
     "full": {
         "executive_summary": "",
-        "tech_stack": {},
+        "tech_stack": {
+            "backend": "Populate from preferred_technology",
+            "frontend": "Populate from preferred_technology",
+            "database": "Populate from preferred_technology",
+            "cloud": "Populate from preferred_technology",
+            "other_tools": []
+        },
         "architecture": "",
         "scope": "",
         "key_features": [],

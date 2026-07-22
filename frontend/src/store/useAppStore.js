@@ -212,9 +212,10 @@ Budget: ${budgetText}
 Timeline: ${timelineText}
 
 Treat this request as fully complete. INFER any missing fields (like budget, timeline_days, tech stack, and resource_requirements) dynamically based on the description.
+You MUST explicitly extract and output project_name, business_domain, and project_description in your JSON response.
 You MUST output mvp_resource_requirements, full_resource_requirements, mvp_timeline_days, and full_timeline_days based on the inferred tech stack and description.
-DO NOT just divide the timeline in half for the MVP. Make a thoughtful calculation.
-MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_match = true. DO NOT ask follow-up questions.`;
+DO NOT just divide the timeline in half for the MVP. Make a thoughtful calculation so mvp_timeline_days is genuinely different from full_timeline_days.
+MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_match = true, estimation_confirmed = true, ready_for_proposal_generation = true. DO NOT ask follow-up questions.`;
 
     try {
       const token = store.user?.accessToken;

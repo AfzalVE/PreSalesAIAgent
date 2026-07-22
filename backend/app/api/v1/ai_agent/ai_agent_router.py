@@ -100,6 +100,12 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
             match_response = proposal_request.extracted_json.get("match_data") if proposal_request and proposal_request.extracted_json else None
             if not match_response:
                 match_response = match_resources_from_db_request(extracted_data.request_id)
+                # Save the new match_data to the DB so it persists
+                if proposal_request:
+                    updated_json = proposal_request.extracted_json.copy() if proposal_request.extracted_json else {}
+                    updated_json["match_data"] = match_response
+                    proposal_request.extracted_json = updated_json
+                    db.commit()
                 
             # Inject context that might be missing from old match_data saved in DB
             if proposal_request and proposal_request.extracted_json:

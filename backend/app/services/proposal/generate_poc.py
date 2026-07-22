@@ -105,8 +105,7 @@ def generate_poc(
     logger.info("Generating POC from OpenAI...")
 
     response = client.chat.completions.create(
-        model="gpt-4.1",
-        temperature=0.2,
+        model="gpt-5.5",
         response_format={"type": "json_object"},
         messages=[
             {
