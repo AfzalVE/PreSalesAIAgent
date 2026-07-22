@@ -26,6 +26,17 @@ const SUGGESTIONS = [
   "Add AI recommendations",
 ];
 
+const renderFormattedText = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 function StreamingText({ text, onComplete, onUpdate }) {
   const [displayedText, setDisplayedText] = useState("");
 
@@ -45,7 +56,7 @@ function StreamingText({ text, onComplete, onUpdate }) {
     return () => clearInterval(interval);
   }, [text, onComplete, onUpdate]);
 
-  return <span>{displayedText}</span>;
+  return <span className="whitespace-pre-wrap">{renderFormattedText(displayedText)}</span>;
 }
 
 export default function NegotiationChat() {
@@ -301,7 +312,7 @@ export default function NegotiationChat() {
                         }
                       />
                     ) : (
-                      msg.text
+                      <span className="whitespace-pre-wrap">{renderFormattedText(msg.text)}</span>
                     )}
 
                     {/* Warning Container */}

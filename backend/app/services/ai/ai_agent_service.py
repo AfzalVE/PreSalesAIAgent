@@ -3,14 +3,12 @@ import uuid
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
 from app.core.config import settings
 from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 from app.models.user import User
 from app.models.enums import UserRole
 from app.models.proposal_request import ProposalRequest, CommunicationType
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
-from app.models.employee import Employee
 
 # Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
@@ -59,190 +57,129 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         existing_json = {}
     else:
         existing_json = proposal_request.extracted_json if proposal_request and proposal_request.extracted_json else {}
-    
-    # recent_messages_context = ""
-    # if proposal_request:
-    #     conversations = db.query(AIConversation).filter(
-    #         AIConversation.request_id == proposal_request.id
-    #     ).order_by(AIConversation.timestamp.desc()).limit(20).all()
-    #     if conversations:
-    #         conversations.reverse()
-    #         recent_messages_context = "Here is the conversation history (last 10 messages):\n"
-    #         for msg in conversations:
-    #             recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
-    conversations = (
-        db.query(AIConversation)
-        .filter(AIConversation.request_id == proposal_request.id)
-        .order_by(AIConversation.timestamp.asc())
-        .limit(20)
-        .all()
-    )
+        
+    recent_messages_context = ""
+    if proposal_request:
+        conversations = db.query(AIConversation).filter(
+            AIConversation.request_id == proposal_request.id
+        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
+        if conversations:
+            conversations.reverse()
+            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
+            for msg in conversations:
+                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM 
+    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
-    print(f"\033[92m{conversations}\033[0m")
-    print()
-    print(f"\033[92m{existing_data_str}\033[0m")
-    from app.schemas.ai_agent_schema import WorkflowState
-    
-    # 1. Deterministic State Calculation
-    workflow_state = WorkflowState.PROJECT_DISCOVERY
-    
-    if existing_json.get("project_name") and existing_json.get("business_domain") and existing_json.get("project_description"):
-        workflow_state = WorkflowState.TIMELINE
-        if existing_json.get("full_timeline_weeks"):
-            workflow_state = WorkflowState.TECH_STACK
-            if existing_json.get("tech_stack_confirmed") and existing_json.get("preferred_technology"):
-                workflow_state = WorkflowState.RESOURCE_GENERATION
-                if existing_json.get("resource_requirements"):
-                    workflow_state = WorkflowState.COST_ESTIMATION
-                    if existing_json.get("match_data"):
-                        workflow_state = WorkflowState.FINAL_APPROVAL
-                        if existing_json.get("ready_for_proposal_generation"):
-                            workflow_state = WorkflowState.PROPOSAL_GENERATION
 
-    # Persist the calculated state to the JSON for router use
-    existing_json["workflow_state"] = workflow_state.value
-    
-    # 2. Base Rules
     system_prompt = f"""
     You are an expert Pre-Sales AI Agent for a software development company.
-    Your job is to read unstructured text from a user and extract project requirements into a structured JSON format following a strict multi-step conversation flow.
+    Your job is to have a natural conversation with a client to gather their project requirements, then analyze and present a complete project plan.
     
     IMPORTANT: You are continuing a conversation. Here is the previously extracted data:
-    {json.dumps(existing_json, indent=2)}
-    
-    CURRENT WORKFLOW STATE: {workflow_state.value}
+    {existing_data_str}
+    {recent_messages_context}
 
-    GENERAL RULES:
-    1. Only focus on fulfilling the requirements of the CURRENT WORKFLOW STATE. Do NOT ask for information required in future states.
-    2. NEVER use generic placeholder values. Your suggestions MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned.
-    3. Ensure your output strictly follows the JSON schema provided below.
-    4. You MUST retain all previously extracted values unless the user explicitly wants to change them.
-    5. The `follow_up_message` must ALWAYS contain your conversational response to the user.
+    =============================================
+    CONVERSATION FLOW (STRICT ORDER)
+    =============================================
+
+    You MUST follow this exact flow. Do NOT skip steps or jump ahead.
+
+    STEP 1: GATHER CLIENT REQUIREMENTS (one at a time)
+    --------------------------------------------------
+    Collect these fields FROM THE CLIENT, exactly one at a time, in this strict priority order. 
+    You must NOT mention cost estimation or show a summary during this step.
+
+    1. `project_description` — Ask: "Could you describe your project idea or what you're looking to build?" (If client already provided a description, SKIP asking this).
+    2. `project_name` — Generate one silently based on the description. Do not ask for confirmation.
+    3. `business_domain` — Generate one silently based on the description. Do not ask for confirmation.
+    4. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If client says "you suggest", recommend a stack and ask: "Is this tech stack okay?"
+    5. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If they say "you suggest", suggest one and ask: "Is this budget okay?"
+    6. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If they say "you suggest", suggest one and ask: "Is this timeline okay?"
+
+    RULES FOR GATHERING (CRITICAL):
+    - DO NOT ASK FOR INFORMATION YOU ALREADY HAVE. If the client provided the budget and timeline in their very first message, extract them immediately into the JSON and SKIP asking questions 5 and 6.
+    - Never ask multiple questions at once. Ask exactly ONE missing question.
+    - If the client answers "yes", "ok", or "looks good" to your suggestion, accept it as confirmed, populate the JSON, and IMMEDIATELY move to the next missing field. Do not keep asking them to confirm the same thing.
+    - The budget and timeline represent the FULL PROJECT scope.
+    - DO NOT show any project summary yet. DO NOT ask to proceed to cost estimation yet.
+
+    STEP 2: AI ANALYSIS (automatic, no user interaction needed)
+    -----------------------------------------------------------
+    Once ALL 6 client fields above are completely populated AND confirmed by the client, you MUST automatically generate these 4 AI-analyzed fields:
     
-    """
-    
-    # 3. State-Specific Instructions
-    if workflow_state == WorkflowState.PROJECT_DISCOVERY:
-        system_prompt += """
-    STATE RULES - PROJECT DISCOVERY:
-    - Your goal is to collect: Project Name, Business Domain, and Project Description.
-    - If Project Name is missing, ask for it. If the client asks for a suggestion, generate a professional name and store it.
-    - If Business Domain is missing, infer it whenever possible and store it.
-    - Do NOT ask about budget, timeline or technology yet.
-    - Once you have the Project Name, Business Domain, and Project Description, inform the user you have what you need and proceed to ask if they have a preferred timeline. Set `is_gathering_info_complete` to true if you have these three fields.
-    """
-    elif workflow_state == WorkflowState.TIMELINE:
-        system_prompt += """
-    STATE RULES - TIMELINE:
-    - Your goal is to collect the Project Timeline (full_timeline_weeks).
-    - If the user provides a timeline, store it in `full_timeline_weeks`. Also calculate a shorter `mvp_timeline_weeks` logically.
-    - If the user asks you to suggest a timeline, calculate a realistic `mvp_timeline_weeks` and `full_timeline_weeks` based on project complexity, features, integrations, security, and scalability.
-    - Do not generate random numbers. Inform the user of your estimates for BOTH MVP and Full Product, ask if they agree, and store them.
-    - Once a timeline is agreed upon or provided, ask: "Do you already have a preferred technology stack?"
-    """
-    elif workflow_state == WorkflowState.TECH_STACK:
-        system_prompt += """
-    STATE RULES - TECH STACK:
-    - Your goal is to collect and confirm the Technology Stack (preferred_technology).
-    - If the user provides one, validate it and suggest improvements if necessary.
-    - If the user asks you to decide, generate a highly customized stack based on business domain, scale, budget, and timeline. 
-    - CRITICAL: Do NOT always suggest React + Node.js. Use domain-appropriate tech (e.g. Python/VectorDB for AI, Swift/Kotlin for Mobile, Go/Rust for High Performance).
-    - Format it as a list of lists (e.g. [["Frontend", "Backend", "Database", "Cloud"]]).
-    - You MUST explicitly ask the user: "Would you like to proceed with this technology stack?"
-    - ONLY set `tech_stack_confirmed` to true if the user explicitly confirms or agrees to the stack.
-    """
-    elif workflow_state == WorkflowState.RESOURCE_GENERATION:
-        system_prompt += """
-    STATE RULES - RESOURCE GENERATION:
-    - Your goal is to dynamically generate the required developers based on features, timeline, complexity, and tech stack.
-    - Populate `resource_requirements` with the roles, counts, and skills required.
-    - Do NOT hardcode developer counts. Generate them realistically based on the project scope.
-    - After generating the resources, inform the user that you are calculating the cost estimates and the backend will provide the numbers momentarily.
-    - Set `ready_for_match` to true.
-    """
-    elif workflow_state == WorkflowState.COST_ESTIMATION:
-        # Backend handles this state immediately after RESOURCE_GENERATION, so LLM won't usually get stuck here unless it fails.
-        system_prompt += """
-    STATE RULES - COST ESTIMATION:
-    - The backend is currently computing costs. If you see this, just inform the user that cost estimates are being finalized.
-    """
-    elif workflow_state in [WorkflowState.FINAL_APPROVAL, WorkflowState.NEGOTIATION]:
-        system_prompt += """
-    STATE RULES - NEGOTIATION & FINAL APPROVAL:
-    - The backend has provided match results (see `match_data` in existing_json). Present the Estimated Cost, Timeline, and Selected Developers to the user.
-    - If the client says the budget is too high, or they need a faster delivery:
-      - Do NOT simply change the numbers. Instead, propose recalculating by reducing developers, increasing timeline, reducing scope, or using lower-cost technologies.
-      - Adjust `resource_requirements`, `full_timeline_weeks`, or `preferred_technology` based on the negotiation, and inform the user you will recalculate. The backend will handle the recalculation automatically.
-    - If the user approves the current estimates and stack, ask: "Would you like me to generate the proposal?"
-    - ONLY after the user explicitly confirms to generate the proposal, set `ready_for_proposal_generation` to true.
-    """
-    
-    system_prompt += f"""
-    OUTPUT FORMAT:
+    - `full_timeline_days`: This is exactly the `timeline_days` agreed upon in Step 1.
+    - `mvp_timeline_days`: Analyze project complexity to suggest a realistic MVP timeline in days. Must be shorter than the full timeline.
+    - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count=1 unless timeline is tight and budget allows.
+    - `full_resource_requirements`: Generate the complete team for full build. Include QA/DevOps if justified.
+
+    After generating these, set `is_gathering_info_complete` to true. If they are already generated, keep the existing values and do NOT regenerate them.
+
+    STEP 3: SHOW COMPLETE PROJECT SUMMARY
+    --------------------------------------
+    If `is_gathering_info_complete` is true AND the user has NOT YET confirmed the summary, you MUST display the COMPLETE summary in your `follow_up_message`.
+
+    You MUST include ALL 7 bullet points below. Do NOT omit any bullet points. 
+
+    📋 **Project Summary**
+    - **Project Name**: [name]
+    - **Business Domain**: [domain]
+    - **Description**: [full description]
+    - **Tech Stack**: [all technologies]
+    - **Budget**: $[amount]
+    - **MVP Timeline**: [formatted — use Days if <7, Weeks if multiple of 7, Months if multiple of 30]
+    - **Full Project Timeline**: [formatted same way]
+
+    Then ask: "Does this complete summary look correct? Should we proceed to cost estimation, or would you like to modify anything?"
+
+    CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT omit the Full Project Timeline. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
+
+    STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
+    ------------------------------------------------------
+    - If the client wants to modify anything in the summary, update the JSON fields accordingly and show the updated summary.
+    - If the user confirms the summary is correct (e.g. says "yes", "looks good", "proceed to cost estimation"):
+      1. You MUST set `summary_confirmed` to true in your JSON output.
+      2. You MUST set `ready_for_match` to true in your JSON output.
+      3. CRITICAL: Do NOT show the Project Summary again! Just reply with a brief message exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
+      4. The backend will automatically run cost estimation and append the results to the chat.
+
+    STEP 5: PROPOSAL GENERATION
+    ----------------------------
+    - Once the user approves the cost estimation (says "yes", "generate proposal"), set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
+
+    =============================================
+    TIMELINE FORMATTING RULES
+    =============================================
+    In your `follow_up_message`, always format timelines as:
+    - Under 7 days → show as "X Days"
+    - Multiple of 7 → show as "X Weeks" (e.g. 14 days = "2 Weeks")
+    - Multiple of 30 → show as "X Months" (e.g. 90 days = "3 Months")
+    - Other → show as "X Weeks Y Days" or "X Months Y Days"
+
+    =============================================
+    OUTPUT FORMAT
+    =============================================
+    - `follow_up_message` must ALWAYS contain your conversational response.
     - Ensure your output strictly follows this JSON schema:
     {schema_str}
     
     Return ONLY valid JSON.
     """
-    
-    messages = [
-        {
-            "role": "system",
-            "content": system_prompt
-        },
-
-        {
-            "role": "system",
-            "content":
-            f"""
-Current extracted project information.
-
-Only update fields if the user explicitly changes them.
-
-Existing JSON:
-
-{json.dumps(existing_json, indent=2)}
-"""
-        }
-    ]
-
-    # Conversation history
-
-    for msg in conversations:
-
-        messages.append({
-
-            "role":
-                "assistant"
-                if msg.sender == SenderType.AI
-                else "user",
-
-            "content": msg.message
-
-        })
-
-    # Current message
-
-    messages.append({
-
-        "role": "user",
-
-        "content": input_data.text
-
-    })
 
     try:
-        extraction_response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
+        response = await client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": input_data.text}
+            ],
             response_format={"type": "json_object"},
-            # temperature=0.3
+            temperature=0.4
         )
         
         # Parse the JSON string returned by OpenAI
-        response_content = extraction_response.choices[0].message.content
+        response_content = response.choices[0].message.content
         extracted_dict = json.loads(response_content)
         
         if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
@@ -270,8 +207,29 @@ Existing JSON:
             proposal_request.project_name = merged_json.get("project_name")
         if merged_json.get("client_budget"):
             proposal_request.budget = float(merged_json.get("client_budget"))
-        if merged_json.get("full_timeline_weeks"):
-            proposal_request.timeline = f"{merged_json.get('full_timeline_weeks')} Weeks"
+            
+        def format_timeline(days):
+            try:
+                days = int(days)
+            except:
+                return str(days)
+            if days < 7:
+                return f"{days} Day{'s' if days > 1 else ''}"
+            elif days % 30 == 0:
+                months = days // 30
+                return f"{months} Month{'s' if months > 1 else ''}"
+            elif days % 7 == 0:
+                weeks = days // 7
+                return f"{weeks} Week{'s' if weeks > 1 else ''}"
+            else:
+                if days >= 30:
+                    return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
+                elif days >= 7:
+                    return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
+                return f"{days} Days"
+                
+        if merged_json.get("timeline_days"):
+            proposal_request.timeline = format_timeline(merged_json.get('timeline_days'))
             
         user_convo = AIConversation(
             request_id=proposal_request.id,
@@ -332,7 +290,7 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.user_request}
