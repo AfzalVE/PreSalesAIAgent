@@ -102,6 +102,11 @@ async def generate_demo_proposals(
 
     print(f"Generating proposals for client_id: {client_id}")
     try:
+        if "mvp" not in payload and "full_project" not in payload:
+            from app.services.resource.cost_estimation import match_resources
+            match_data = match_resources(payload)
+            payload.update(match_data)
+            
         result = await generate_proposals_for_request(
             db=db,
             client_id=client_id,

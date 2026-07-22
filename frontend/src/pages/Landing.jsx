@@ -610,7 +610,7 @@ export default function Landing({ onAdminClick }) {
 
       {/* TopNavBar */}
       <nav className="fixed top-0 w-full z-[60] bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-sm">
-        <div className="flex flex-wrap justify-between items-center px-4 sm:px-6 md:px-margin-desktop py-3 sm:py-4 max-w-container-max mx-auto gap-3">
+        <div className="flex flex-wrap justify-between items-center px-4 sm:px-6 md:px-margin-desktop py-3 sm:py-4 max-w-container-max mx-auto gap-3 relative">
           <div
             className="flex items-center gap-2 cursor-pointer flex-shrink-0"
             onClick={() => {
@@ -627,7 +627,7 @@ export default function Landing({ onAdminClick }) {
               Pre Sales Platform
             </span>
           </div>
-          <div className="hidden md:flex items-center gap-stack-lg relative">
+          <div className="hidden md:flex items-center gap-stack-lg absolute left-1/2 -translate-x-1/2">
             <button
               onClick={() => {
                 setActiveNav("platform");
@@ -2180,7 +2180,8 @@ export default function Landing({ onAdminClick }) {
                         Login to Workspace
                       </h3>
                       <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                        Welcome back to the sovereign enterprise network.
+                        Start your project tomorrow and try your selected expert
+                        free for 1 week.
                       </p>
                     </div>
 
@@ -2298,7 +2299,8 @@ export default function Landing({ onAdminClick }) {
                         Hi there!
                       </h3>
                       <p className="mt-1 font-body-md text-sm text-[#5a5a5c]">
-                        Join the network for sovereign enterprise management.
+                        Start your project tomorrow and try your selected expert
+                        free for 1 week.
                       </p>
                     </div>
 
@@ -2355,7 +2357,8 @@ export default function Landing({ onAdminClick }) {
                           setView(
                             otpPurpose === "forgot"
                               ? "forgot"
-                              : otpPurpose === "demo-login" || otpPurpose === "register"
+                              : otpPurpose === "demo-login" ||
+                                  otpPurpose === "register"
                                 ? "register"
                                 : "login",
                           );

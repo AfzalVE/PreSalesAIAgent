@@ -82,11 +82,15 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
             if not match_response:
                 match_response = match_resources_from_db_request(extracted_data.request_id)
             
+            # Merge match_response with the full extracted_json so AI has description, domain, etc.
+            full_proposal_payload = proposal_request.extracted_json.copy() if proposal_request and proposal_request.extracted_json else {}
+            full_proposal_payload.update(match_response)
+            
             # 3. Generate Proposal (handles budget validation internally)
             proposals = await generate_proposals_for_request(
                 db=db, 
                 client_id=client_id, 
-                proposal_input=match_response, 
+                proposal_input=full_proposal_payload, 
                 existing_request_id=uuid.UUID(extracted_data.request_id)
             )
             
