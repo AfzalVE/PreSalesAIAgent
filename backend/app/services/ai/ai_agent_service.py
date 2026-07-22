@@ -94,15 +94,16 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     1. `project_description` — Ask: "Could you describe your project idea or what you're looking to build?" (If client already provided a description, SKIP asking this).
     2. `project_name` — Generate one silently based on the description. Do not ask for confirmation.
     3. `business_domain` — Generate one silently based on the description. Do not ask for confirmation.
-    4. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If the client asks you to suggest or recommend a stack, you MUST suggest one, POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend [Stack]. Is this tech stack okay?"
-    5. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If the client asks you to suggest or recommend a budget, you MUST analyze their requirements, suggest a specific numeric budget in USD, POPULATE the `client_budget` JSON field immediately with this number, and ask: "I suggest a budget of $[X]. Is this okay?"
-    6. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If the client asks you to suggest or recommend a timeline, you MUST suggest one, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X]. Is this okay?"
+    4. `timeline_days` — Check if they already provided a timeline. If not, YOU MUST estimate a realistic full project timeline based on the description, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X] for the full project. Is this okay?"
+    5. `preferred_technology` — Check if they already mentioned technologies or platforms in their description. If they did, extract them and SKIP this question. If not, YOU MUST analyze the description and suggest a modern, current tech stack (e.g. React, Next.js, Node.js, Python), POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend we build this using [Stack]. Is this tech stack okay?"
+    6. `client_budget` — Check if they already provided a budget. If not, YOU MUST analyze the timeline and tech stack to estimate a realistic numeric budget in USD, POPULATE the `client_budget` JSON field immediately, and ask: "Based on the requirements, I estimate an initial budget of $[X]. (Note: Our system will run a precise cost calculation later). Is this approximate budget okay?"
 
     RULES FOR GATHERING (CRITICAL):
     - DO NOT ASK FOR INFORMATION YOU ALREADY HAVE. If the client provided the budget and timeline in their very first message, extract them immediately into the JSON and SKIP asking questions 5 and 6.
     - Never ask multiple questions at once. Ask exactly ONE missing question.
-    - If the user asks you to suggest a value for a field, you MUST provide a concrete suggestion and POPULATE the JSON field with your suggestion in the same turn. Do not leave it null.
-    - If the client answers "yes", "ok", or "looks good" to your suggestion, accept it as confirmed, ensure the JSON is populated, and IMMEDIATELY move to the next missing field. Do not keep asking them to confirm the same thing.
+    - If the client asks for a budget estimate BEFORE the timeline or tech stack are finalized, you MUST automatically estimate a realistic timeline and tech stack, POPULATE all three fields (`timeline_days`, `preferred_technology`, `client_budget`) in the JSON, and say: "To estimate the budget, I assume we will use [Tech Stack] and it will take around [Timeline]. This brings the approximate budget to $[X]. Does this plan look okay?"
+    - If you suggest a value (like a tech stack, budget, or timeline) or if the client asks you to change your suggestion, you MUST IMMEDIATELY update the corresponding JSON field in your output. Do not leave it null.
+    - If the client answers "yes", "ok", "it is now ok", or "looks good" to your suggestion, accept it as confirmed. DO NOT keep asking them to confirm the same thing. IMMEDIATELY move to the next missing field.
     - The budget and timeline represent the FULL PROJECT scope.
     - DO NOT show any project summary yet. DO NOT ask to proceed to cost estimation yet.
 
@@ -111,7 +112,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Once ALL 6 client fields above are completely populated AND confirmed by the client, you MUST automatically generate these 4 AI-analyzed fields:
     
     - `full_timeline_days`: This is exactly the `timeline_days` agreed upon in Step 1.
-    - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. DO NOT just blindly divide the full timeline in half. It must be a thoughtful estimate based on MVP scope, and shorter than the full timeline.
+    - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. DO NOT blindly divide the full timeline in half, and DO NOT make it identical to the full timeline. It MUST vary intelligently based on the specific requirements.
     - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count=1 unless timeline is tight and budget allows.
     - `full_resource_requirements`: Generate the complete team for full build. Include QA/DevOps if justified.
 
@@ -146,9 +147,18 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
 
+    STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
+    ------------------------------------------------------
+    - If the client wants to modify anything in the summary, update the JSON fields accordingly and show the updated summary.
+    - If the user confirms the summary is correct (e.g. says "ok", "it is ok", "yes", "looks good", "proceed to cost estimation"):
+      1. You MUST set `summary_confirmed` to true in your JSON output.
+      2. You MUST set `ready_for_match` to true in your JSON output.
+      3. CRITICAL: Do NOT show the Project Summary again! Just reply with a brief message exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
+      4. The backend will automatically run cost estimation and append the results to the chat.
+
     STEP 5: PROPOSAL GENERATION
     ----------------------------
-    - Once the user approves the cost estimation (e.g. says "yes", "ok", "generate proposal"), you MUST set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
+    - Once the user approves the cost estimation (says "ok", "it is ok", "yes", "looks good", "generate proposal", "generate poc", "go for it"), set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
     - Reply ONLY with: "Thank you for your confirmation. The proposal will now be generated and shared with you shortly."
     - NEVER show the project summary in this step.
 
@@ -171,15 +181,26 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Return ONLY valid JSON.
     """
 
+    if "[SYSTEM OVERRIDE: Form Submission Mode]" in input_data.text:
+        system_prompt += """
+        
+        CRITICAL OVERRIDE DETECTED: 
+        You are in Form Submission Mode. You MUST SKIP ALL GATHERING STEPS.
+        You MUST IMMEDIATELY execute STEP 2 to generate `mvp_timeline_days`, `full_timeline_days`, `mvp_resource_requirements`, and `full_resource_requirements`.
+        You MUST calculate `mvp_timeline_days` and `full_timeline_days` such that they are DIFFERENT values (e.g., MVP is 30-40% of the full project time).
+        You MUST set `is_gathering_info_complete`, `summary_confirmed`, `ready_for_match`, `estimation_confirmed`, and `ready_for_proposal_generation` ALL to TRUE.
+        DO NOT ask any questions in `follow_up_message`. Just say "Form submitted successfully."
+        """
+
     try:
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-5.5",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.text}
             ],
             response_format={"type": "json_object"},
-            temperature=0.4
+            # temperature=0.4
         )
         
         # Parse the JSON string returned by OpenAI
@@ -294,13 +315,12 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-5.5",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.user_request}
             ],
-            response_format={"type": "json_object"},
-            temperature=0.2
+            response_format={"type": "json_object"}
         )
         
         response_content = response.choices[0].message.content
