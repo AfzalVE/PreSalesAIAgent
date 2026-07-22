@@ -306,7 +306,9 @@ export default function NegotiationChat() {
     if (!text.trim() || isProcessing) return;
 
     // ── Budget reduction detected: route to the specialist handler ──────────
-    if (isBudgetReductionIntent(text)) {
+    const hasProposalData = proposalData?.proposals?.length > 0 || activeProposal?.proposals?.length > 0 || activeProposal?.mvp;
+    
+    if (isBudgetReductionIntent(text) && hasProposalData) {
       setInputPrompt("");
       return handleBudgetNegotiation(text);
     }

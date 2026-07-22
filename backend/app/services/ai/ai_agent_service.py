@@ -94,15 +94,16 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     1. `project_description` — Ask: "Could you describe your project idea or what you're looking to build?" (If client already provided a description, SKIP asking this).
     2. `project_name` — Generate one silently based on the description. Do not ask for confirmation.
     3. `business_domain` — Generate one silently based on the description. Do not ask for confirmation.
-    4. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If the client asks you to suggest or recommend a stack, you MUST suggest one, POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend [Stack]. Is this tech stack okay?"
-    5. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If the client asks you to suggest or recommend a budget, you MUST analyze their requirements, suggest a specific numeric budget in USD, POPULATE the `client_budget` JSON field immediately with this number, and ask: "I suggest a budget of $[X]. Is this okay?"
-    6. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If the client asks you to suggest or recommend a timeline, you MUST suggest one, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X]. Is this okay?"
+    4. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If the client asks you to suggest or recommend a timeline, you MUST suggest one, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X]. Is this okay?"
+    5. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If the client asks you to suggest or recommend a stack, you MUST suggest one, POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend [Stack]. Is this tech stack okay?"
+    6. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If the client asks you to suggest or estimate a budget, you MUST analyze the timeline and tech stack to suggest a specific numeric budget in USD, POPULATE the `client_budget` JSON field immediately with this number, and ask: "Based on the requirements, I estimate an initial budget of $[X]. (Note: Our system will run a precise cost calculation later). Is this approximate budget okay?"
 
     RULES FOR GATHERING (CRITICAL):
     - DO NOT ASK FOR INFORMATION YOU ALREADY HAVE. If the client provided the budget and timeline in their very first message, extract them immediately into the JSON and SKIP asking questions 5 and 6.
     - Never ask multiple questions at once. Ask exactly ONE missing question.
-    - If the user asks you to suggest a value for a field, you MUST provide a concrete suggestion and POPULATE the JSON field with your suggestion in the same turn. Do not leave it null.
-    - If the client answers "yes", "ok", or "looks good" to your suggestion, accept it as confirmed, ensure the JSON is populated, and IMMEDIATELY move to the next missing field. Do not keep asking them to confirm the same thing.
+    - If the client asks for a budget estimate BEFORE the timeline or tech stack are finalized, you MUST automatically estimate a realistic timeline and tech stack, POPULATE all three fields (`timeline_days`, `preferred_technology`, `client_budget`) in the JSON, and say: "To estimate the budget, I assume we will use [Tech Stack] and it will take around [Timeline]. This brings the approximate budget to $[X]. Does this plan look okay?"
+    - If you suggest a value (like a tech stack, budget, or timeline) or if the client asks you to change your suggestion, you MUST IMMEDIATELY update the corresponding JSON field in your output. Do not leave it null.
+    - If the client answers "yes", "ok", "it is now ok", or "looks good" to your suggestion, accept it as confirmed. DO NOT keep asking them to confirm the same thing. IMMEDIATELY move to the next missing field.
     - The budget and timeline represent the FULL PROJECT scope.
     - DO NOT show any project summary yet. DO NOT ask to proceed to cost estimation yet.
 
@@ -138,7 +139,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
     ------------------------------------------------------
     - If the client wants to modify anything in the summary, update the JSON fields accordingly and show the updated summary.
-    - If the user confirms the summary is correct (e.g. says "yes", "looks good", "proceed to cost estimation"):
+    - If the user confirms the summary is correct (e.g. says "ok", "it is ok", "yes", "looks good", "proceed to cost estimation"):
       1. You MUST set `summary_confirmed` to true in your JSON output.
       2. You MUST set `ready_for_match` to true in your JSON output.
       3. CRITICAL: Do NOT show the Project Summary again! Just reply with a brief message exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
@@ -146,7 +147,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     STEP 5: PROPOSAL GENERATION
     ----------------------------
-    - Once the user approves the cost estimation (says "yes", "generate proposal"), set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
+    - Once the user approves the cost estimation (says "ok", "it is ok", "yes", "looks good", "generate proposal", "generate poc", "go for it"), set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
 
     =============================================
     TIMELINE FORMATTING RULES
@@ -169,7 +170,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.text}
