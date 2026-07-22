@@ -80,7 +80,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
                 role = "user" if msg.sender == SenderType.CLIENT else "assistant"
                 history_messages.append({"role": role, "content": msg.message})
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
+    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM 
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
 
     chat_system_prompt = f"""

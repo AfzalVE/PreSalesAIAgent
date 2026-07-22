@@ -2180,7 +2180,7 @@ export default function Landing({ onAdminClick }) {
                         Login to Workspace
                       </h3>
                       <p className="mt-2 font-body-md text-sm text-[#5a5a5c]">
-                        Welcome back to the sovereign enterprise network.
+                        Start your project tomorrow and try your selected expert free for 1 week.
                       </p>
                     </div>
 
