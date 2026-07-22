@@ -219,7 +219,7 @@ from fastapi.responses import FileResponse
 import os
 
 @router.get("/{proposal_id}/download", summary="Download the finalized proposal document")
-async def download_proposal_doc(proposal_id: str):
+async def download_proposal_doc(proposal_id: str, db: Session = Depends(get_db)):
     print("DOWNLOAD ENDPOINT")
     """
     Returns the docx file for the given proposal_id with Content-Disposition attachment.
@@ -229,6 +229,27 @@ async def download_proposal_doc(proposal_id: str):
     filename = f"{proposal_id}.docx"
     file_path = os.path.join(static_dir, filename)
     print(file_path)
+    
+    if not os.path.exists(file_path):
+        # Auto-regenerate if missing
+        import uuid
+        proposal = db.query(Proposal).filter(Proposal.id == uuid.UUID(proposal_id)).first()
+        if proposal:
+            request = proposal.proposal_request
+            os.makedirs(static_dir, exist_ok=True)
+            create_proposal_document(
+                project_name=request.project_name,
+                project_description=request.project_description,
+                requirements=request.project_description,
+                preferred_technology=request.preferred_technology,
+                estimated_budget=float(proposal.estimated_cost),
+                estimated_duration=proposal.estimated_duration,
+                proposal_type=proposal.proposal_type.value,
+                resources=proposal.selected_resources,
+                tech_stack=proposal.tech_stack,
+                output_filepath=file_path,
+            )
+
     if os.path.exists(file_path):
         return FileResponse(
             path=file_path, 

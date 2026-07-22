@@ -169,8 +169,51 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
 
     doc.add_paragraph() # Spacer
 
-    # 5. Project Development Plan & Timeline Milestones
-    add_styled_heading("5. Development Plan & Timeline")
+    # 5. System Workflow Diagram
+    add_styled_heading("5. System Workflow Diagram")
+    workflow_mermaid = proposal_data.get("workflow_diagram")
+    if workflow_mermaid:
+        try:
+            import base64
+            import httpx
+            
+            # Clean up the markdown formatting if present
+            clean_mermaid = workflow_mermaid.strip()
+            if clean_mermaid.startswith('```mermaid'):
+                clean_mermaid = clean_mermaid[10:]
+            elif clean_mermaid.startswith('```'):
+                clean_mermaid = clean_mermaid[3:]
+            if clean_mermaid.endswith('```'):
+                clean_mermaid = clean_mermaid[:-3]
+            clean_mermaid = clean_mermaid.strip()
+
+            encoded_mermaid = base64.urlsafe_b64encode(clean_mermaid.encode('utf-8')).decode('utf-8')
+            # Remove padding '=' which can sometimes cause issues in URLs
+            encoded_mermaid = encoded_mermaid.rstrip("=")
+            img_url = f"https://mermaid.ink/img/{encoded_mermaid}"
+            
+            resp = httpx.get(img_url, timeout=15.0)
+            if resp.status_code == 200:
+                import uuid
+                temp_filename = f"temp_mermaid_{uuid.uuid4().hex}.jpg"
+                with open(temp_filename, "wb") as f:
+                    f.write(resp.content)
+                doc.add_picture(temp_filename, width=Inches(6.0))
+                os.remove(temp_filename)
+                doc.add_paragraph("Diagram successfully loaded from mermaid.ink.")
+            else:
+                doc.add_paragraph(f"[Failed to render diagram. API responded with status {resp.status_code}]")
+                doc.add_paragraph(f"Raw Mermaid:\n{clean_mermaid}")
+        except Exception as e:
+            doc.add_paragraph(f"[Error rendering diagram: {str(e)}]")
+            doc.add_paragraph(f"Raw Mermaid:\n{workflow_mermaid}")
+    else:
+        doc.add_paragraph("No workflow diagram provided by the AI. It might have been skipped in the JSON response.")
+
+    doc.add_paragraph() # Spacer
+
+    # 6. Project Development Plan & Timeline Milestones
+    add_styled_heading("6. Development Plan & Timeline")
     doc.add_paragraph(
         f"The development cycle is projected at {proposal_data.get('estimated_duration')}. "
         f"Following the structure of our standard Proof of Concept delivery pipeline, the specific deliverables and timeline phases are detailed below:"
@@ -201,8 +244,8 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
 
     doc.add_paragraph() # Spacer
 
-    # 6. Assumptions & Key Risks
-    add_styled_heading("6. Assumptions & Key Risks")
+    # 7. Assumptions & Key Risks
+    add_styled_heading("7. Assumptions & Key Risks")
     
     add_styled_heading("Assumptions", level=2)
     assumptions_text = proposal_data.get("assumptions")
@@ -218,8 +261,8 @@ def generate_proposal_docx(proposal_data: dict, output_filepath: str):
     else:
         doc.add_paragraph("No project risks listed.")
 
-    # 7. Selected Resources Allocation
-    add_styled_heading("7. Allocated Technical Resources")
+    # 8. Selected Resources Allocation
+    add_styled_heading("8. Allocated Technical Resources")
     selected_resources = proposal_data.get("selected_resources", {}).get("resources", [])
     
     if selected_resources:
