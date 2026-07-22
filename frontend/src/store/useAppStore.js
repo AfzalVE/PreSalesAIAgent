@@ -350,6 +350,132 @@ Timeline: ${store.projectData.timeline}`;
     }
   },
 
+  /**
+   * Tiered budget negotiation.
+   *
+   * @param {object} params
+   * @param {number}   params.targetBudget          - Budget the client wants to hit (USD)
+   * @param {number}   params.currentCost           - Current total cost of the active proposal
+   * @param {number}   params.currentTimelineDays   - Current timeline in days
+   * @param {Array}    params.currentResources       - Developer list from the active proposal
+   * @param {Array}    [params.resourceRequirements] - Original role specs (optional)
+   * @param {string}   [params.proposalType]         - "MVP" or "FULL"
+   * @param {number}   params.negotiationAttempt     - 1 = first try, 2+ = second+ try
+   * @param {string}   [params.requestId]            - Active proposal request UUID
+   */
+  negotiateBudgetOnBackend: async ({
+    targetBudget,
+    currentCost,
+    currentTimelineDays,
+    currentResources = [],
+    resourceRequirements = null,
+    proposalType = "MVP",
+    negotiationAttempt = 1,
+    requestId = null,
+  }) => {
+    try {
+      const token = get().user?.accessToken;
+
+      const payload = {
+        request_id: requestId || get().activeRequestId || null,
+        proposal_type: proposalType,
+        target_budget: targetBudget,
+        current_cost: currentCost,
+        current_timeline_days: currentTimelineDays,
+        current_resources: currentResources.map((r) => ({
+          employee_id: r.employee_id || null,
+          name: r.name || null,
+          role: r.role || null,
+          hourly_cost: r.hourly_cost || null,
+          experience_years: r.experience_years || null,
+          skills: r.skills || [],
+          estimated_cost: r.estimated_cost || null,
+          allocated_hours: r.allocated_hours || null,
+        })),
+        resource_requirements: resourceRequirements || null,
+        negotiation_attempt: negotiationAttempt,
+      };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/ai-agent/negotiate-budget`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Budget negotiation request failed");
+      }
+
+      const data = await response.json();
+
+      // Update the active proposal in-place with the new team and costs
+      if (data.success) {
+        set((state) => {
+          const prev = state.activeProposal || {};
+
+          // Find the proposal variant that matches and patch it
+          const patchProposal = (proposal) => {
+            if (!proposal) return proposal;
+            return {
+              ...proposal,
+              estimated_cost: data.new_cost,
+              estimated_duration: data.new_timeline_formatted,
+              selected_resources: {
+                ...(proposal.selected_resources || {}),
+                selected_resources: data.new_resources,
+              },
+            };
+          };
+
+          const updatedProposals = (prev.proposals || []).map((p) =>
+            p.proposal_type === proposalType ? patchProposal(p) : p
+          );
+
+          return {
+            activeProposal: {
+              ...prev,
+              proposals: updatedProposals,
+              // Also patch the top-level mvp/full shortcuts if present
+              ...(proposalType === "MVP" && prev.mvp
+                ? { mvp: patchProposal(prev.mvp) }
+                : {}),
+              ...(proposalType === "FULL" && prev.full
+                ? { full: patchProposal(prev.full) }
+                : {}),
+            },
+          };
+        });
+      }
+
+      return {
+        success: data.success,
+        strategyUsed: data.strategy_used,
+        newCost: data.new_cost,
+        newTimelineDays: data.new_timeline_days,
+        newTimelineFormatted: data.new_timeline_formatted,
+        newResources: data.new_resources,
+        responseMessage: data.response_message,
+        errorMessage: data.error_message || null,
+      };
+    } catch (e) {
+      console.error("negotiateBudgetOnBackend failed:", e);
+      return {
+        success: false,
+        strategyUsed: "none",
+        responseMessage:
+          "I was unable to reach the resource matching service. Please try again.",
+        errorMessage: e.message,
+      };
+    }
+  },
+
   fetchAdminData: async () => {
     const token = get().user?.accessToken;
     const safeFetch = async (url) => {

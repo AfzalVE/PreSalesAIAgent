@@ -154,31 +154,7 @@ Use the exact technologies provided in the "Technology Stack" section of the PRO
 
 For each technology choose the most suitable enterprise option matching the requested stack.
 
-Examples of formatting (DO NOT just copy these, use the actual requested stack):
 
-Database:
-PostgreSQL
-
-Backend:
-FastAPI
-
-Frontend:
-React with Vite
-
-Cloud:
-Amazon Web Services
-
-Artificial Intelligence:
-Large Language Model using Groq API with Retrieval-Augmented Generation
-
-Authentication:
-JSON Web Token Authentication
-
-Storage:
-Amazon Simple Storage Service
-
-Deployment:
-Docker with Nginx
 
 ----------------------------------------
 
