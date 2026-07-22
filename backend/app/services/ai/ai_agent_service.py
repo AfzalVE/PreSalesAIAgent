@@ -117,9 +117,20 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     After generating these, set `is_gathering_info_complete` to true. If they are already generated, keep the existing values and do NOT regenerate them.
 
-    STEP 3: SHOW COMPLETE PROJECT SUMMARY
-    --------------------------------------
-    If `is_gathering_info_complete` is true AND the user has NOT YET confirmed the summary, you MUST display the COMPLETE summary in your `follow_up_message`.
+    STEP 3: EVALUATE USER CONFIRMATION (CRITICAL)
+    ---------------------------------------------
+    If `is_gathering_info_complete` is already true, first evaluate the user's current message:
+    - If the client wants to modify anything in the summary, update the JSON fields accordingly, keep `summary_confirmed` false, and proceed to Step 4 to show the updated summary.
+    - If the user confirms the summary is correct (e.g. says "yes", "looks good", "ok", "proceed"):
+      1. You MUST set `summary_confirmed` to true in your JSON output.
+      2. You MUST set `ready_for_match` to true in your JSON output.
+      3. CRITICAL: Do NOT show the Project Summary again! Just reply exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
+      4. STOP HERE. Do not execute Step 4.
+
+    STEP 4: SHOW COMPLETE PROJECT SUMMARY (IF NOT CONFIRMED)
+    --------------------------------------------------------
+    If `is_gathering_info_complete` is true AND you did NOT set `summary_confirmed` to true in Step 3:
+    You MUST display the COMPLETE summary in your `follow_up_message`.
 
     You MUST include ALL 6 bullet points below. Do NOT omit any bullet points. 
 
@@ -135,18 +146,11 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
 
-    STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
-    ------------------------------------------------------
-    - If the client wants to modify anything in the summary, update the JSON fields accordingly and show the updated summary.
-    - If the user confirms the summary is correct (e.g. says "yes", "looks good", "proceed to cost estimation"):
-      1. You MUST set `summary_confirmed` to true in your JSON output.
-      2. You MUST set `ready_for_match` to true in your JSON output.
-      3. CRITICAL: Do NOT show the Project Summary again! Just reply with a brief message exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
-      4. The backend will automatically run cost estimation and append the results to the chat.
-
     STEP 5: PROPOSAL GENERATION
     ----------------------------
-    - Once the user approves the cost estimation (says "yes", "generate proposal"), set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
+    - Once the user approves the cost estimation (e.g. says "yes", "ok", "generate proposal"), you MUST set `estimation_confirmed` to true and `ready_for_proposal_generation` to true.
+    - Reply ONLY with: "Thank you for your confirmation. The proposal will now be generated and shared with you shortly."
+    - NEVER show the project summary in this step.
 
     =============================================
     TIMELINE FORMATTING RULES

@@ -15,9 +15,13 @@ import {
   KeyRound,
   LogOut,
 } from "lucide-react";
-import { MOCK_SKILLS } from "../mock/mockData";
 import { useAppStore } from "../store/useAppStore";
 import EmployeeCard from "../components/admin/EmployeeCard";
+
+const AVAILABLE_SKILLS = [
+  "React", "TypeScript", "Node.js", "Python", "OpenAI API", "AWS", "Docker", "Figma",
+  "Kubernetes", "GraphQL", "Tailwind CSS", "Terraform", "PostgreSQL", "Cypress"
+];
 import ResourceHeatmap from "../components/admin/ResourceHeatmap";
 import FloatingBackground from "../components/common/FloatingBackground";
 import MetricCard from "../components/common/MetricCard";
@@ -549,7 +553,7 @@ export default function AdminPortal() {
                     className="bg-transparent font-semibold outline-none text-neutral-700 cursor-pointer text-xs"
                   >
                     <option value="">All Skills</option>
-                    {MOCK_SKILLS.map((skill) => (
+                    {AVAILABLE_SKILLS.map((skill) => (
                       <option key={skill} value={skill}>
                         {skill}
                       </option>
@@ -1282,7 +1286,7 @@ export default function AdminPortal() {
                     Technical Skill Matrix
                   </label>
                   <div className="flex flex-wrap gap-1.5">
-                    {MOCK_SKILLS.map((skill) => {
+                    {AVAILABLE_SKILLS.map((skill) => {
                       const isSelected = editSkills.includes(skill);
                       return (
                         <button
@@ -1480,7 +1484,7 @@ export default function AdminPortal() {
                     Select Technical Skills
                   </label>
                   <div className="flex flex-wrap gap-1.5">
-                    {MOCK_SKILLS.map((skill) => {
+                    {AVAILABLE_SKILLS.map((skill) => {
                       const isSelected = newSkills.includes(skill);
                       return (
                         <button

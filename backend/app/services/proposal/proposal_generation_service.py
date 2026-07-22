@@ -48,9 +48,10 @@ async def generate_proposals_for_request(
     user_input_summary = {
         "proposal_id": proposal_input.get("proposal_id"),
         "project_name": proposal_input.get("project_name"),
-        "preferred_technology": proposal_input.get("preferred_technology"),
-        "client_budget": proposal_input.get("client_budget"),
+        "project_description": proposal_input.get("project_description"),
+        "business_domain": proposal_input.get("business_domain"),
         "preferred_technology": proposal_input.get("preferred_technology", []),
+        "client_budget": proposal_input.get("client_budget"),
         "mvp_estimation": mvp_data,
         "full_project_estimation": full_data_input
     }

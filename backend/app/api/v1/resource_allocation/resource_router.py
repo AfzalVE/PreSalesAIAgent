@@ -14,8 +14,10 @@ class ResourceRequirementItem(BaseModel):
 
 
 class MatchRequestPayload(BaseModel):
+    model_config = {"extra": "allow"}
     proposal_id: Optional[str] = Field("PROP-DEMO-001", description="Unique identifier for proposal")
     project_name: Optional[str] = Field("AI Proposal Generator MVP", description="Project title")
+    timeline_days: Optional[int] = Field(None, description="Timeline in days")
     timeline_weeks: Optional[int] = Field(12, description="Timeline in weeks (nullable if unknown)")
     client_budget: Optional[float] = Field(85000.0, description="Client budget in USD (nullable if unknown)")
     company_static_cost: Optional[float] = Field(100.0, description="Fixed company static overhead cost ($100 default)")
@@ -26,6 +28,10 @@ class MatchRequestPayload(BaseModel):
         ],
         description="List of developer roles needed (nullable if unknown)"
     )
+    mvp_timeline_days: Optional[int] = Field(None, description="Timeline for MVP in days")
+    full_timeline_days: Optional[int] = Field(None, description="Timeline for Full project in days")
+    mvp_resource_requirements: Optional[List[ResourceRequirementItem]] = Field(None, description="MVP specific resource requirements")
+    full_resource_requirements: Optional[List[ResourceRequirementItem]] = Field(None, description="Full project specific resource requirements")
 
 
 @router.post("/match", summary="Run Resource Matching & Cost Estimation")

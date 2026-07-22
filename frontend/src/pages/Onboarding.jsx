@@ -162,7 +162,7 @@ export default function Onboarding() {
 
     const techArray = formTechStack
       ? formTechStack.split(',').map(t => t.trim()).filter(Boolean)
-      : ["React", "Node.js"];
+      : [];
 
     updateProjectData({
       name: formName,
