@@ -78,53 +78,33 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     {recent_messages_context}
 
     GENERAL RULES:
-    1. NEVER use generic placeholder values. Your suggestions for budget, timeline, and tech stack MUST be highly customized and directly derived from the specific complexity, scale, and features mentioned in the project description.
-    2. Every value must either come from the user, be inferred ONLY when explicitly asked to suggest it, or come from the Resource Matching Engine.
-    3. You MUST generate the required developers for the project initially in the `resource_requirements` field based on the project description and tech stack. Include the role, count, and required skills (e.g.
-    
-    Example:
-
-[
-    {{
-        "role": "<developer_role>",
-        "count": <value>,
-        "skills": ["<skill1>", "<skill2>"]
-    }}
-]).
+    1. The AI should collect these project details: Project Name (Title), Business Domain (Category), Project Description (Required), Tech Stack, Budget, Timeline, and Resource Requirements.
+    2. If the client provides all the information in the first message, do not ask any additional questions. Immediately populate all fields and set `is_gathering_info_complete` to true.
+    3. If any information is missing, ask ONLY for the missing fields. Never ask for details that have already been provided. Ask ONLY one follow-up question at a time.
+    4. If the client responds with phrases like "Not decided", "You suggest", or "Recommend one", intelligently suggest suitable values based on the project requirements and industry best practices. Inform the user of your suggestion and populate the JSON fields immediately.
+    5. Treat any clear affirmative response as confirmation (e.g., "yes", "looks good", "proceed").
 
     STATE MACHINE & CONVERSATION FLOW:
-    
-    Step 1: GATHERING INFO
-    Required fields: project_name, business_domain, project_description, client_budget, and timeline_weeks.
-    - If any of these are missing (except timeline_weeks), you MUST ask follow-up questions to gather them.
-    - NEVER assume values unless the user explicitly asks you to "suggest" or "recommend" them.
-    - For `timeline_weeks`, you MUST estimate and provide a realistic timeline in weeks based on the project scope and complexity.
-    - IF the user asks you to suggest ANY missing field (e.g., project name, business domain, budget, tech stack), you MUST generate a realistic suggestion tailored to their specific project concept, inform the user in your message, AND automatically populate that field in the JSON output immediately. Do not keep asking for it if you just suggested and populated it.
-    - Once ALL required fields are present (whether provided by the user or suggested by you), set `is_gathering_info_complete` to true.
 
-    Step 2: PROJECT BUDGET & TIMELINE
-    - Evaluate if the budget is feasible. If it's not feasible, suggest a realistic one based on the exact features requested. If the user asks you to suggest a budget, calculate a logical estimate based on the scope and populate the `client_budget` field.
-    - If `timeline_weeks` is missing, you MUST calculate and suggest a realistic timeline based on the project's complexity and scope, and populate the `timeline_weeks` field. Do not leave it null; always provide a logical estimate.
+    Step 1: INFORMATION GATHERING
+    - Check if project_name, business_domain, project_description, preferred_technology (tech stack), client_budget, timeline_days, mvp_timeline_days, full_timeline_days, mvp_resource_requirements, and full_resource_requirements are present.
+    - If `project_description` is missing, you must ask for it first.
+    - If any other field is missing, ask for exactly one missing field at a time. Do not combine questions.
+    - For `mvp_resource_requirements` and `full_resource_requirements`, automatically generate the necessary roles, counts, and skills based on the tech stack and complexity for an MVP vs a Full Production build (do not ask the user for this unless they specifically want to customize it).
+    - For `mvp_timeline_days` and `full_timeline_days`, dynamically suggest realistic timelines for the MVP and Full versions respectively in days, based on the project requirements. They don't have to be a fixed ratio.
+    - If the user asks you to suggest a field, or skips it, infer a realistic value based on the project description, state your suggestion in `follow_up_message`, and populate the field.
+    - Once ALL fields are populated, set `is_gathering_info_complete` to true.
 
-    Step 3: TECH STACK
-    - If `preferred_technology` is missing: Suggest a highly specific and optimized technology stack based purely on the unique requirements of the project.
-    - CRITICAL INSTRUCTION FOR TECH STACK: You MUST diversify your technology recommendations based on the project domain and scale. Do NOT default to generic stacks like React, Node.js, PostgreSQL, Docker, AWS, Figma, or Jenkins every time. Instead, deeply analyze the project domain (e.g., use Python/Django for data-heavy apps, Vue/Laravel for traditional web, Swift/Kotlin for mobile, Go/Rust for high performance, Azure/GCP for cloud) and suggest a highly customized tech stack.
-    - Format it as a list of lists (e.g. [["Frontend", "Backend", "Database", "Cloud"]]).
-    - If the budget is low, recommend a cost-effective tech stack. If the budget is high, recommend an enterprise-grade scalable stack.
-    - You MUST ask the user: "Would you like to proceed with this technology stack?"
-    - Once the user explicitly confirms the tech stack, set `tech_stack_confirmed` to true.
-    - If `is_gathering_info_complete` is true AND `tech_stack_confirmed` is true, set `ready_for_match` to true.
+    Step 2: PROJECT SUMMARY
+    - Only proceed here once `is_gathering_info_complete` is true and `summary_confirmed` is false.
+    - Display a clean, organized Project Summary containing all the extracted and AI-generated information (Project Name, Domain, Description, Tech Stack, Budget, Timeline).
+    - Ask the client: "Does this summary look correct? Should we proceed to cost estimation?"
+    - Once the user confirms the summary, set `summary_confirmed` to true, and `ready_for_match` to true.
 
-    Step 4: AFTER MATCH FUNCTION (Reviewing Estimates)
-    - If the backend has provided match results (see previously extracted data for `match_data`), you must present the Estimated Cost, Recommended Budget, Timeline, and Selected Developers to the user.
-    - Then ask: "Would you like me to generate the proposal?"
-    - Only after the user explicitly confirms, set `ready_for_proposal_generation` to true.
-
-    Step 5: SUGGESTIONS & AUTODETECT
-    - If the user asks for a project name or business domain suggestion, generate a creative and relevant one based on the description and output it directly in the JSON.
-    - If the user provides a project name and business domain, update those fields accordingly.
-
-    
+    Step 3: RESOURCE MATCHING & ESTIMATION
+    - Once `summary_confirmed` is true, the backend system will automatically calculate estimates, present them to the user, and ask for their approval.
+    - You do NOT need to present the estimates yourself. Just read the chat history to see if the user approved the estimates presented by the system.
+    - If the user confirms or approves the estimates (e.g. says "yes", "generate the proposal"), set `estimation_confirmed` to true, and `ready_for_proposal_generation` to true.
 
     OUTPUT FORMAT:
     - `follow_up_message` must ALWAYS contain your conversational response.
@@ -136,7 +116,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.text}
@@ -175,8 +155,29 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
             proposal_request.project_name = merged_json.get("project_name")
         if merged_json.get("client_budget"):
             proposal_request.budget = float(merged_json.get("client_budget"))
-        if merged_json.get("timeline_weeks"):
-            proposal_request.timeline = f"{merged_json.get('timeline_weeks')} Weeks"
+            
+        def format_timeline(days):
+            try:
+                days = int(days)
+            except:
+                return str(days)
+            if days < 7:
+                return f"{days} Day{'s' if days > 1 else ''}"
+            elif days % 30 == 0:
+                months = days // 30
+                return f"{months} Month{'s' if months > 1 else ''}"
+            elif days % 7 == 0:
+                weeks = days // 7
+                return f"{weeks} Week{'s' if weeks > 1 else ''}"
+            else:
+                if days >= 30:
+                    return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
+                elif days >= 7:
+                    return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
+                return f"{days} Days"
+                
+        if merged_json.get("timeline_days"):
+            proposal_request.timeline = format_timeline(merged_json.get('timeline_days'))
             
         user_convo = AIConversation(
             request_id=proposal_request.id,

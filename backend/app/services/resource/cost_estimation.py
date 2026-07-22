@@ -865,18 +865,13 @@ def filter_candidates(
 ) -> List[Dict[str, Any]]:
     """
     Filter employees based on:
-    1. Role (Exact match or flexible substring match, e.g. 'Backend Engineer' matches 'Senior Backend Engineer')
-    2. Minimum experience
-    3. Skills alignment if specific required skills are provided
-
-    Uses multi-tiered normalization to match synonyms ('developer' <-> 'engineer') and domain keywords.
+    1. Availability (must have available_hours > 0)
+    2. Skills alignment (Primary)
+    3. Role match (Secondary)
+    4. Minimum experience
     """
     req_role_lower = requirement.role.lower()
-
-    # Normalize synonyms
     normalized_req = req_role_lower.replace("developer", "engineer").replace("programmer", "engineer").replace("specialist", "engineer")
-
-    # Domain keywords to check for overlap if exact strings differ
     domain_keywords = ["backend", "frontend", "fullstack", "devops", "qa", "testing", "cloud", "security", "solutions", "architect", "data", "ai", "ml", "mobile", "ios", "android"]
     req_domains = [kw for kw in domain_keywords if kw in req_role_lower]
 
@@ -889,54 +884,48 @@ def filter_candidates(
             return True
         return False
 
-    # Tier 1: Role match + experience + skill overlap
-    tier1 = []
-    for emp in employees:
-        if not is_role_match(emp["role"]):
-            continue
-        if emp["experience"] < requirement.minimum_experience:
-            continue
-        if requirement.skills:
-            emp_skills_lower = [s.lower() for s in emp["skills"]]
-            req_skills_lower = [s.lower() for s in requirement.skills]
-            if any(req_s in emp_skills_lower for req_s in req_skills_lower):
-                tier1.append(emp)
-        else:
-            tier1.append(emp)
+    # Pre-filter for availability
+    available_employees = [emp for emp in employees if emp.get("available_hours", 0) > 0]
 
+    if not available_employees:
+        return []
+
+    req_skills_lower = [s.lower() for s in requirement.skills] if requirement.skills else []
+
+    # Tier 1: Exact skill overlap + Role Match + Experience
+    tier1 = []
+    for emp in available_employees:
+        emp_skills_lower = [s.lower() for s in emp["skills"]]
+        if req_skills_lower and any(req_s in emp_skills_lower for req_s in req_skills_lower):
+            if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
+                tier1.append(emp)
     if tier1:
-        print(tier1)
         return tier1
 
-    # Tier 2: Role match + experience (relaxing skill check)
+    # Tier 2: Exact skill overlap ONLY (Prioritize Technology over Role)
     tier2 = []
-    for emp in employees:
-        if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
+    for emp in available_employees:
+        emp_skills_lower = [s.lower() for s in emp["skills"]]
+        if req_skills_lower and any(req_s in emp_skills_lower for req_s in req_skills_lower):
             tier2.append(emp)
     if tier2:
-        print(tier2)
         return tier2
 
-    # Tier 3: Domain / synonym role match (relaxing experience requirements if exact level not available)
+    # Tier 3: Role Match + Experience (Fallback if no specific skills matched)
     tier3 = []
-    for emp in employees:
-        if is_role_match(emp["role"]):
+    for emp in available_employees:
+        if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
             tier3.append(emp)
     if tier3:
-        print(tier3)
         return tier3
 
-    # Tier 4: Skill match (if role wording differed but required skills match e.g. Python/FastAPI)
-    if requirement.skills:
-        tier4 = []
-        req_skills_lower = [s.lower() for s in requirement.skills]
-        for emp in employees:
-            emp_skills_lower = [s.lower() for s in emp["skills"]]
-            if any(req_s in emp_skills_lower for req_s in req_skills_lower):
-                tier4.append(emp)
-        if tier4:
-            print(tier4)
-            return tier4
+    # Tier 4: Any Role Match (Relaxing experience)
+    tier4 = []
+    for emp in available_employees:
+        if is_role_match(emp["role"]):
+            tier4.append(emp)
+    if tier4:
+        return tier4
 
     return []
 
@@ -953,27 +942,34 @@ def rank_candidates(
     Ranking Priority depends on `mode`:
 
     - "balanced" (default/original behavior):
-        1. Bench developers, 2. Global bench, 3. Highest available hours,
-        4. Lowest allocated hours, 5. Highest experience, 6. Lowest hourly cost.
+        1. Lowest hourly cost (low budget)
+        2. Bench developers
+        3. Global bench
+        4. Highest available hours
+        5. Lowest allocated hours
+        6. Highest experience
 
-    - "cost_efficient" (used for MVP — minimize cost, junior/mid devs are fine
-      as long as they meet the role's minimum experience):
-        1. Bench developers, 2. Global bench, 3. Lowest hourly cost,
-        4. Highest available hours, 5. Lowest allocated hours,
-        6. Lowest experience (just enough to meet the bar, not over-qualified).
+    - "cost_efficient" (used for MVP):
+        1. Lowest hourly cost (low budget priority)
+        2. Bench developers
+        3. Global bench
+        4. Highest available hours
+        5. Lowest allocated hours
+        6. Lowest experience
 
-    - "high_skill" (used for Full — pick the most senior/skilled devs
-      available, cost is secondary):
-        1. Bench developers, 2. Global bench, 3. Highest experience,
-        4. Highest available hours, 5. Lowest allocated hours,
-        6. Lowest hourly cost (tiebreaker only).
+    - "high_skill" (used for Full):
+        1. Highest experience
+        2. Bench developers
+        3. Global bench
+        4. Lowest hourly cost
+        5. Highest available hours
     """
     if mode == "cost_efficient":
         candidates.sort(
             key=lambda emp: (
+                emp["hourly_cost"],
                 not emp["bench_status"],
                 not emp["global_bench"],
-                emp["hourly_cost"],
                 -emp["available_hours"],
                 emp["allocated_hours"],
                 emp["experience"],
@@ -982,23 +978,23 @@ def rank_candidates(
     elif mode == "high_skill":
         candidates.sort(
             key=lambda emp: (
+                -emp["experience"],
                 not emp["bench_status"],
                 not emp["global_bench"],
-                -emp["experience"],
+                emp["hourly_cost"],
                 -emp["available_hours"],
                 emp["allocated_hours"],
-                emp["hourly_cost"],
             )
         )
     else:
         candidates.sort(
             key=lambda emp: (
+                emp["hourly_cost"],
                 not emp["bench_status"],
                 not emp["global_bench"],
                 -emp["available_hours"],
                 emp["allocated_hours"],
                 -emp["experience"],
-                emp["hourly_cost"],
             )
         )
     print("Ranked candidates:", candidates)
@@ -1016,29 +1012,46 @@ def select_resources(
     exclude_ids: Optional[set] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Returns the best N developers for a role, ranked according to `mode`
-    ("balanced" / "cost_efficient" / "high_skill" — see rank_candidates).
-
-    If `exclude_ids` is given, those employees are preferred to be left out
-    (e.g. so the Full-project team doesn't just reuse the MVP team) — but
-    only when enough other qualified candidates exist; otherwise the
-    exclusion is dropped so a role is never left unstaffed.
-
-    If no specific candidate matched across tiers, falls back to best ranked
-    available candidates to ensure proposal resource allocation is never
-    left empty (`[]`).
+    Returns developers to fulfill the required daily capacity for a role.
+    If 1 developer is needed, it requires 8 hours/day. If the top candidate
+    only has 4 hours, it will pick the next best candidate(s) until 8 hours
+    are fulfilled.
     """
     candidates = filter_candidates(employees, requirement)
     if not candidates:
-        candidates = list(employees)
+        candidates = [c for c in employees if c.get("available_hours", 0) > 0]
 
     if exclude_ids:
         remaining = [c for c in candidates if c["employee_id"] not in exclude_ids]
-        if len(remaining) >= requirement.count:
+        if len(remaining) > 0:
             candidates = remaining
 
     ranked = rank_candidates(candidates, mode=mode)
-    return ranked[: requirement.count]
+    
+    required_daily_capacity = requirement.count * 8
+    
+    selected = []
+    current_capacity = 0
+    
+    for emp in ranked:
+        if current_capacity >= required_daily_capacity:
+            break
+            
+        emp_available_hours = emp.get("available_hours", 0)
+        if emp_available_hours <= 0:
+            continue
+            
+        needed_hours = required_daily_capacity - current_capacity
+        hours_to_take = min(emp_available_hours, needed_hours)
+        
+        # Create a copy so we can assign specific allocated hours for this project
+        emp_copy = dict(emp)
+        emp_copy["allocated_daily_hours"] = hours_to_take
+        selected.append(emp_copy)
+        
+        current_capacity += hours_to_take
+
+    return selected
 
 
 # ==========================================================
@@ -1106,19 +1119,25 @@ def _build_variant_proposal(proposal: Dict[str, Any], variant: str) -> Dict[str,
 
     base_requirements = proposal.get("resource_requirements") or _default_resource_requirements()
 
-    base_timeline = proposal.get("timeline_weeks")
+    base_timeline = proposal.get("timeline_days")
     if not base_timeline or int(base_timeline) <= 0:
-        base_timeline = DEFAULT_TIMELINE_WEEKS
+        base_timeline = DEFAULT_TIMELINE_WEEKS * 7
     base_timeline = int(base_timeline)
 
     if variant == "mvp":
-        variant_proposal["resource_requirements"] = build_mvp_requirements(base_requirements)
-        variant_proposal["timeline_weeks"] = max(
-            MVP_MIN_TIMELINE_WEEKS, round(base_timeline * MVP_TIMELINE_RATIO)
+        mvp_reqs = proposal.get("mvp_resource_requirements")
+        variant_proposal["resource_requirements"] = mvp_reqs if mvp_reqs else build_mvp_requirements(base_requirements)
+        
+        mvp_timeline = proposal.get("mvp_timeline_days")
+        variant_proposal["timeline_days"] = int(mvp_timeline) if mvp_timeline else max(
+            MVP_MIN_TIMELINE_WEEKS * 7, round(base_timeline * MVP_TIMELINE_RATIO)
         )
     elif variant == "full":
-        variant_proposal["resource_requirements"] = build_full_requirements(base_requirements)
-        variant_proposal["timeline_weeks"] = base_timeline
+        full_reqs = proposal.get("full_resource_requirements")
+        variant_proposal["resource_requirements"] = full_reqs if full_reqs else build_full_requirements(base_requirements)
+        
+        full_timeline = proposal.get("full_timeline_days")
+        variant_proposal["timeline_days"] = int(full_timeline) if full_timeline else base_timeline
     else:
         raise ValueError(f"Unknown variant: {variant}")
 
@@ -1147,9 +1166,10 @@ def allocate_resources(
     """
     estimate = ProjectEstimate()
 
-    timeline_weeks = proposal.get("timeline_weeks")
-    if not timeline_weeks or int(timeline_weeks) <= 0:
-        timeline_weeks = DEFAULT_TIMELINE_WEEKS
+    timeline_days = proposal.get("timeline_days")
+    if not timeline_days or int(timeline_days) <= 0:
+        timeline_days = DEFAULT_TIMELINE_WEEKS * 7
+    timeline_days = int(timeline_days)
 
     resource_reqs_raw = proposal.get("resource_requirements") or _default_resource_requirements()
 
@@ -1170,11 +1190,14 @@ def allocate_resources(
         already_picked_in_this_call.update(emp["employee_id"] for emp in selected)
 
         for emp in selected:
+            # Determine daily hours based on what was dynamically allocated
+            hours_per_day = emp.get("allocated_daily_hours", emp.get("available_hours", 8))
+            
             # Total working hours for the project timeline
-            allocated_hours = (
-                timeline_weeks
+            allocated_hours = int(
+                (timeline_days / 7)
                 * WORKING_DAYS_PER_WEEK
-                * emp["daily_capacity_hours"]
+                * hours_per_day
             )
 
             estimated_cost = float(allocated_hours * emp["hourly_cost"])
@@ -1204,7 +1227,7 @@ def allocate_resources(
     return estimate
 
 
-def _estimate_to_json(estimate: ProjectEstimate, timeline_weeks: int, resource_requirements: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _estimate_to_json(estimate: ProjectEstimate, timeline_days: int, resource_requirements: List[Dict[str, Any]]) -> Dict[str, Any]:
     resources = []
     for dev in estimate.selected_resources:
         resources.append(
@@ -1223,9 +1246,31 @@ def _estimate_to_json(estimate: ProjectEstimate, timeline_weeks: int, resource_r
                 "skills": dev.skills,
             }
         )
+        
+    def format_timeline(days):
+        try:
+            days = int(days)
+        except:
+            return str(days)
+        if days < 7:
+            return f"{days} Day{'s' if days > 1 else ''}"
+        elif days % 30 == 0:
+            months = days // 30
+            return f"{months} Month{'s' if months > 1 else ''}"
+        elif days % 7 == 0:
+            weeks = days // 7
+            return f"{weeks} Week{'s' if weeks > 1 else ''}"
+        else:
+            if days >= 30:
+                return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
+            elif days >= 7:
+                return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
+            return f"{days} Days"
 
     return {
-        "timeline_weeks": timeline_weeks,
+        "timeline_days": timeline_days,
+        "timeline_formatted": format_timeline(timeline_days),
+        "timeline_weeks": timeline_days // 7, # Keep for backwards compatibility
         "resource_requirements": resource_requirements,
         "selected_resources": resources,
         "developer_cost": estimate.developer_cost,
@@ -1273,10 +1318,10 @@ def match_resources(
     )
 
     mvp_json = _estimate_to_json(
-        mvp_estimate, mvp_proposal["timeline_weeks"], mvp_proposal["resource_requirements"]
+        mvp_estimate, mvp_proposal["timeline_days"], mvp_proposal["resource_requirements"]
     )
     full_json = _estimate_to_json(
-        full_estimate, full_proposal["timeline_weeks"], full_proposal["resource_requirements"]
+        full_estimate, full_proposal["timeline_days"], full_proposal["resource_requirements"]
     )
 
     # Client budget analysis (compared against both options independently)
@@ -1298,6 +1343,7 @@ def match_resources(
         "proposal_id": proposal.get("proposal_id", f"PROP-{uuid.uuid4().hex[:6].upper()}"),
         "project_name": proposal.get("project_name", "Untitled AI Project Proposal"),
         "client_budget": client_budget,
+        "preferred_technology": proposal.get("preferred_technology", []),
         "mvp": mvp_json,
         "full_project": full_json,
     }

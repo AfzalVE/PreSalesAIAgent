@@ -46,6 +46,7 @@ async def generate_proposals_for_request(
         "proposal_id": proposal_input.get("proposal_id"),
         "project_name": proposal_input.get("project_name"),
         "client_budget": proposal_input.get("client_budget"),
+        "preferred_technology": proposal_input.get("preferred_technology", []),
         "mvp_estimation": mvp_data,
         "full_project_estimation": full_data_input
     }
@@ -53,8 +54,8 @@ async def generate_proposals_for_request(
     print("\n--- [DATA FLOW] Proposal Generation Engine Started ---")
     print(f"MVP Cost Estimation: {mvp_data.get('total_project_cost')}")
     print(f"Full Project Cost Estimation: {full_data_input.get('total_project_cost')}")
-    print(f"MVP Timeline Extracted: {mvp_data.get('timeline_weeks')} Weeks")
-    print(f"Full Project Timeline Extracted: {full_data_input.get('timeline_weeks')} Weeks")
+    print(f"MVP Timeline Extracted: {mvp_data.get('timeline_formatted', 'TBD')}")
+    print(f"Full Project Timeline Extracted: {full_data_input.get('timeline_formatted', 'TBD')}")
     print("------------------------------------------------------\n")
 
     system_prompt = """
@@ -78,7 +79,7 @@ IMPORTANT RULES
 • The input includes project cost, selected resources, timeline, budget feasibility, and resource requirements.
 • NEVER modify, estimate, calculate, or infer any financial values.
 • NEVER change the provided timeline duration or selected resources.
-• Use the exact technology stack that was provided in the input if present.
+• Use EXACTLY the technology stack that was provided in the input under 'preferred_technology'. Do not invent or infer a different technology stack.
 • Your timeline breakdown phases MUST add up to exactly the timeline provided for the MVP and Full variants respectively.
 • Your responsibility is only to generate professional proposal content.
 
@@ -89,7 +90,6 @@ If project details are incomplete, intelligently infer and enhance:
 - Business domain
 - Project description
 - Functional scope
-- Preferred technology stack
 - Technical architecture
 
 The inferred information should remain realistic and consistent with the project requirements.
@@ -302,8 +302,8 @@ Do not include any additional text.
         final_budget = proposal_input.get("budget", 0.0)
     if final_budget is None:
         final_budget = 0.0
-    timeline_val = mvp_data.get("timeline_weeks", proposal_input.get("timeline_weeks", "TBD"))
-    final_timeline = f"{timeline_val} Weeks" if str(timeline_val).isnumeric() else str(timeline_val)
+    
+    final_timeline = mvp_data.get("timeline_formatted", proposal_input.get("timeline", "TBD"))
 
     estimated_cost = mvp_data.get("total_project_cost", final_budget)
     selected_resources = mvp_data.get("selected_resources", [])
@@ -382,7 +382,7 @@ Do not include any additional text.
             "company_static_cost": mvp_input.get("company_static_cost"),
             "total_project_cost": mvp_cost
         },
-        estimated_duration=f"{mvp_data['estimated_duration_weeks']} Weeks",
+        estimated_duration=mvp_input.get("timeline_formatted", f"{mvp_data.get('estimated_duration_weeks', 0)} Weeks"),
         scope=mvp_data["scope"],
         assumptions=mvp_data["assumptions"],
         risks=mvp_data["risks"],
@@ -411,7 +411,7 @@ Do not include any additional text.
             "company_static_cost": full_input.get("company_static_cost"),
             "total_project_cost": full_cost
         },
-        estimated_duration=f"{full_data['estimated_duration_weeks']} Weeks",
+        estimated_duration=full_input.get("timeline_formatted", f"{full_data.get('estimated_duration_weeks', 0)} Weeks"),
         scope=full_data["scope"],
         assumptions=full_data["assumptions"],
         risks=full_data["risks"],
