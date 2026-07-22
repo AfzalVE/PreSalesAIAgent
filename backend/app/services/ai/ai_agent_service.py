@@ -3,12 +3,14 @@ import uuid
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from app.core.config import settings
 from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 from app.models.user import User
 from app.models.enums import UserRole
 from app.models.proposal_request import ProposalRequest, CommunicationType
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
+from app.models.employee import Employee
 
 # Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
@@ -76,7 +78,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         .all()
     )
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
+    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM 
     schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
     print(f"\033[92m{conversations}\033[0m")
     print()
@@ -231,9 +233,8 @@ Existing JSON:
 
     })
 
-
     try:
-        response = await client.chat.completions.create(
+        extraction_response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             response_format={"type": "json_object"},
@@ -241,7 +242,7 @@ Existing JSON:
         )
         
         # Parse the JSON string returned by OpenAI
-        response_content = response.choices[0].message.content
+        response_content = extraction_response.choices[0].message.content
         extracted_dict = json.loads(response_content)
         
         if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
