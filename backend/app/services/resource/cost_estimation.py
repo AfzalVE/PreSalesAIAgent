@@ -246,7 +246,9 @@
 #             emp_skills_lower = [s.lower() for s in emp["skills"]]
 #             req_skills_lower = [s.lower() for s in requirement.skills]
 #             if any(req_s in emp_skills_lower for req_s in req_skills_lower):
-#                 tier1.append(emp)
+#                 emp_copy = dict(emp)
+#                 emp_copy["match_tier"] = 1
+#                 tier1.append(emp_copy)
 #         else:
 #             tier1.append(emp)
 
@@ -257,7 +259,9 @@
 #     tier2 = []
 #     for emp in employees:
 #         if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
-#             tier2.append(emp)
+#             emp_copy = dict(emp)
+#             emp_copy["match_tier"] = 2
+#             tier2.append(emp_copy)
 #     if tier2:
 #         return tier2
 
@@ -265,7 +269,9 @@
 #     tier3 = []
 #     for emp in employees:
 #         if is_role_match(emp["role"]):
-#             tier3.append(emp)
+#             emp_copy = dict(emp)
+#             emp_copy["match_tier"] = 3
+#             tier3.append(emp_copy)
 #     if tier3:
 #         return tier3
 
@@ -276,7 +282,9 @@
 #         for emp in employees:
 #             emp_skills_lower = [s.lower() for s in emp["skills"]]
 #             if any(req_s in emp_skills_lower for req_s in req_skills_lower):
-#                 tier4.append(emp)
+#                 emp_copy = dict(emp)
+#             emp_copy["match_tier"] = 4
+#             tier4.append(emp_copy)
 #         if tier4:
 #             return tier4
 
@@ -692,6 +700,8 @@ class SelectedResource:
     estimated_cost: float = 0.0
     experience_years: int = 0
     skills: List[str] = field(default_factory=list)
+    match_tier: int = 1
+    shared_with_mvp: bool = False
 
 
 @dataclass
@@ -701,8 +711,10 @@ class ProjectEstimate:
     removed entirely — total cost is purely developer cost now.
     """
     selected_resources: List[SelectedResource] = field(default_factory=list)
+    unfulfilled_roles: List[Dict[str, Any]] = field(default_factory=list)
     developer_cost: float = 0.0
     total_project_cost: float = 0.0
+    budget_overrun_warning: Optional[str] = None
 
 
 # ==========================================================
@@ -762,46 +774,50 @@ def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
             for row in reader:
                 status = row.get("employment_status", "").upper()
                 if status == "ACTIVE":
-                    # Parse comma-separated skill string to list
-                    skill_names = row.get("skill_names", "")
-                    skills_list = [s.strip() for s in skill_names.split(",") if s.strip()] if skill_names else []
-
-                    experience = int(row.get("experience_years") or row.get("years_experience") or 0)
-                    hourly_cost = float(row.get("hourly_cost") or 0.0)
-                    
                     try:
-                        daily_capacity_hours = int(row.get("daily_capacity_hours") or 8)
-                    except:
-                        daily_capacity_hours = 8
+                        # Parse comma-separated skill string to list
+                        skill_names = row.get("skill_names", "")
+                        skills_list = [s.strip() for s in skill_names.split(",") if s.strip()] if skill_names else []
+
+                        experience = int(row.get("experience_years") or row.get("years_experience") or 0)
+                        hourly_cost = float(row.get("hourly_cost") or 0.0)
                         
-                    try:
-                        allocated_hours = int(row.get("allocated_hours") or 0)
-                    except:
-                        allocated_hours = 0
-                        
-                    try:
-                        available_hours = int(row.get("available_hours") or 8)
-                    except:
-                        available_hours = 8
+                        try:
+                            daily_capacity_hours = int(row.get("daily_capacity_hours") or 8)
+                        except:
+                            daily_capacity_hours = 8
+                            
+                        try:
+                            allocated_hours = int(row.get("allocated_hours") or 0)
+                        except:
+                            allocated_hours = 0
+                            
+                        try:
+                            available_hours = int(row.get("available_hours") or 8)
+                        except:
+                            available_hours = 8
 
-                    bench_status = str(row.get("bench_status", "")).lower() == "true"
-                    global_bench = str(row.get("global_bench", "")).lower() == "true"
+                        bench_status = str(row.get("bench_status", "")).lower() == "true"
+                        global_bench = str(row.get("global_bench", "")).lower() == "true"
 
-                    employees.append(
-                        {
-                            "employee_id": str(row.get("id")),
-                            "name": row.get("full_name"),
-                            "role": row.get("designation"),
-                            "skills": skills_list,
-                            "experience": experience,
-                            "hourly_cost": hourly_cost,
-                            "daily_capacity_hours": daily_capacity_hours,
-                            "allocated_hours": allocated_hours,
-                            "available_hours": available_hours,
-                            "bench_status": bench_status,
-                            "global_bench": global_bench,
-                        }
-                    )
+                        employees.append(
+                            {
+                                "employee_id": str(row.get("id")),
+                                "name": row.get("full_name"),
+                                "role": row.get("designation"),
+                                "skills": skills_list,
+                                "experience": experience,
+                                "hourly_cost": hourly_cost,
+                                "daily_capacity_hours": daily_capacity_hours,
+                                "allocated_hours": allocated_hours,
+                                "available_hours": available_hours,
+                                "bench_status": bench_status,
+                                "global_bench": global_bench,
+                            }
+                        )
+                    except (ValueError, TypeError) as e:
+                        print(f"Skipping malformed row {row.get('id')}: {e}")
+                        continue
         print("Employees fetched from CSV")
         return employees
 
@@ -898,7 +914,9 @@ def filter_candidates(
         emp_skills_lower = [s.lower() for s in emp["skills"]]
         if req_skills_lower and any(req_s in emp_skills_lower for req_s in req_skills_lower):
             if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
-                tier1.append(emp)
+                emp_copy = dict(emp)
+                emp_copy["match_tier"] = 1
+                tier1.append(emp_copy)
     if tier1:
         return tier1
 
@@ -907,7 +925,9 @@ def filter_candidates(
     for emp in available_employees:
         emp_skills_lower = [s.lower() for s in emp["skills"]]
         if req_skills_lower and any(req_s in emp_skills_lower for req_s in req_skills_lower):
-            tier2.append(emp)
+            emp_copy = dict(emp)
+            emp_copy["match_tier"] = 2
+            tier2.append(emp_copy)
     if tier2:
         return tier2
 
@@ -915,7 +935,9 @@ def filter_candidates(
     tier3 = []
     for emp in available_employees:
         if is_role_match(emp["role"]) and emp["experience"] >= requirement.minimum_experience:
-            tier3.append(emp)
+            emp_copy = dict(emp)
+            emp_copy["match_tier"] = 3
+            tier3.append(emp_copy)
     if tier3:
         return tier3
 
@@ -923,7 +945,9 @@ def filter_candidates(
     tier4 = []
     for emp in available_employees:
         if is_role_match(emp["role"]):
-            tier4.append(emp)
+            emp_copy = dict(emp)
+            emp_copy["match_tier"] = 4
+            tier4.append(emp_copy)
     if tier4:
         return tier4
 
@@ -1011,7 +1035,7 @@ def select_resources(
     mode: str = "balanced",
     exclude_ids: Optional[set] = None,
     timeline_days: int = 0,
-    client_budget: float = 0.0,
+    remaining_budget: float = 0.0,
     total_roles: int = 1,
 ) -> List[Dict[str, Any]]:
     """
@@ -1035,25 +1059,28 @@ def select_resources(
     ranked = rank_candidates(candidates, mode=mode)
     
     # Business-aware count adjustment:
-    # If timeline is tight (< 30 days for a full project) AND budget allows,
-    # keep the AI-suggested count. Otherwise, cap at 1 per role to avoid
-    # allocating unnecessary multiples.
     effective_count = requirement.count
-    if effective_count > 1 and timeline_days > 0 and client_budget > 0:
-        # Estimate rough cost per dev for this timeline
+    print(f"[Resource Selection] Evaluating '{requirement.role}' with {len(candidates)} available candidates.")
+    print(f"[Resource Selection] Initial AI-suggested headcount: {effective_count}, Timeline: {timeline_days} days, Remaining Budget: ${remaining_budget}")
+    
+    if remaining_budget <= 0:
+        effective_count = 1
+        print("[Resource Selection] No remaining budget. Capping headcount at 1.")
+    elif effective_count > 1 and timeline_days > 0:
         weeks = max(1, timeline_days / 7)
         avg_hourly = sum(c.get("hourly_cost", 10) for c in ranked[:3]) / max(len(ranked[:3]), 1)
         cost_per_dev = weeks * WORKING_DAYS_PER_WEEK * 8 * avg_hourly
-        max_affordable_devs = int(client_budget / (cost_per_dev * total_roles)) if cost_per_dev > 0 else 1
+        max_affordable_devs = int(remaining_budget / (cost_per_dev * total_roles)) if cost_per_dev > 0 else 1
         
-        # Only allow multiple devs per role if timeline is tight (< 6 weeks)
-        # and budget can actually afford the extra headcount
-        if timeline_days >= 42:  # 6+ weeks — not tight, reduce to 1
+        if timeline_days >= 42:
             effective_count = 1
+            print("[Resource Selection] Timeline is comfortable. Capping headcount at 1.")
         else:
             effective_count = min(effective_count, max(1, max_affordable_devs))
+            print(f"[Resource Selection] Timeline is tight. Adjusted headcount to {effective_count} based on budget.")
     
     required_daily_capacity = effective_count * 8
+    print(f"[Resource Selection] Final Headcount: {effective_count}. Required daily capacity: {required_daily_capacity} hours.")
     
     selected = []
     current_capacity = 0
@@ -1075,7 +1102,9 @@ def select_resources(
         selected.append(emp_copy)
         
         current_capacity += hours_to_take
+        print(f"[Resource Selection] Allocated {hours_to_take} hours/day to {emp_copy['name']}. Total fulfilled: {current_capacity}/{required_daily_capacity}")
 
+    print(f"[Resource Selection] Finished selecting for '{requirement.role}'.\n")
     return selected
 
 
@@ -1217,26 +1246,34 @@ def allocate_resources(
             minimum_experience=int(resource.get("minimum_experience", 1)),
             skills=resource.get("skills", []),
         )
+        
+        remaining_budget = max(0.0, client_budget - total_developer_cost)
 
         selected = select_resources(
             employees, requirement, mode=mode, exclude_ids=already_picked_in_this_call,
-            timeline_days=timeline_days, client_budget=client_budget, total_roles=total_roles
+            timeline_days=timeline_days, remaining_budget=remaining_budget, total_roles=total_roles
         )
+        
+        if not selected:
+            estimate.unfulfilled_roles.append(resource)
+            print(f"[Cost Calculation] WARNING: No candidates found for {requirement.role}!")
+            continue
+            
         already_picked_in_this_call.update(emp["employee_id"] for emp in selected)
 
         for emp in selected:
-            # Determine daily hours based on what was dynamically allocated
-            hours_per_day = emp.get("allocated_daily_hours", emp.get("available_hours", 8))
+            hours_per_day = emp.get("allocated_daily_hours", emp.get("daily_capacity_hours", 8))
+            print(f"[Cost Calculation] Resource: {emp['name']} ({emp['role']}) - {hours_per_day} hrs/day * ${emp['hourly_cost']}/hr")
             
-            # Total working hours for the project timeline
-            allocated_hours = int(
-                (timeline_days / 7)
-                * WORKING_DAYS_PER_WEEK
-                * hours_per_day
-            )
+            allocated_hours = int((timeline_days / 7) * WORKING_DAYS_PER_WEEK * hours_per_day)
+            
+            is_shared = False
+            if exclude_ids and emp["employee_id"] in exclude_ids:
+                is_shared = True
 
             estimated_cost = float(allocated_hours * emp["hourly_cost"])
             total_developer_cost += estimated_cost
+            print(f"[Cost Calculation] -> {allocated_hours} total hours * ${emp['hourly_cost']}/hr = ${estimated_cost}")
 
             estimate.selected_resources.append(
                 SelectedResource(
@@ -1252,12 +1289,20 @@ def allocate_resources(
                     estimated_cost=estimated_cost,
                     experience_years=emp["experience"],
                     skills=emp["skills"],
+                    match_tier=emp.get("match_tier", 1),
+                    shared_with_mvp=is_shared
                 )
             )
 
     estimate.developer_cost = round(total_developer_cost, 2)
-    # Total cost == developer cost. No company static overhead added.
+    print(f"[Cost Calculation] Final Total Estimated Cost: ${estimate.developer_cost}\n")
     estimate.total_project_cost = estimate.developer_cost
+    
+    if client_budget > 0 and estimate.total_project_cost > client_budget:
+        overage = estimate.total_project_cost - client_budget
+        warning_msg = f"Project estimate exceeds the client budget of ${client_budget} by ${overage:.2f}."
+        estimate.budget_overrun_warning = warning_msg
+        print(f"[Cost Calculation] WARNING: {warning_msg}")
 
     return estimate
 
@@ -1279,6 +1324,8 @@ def _estimate_to_json(estimate: ProjectEstimate, timeline_days: int, resource_re
                 "estimated_cost": round(dev.estimated_cost, 2),
                 "experience_years": dev.experience_years,
                 "skills": dev.skills,
+                "match_tier": dev.match_tier,
+                "shared_with_mvp": dev.shared_with_mvp
             }
         )
         
@@ -1302,16 +1349,20 @@ def _estimate_to_json(estimate: ProjectEstimate, timeline_days: int, resource_re
                 return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
             return f"{days} Days"
 
-    return {
+    result = {
         "timeline_days": timeline_days,
         "timeline_formatted": format_timeline(timeline_days),
         "timeline_weeks": timeline_days // 7, # Keep for backwards compatibility
         "resource_requirements": resource_requirements,
+        "unfulfilled_roles": estimate.unfulfilled_roles,
         "selected_resources": resources,
         "developer_cost": estimate.developer_cost,
         "total_project_cost": estimate.total_project_cost,
         "estimated_cost": estimate.total_project_cost,
     }
+    if estimate.budget_overrun_warning:
+        result["budget_overrun_warning"] = estimate.budget_overrun_warning
+    return result
 
 
 # ==========================================================
@@ -1322,6 +1373,9 @@ def match_resources(
     proposal: Dict[str, Any],
     employees: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
+    print("\n" + "="*50)
+    print("🚀 STARTING RESOURCE MATCH & COST ESTIMATION")
+    print("="*50 + "\n")
     """
     Main entry point for resource matching and cost estimation.
 
@@ -1373,6 +1427,12 @@ def match_resources(
         else:
             option_json["is_within_budget"] = True
             option_json["budget_variance_usd"] = 0.0
+
+    print(f"✅ FINAL MVP COST: ${mvp_json['total_project_cost']}")
+    print(f"✅ FINAL FULL PROJECT COST: ${full_json['total_project_cost']}")
+    print("\n" + "="*50)
+    print("🏁 FINISHED RESOURCE MATCH & COST ESTIMATION")
+    print("="*50 + "\n")
 
     return {
         "proposal_id": proposal.get("proposal_id", f"PROP-{uuid.uuid4().hex[:6].upper()}"),

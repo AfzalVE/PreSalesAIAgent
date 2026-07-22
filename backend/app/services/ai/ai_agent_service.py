@@ -91,14 +91,15 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     1. `project_description` — Ask: "Could you describe your project idea or what you're looking to build?" (If client already provided a description, SKIP asking this).
     2. `project_name` — Generate one silently based on the description. Do not ask for confirmation.
     3. `business_domain` — Generate one silently based on the description. Do not ask for confirmation.
-    4. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If client says "you suggest", recommend a stack and ask: "Is this tech stack okay?"
-    5. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If they say "you suggest", suggest one and ask: "Is this budget okay?"
-    6. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If they say "you suggest", suggest one and ask: "Is this timeline okay?"
+    4. `preferred_technology` — Check if they already mentioned technologies or platforms (e.g. WooCommerce, WordPress, Shopify, React) in their description. If they did, extract them as the tech stack and SKIP asking this question. If not, ask: "Do you have a preferred tech stack, or would you like me to recommend one?" If the client asks you to suggest or recommend a stack, you MUST suggest one, POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend [Stack]. Is this tech stack okay?"
+    5. `client_budget` — Check if they already provided a budget. If not, ask: "What is your approximate budget for the full project?" If the client asks you to suggest or recommend a budget, you MUST analyze their requirements, suggest a specific numeric budget in USD, POPULATE the `client_budget` JSON field immediately with this number, and ask: "I suggest a budget of $[X]. Is this okay?"
+    6. `timeline_days` — Check if they already provided a timeline. If not, ask: "What is your expected timeline for the full project?" Accept input in days, weeks, or months and convert to days internally. If the client asks you to suggest or recommend a timeline, you MUST suggest one, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X]. Is this okay?"
 
     RULES FOR GATHERING (CRITICAL):
     - DO NOT ASK FOR INFORMATION YOU ALREADY HAVE. If the client provided the budget and timeline in their very first message, extract them immediately into the JSON and SKIP asking questions 5 and 6.
     - Never ask multiple questions at once. Ask exactly ONE missing question.
-    - If the client answers "yes", "ok", or "looks good" to your suggestion, accept it as confirmed, populate the JSON, and IMMEDIATELY move to the next missing field. Do not keep asking them to confirm the same thing.
+    - If the user asks you to suggest a value for a field, you MUST provide a concrete suggestion and POPULATE the JSON field with your suggestion in the same turn. Do not leave it null.
+    - If the client answers "yes", "ok", or "looks good" to your suggestion, accept it as confirmed, ensure the JSON is populated, and IMMEDIATELY move to the next missing field. Do not keep asking them to confirm the same thing.
     - The budget and timeline represent the FULL PROJECT scope.
     - DO NOT show any project summary yet. DO NOT ask to proceed to cost estimation yet.
 
@@ -107,7 +108,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Once ALL 6 client fields above are completely populated AND confirmed by the client, you MUST automatically generate these 4 AI-analyzed fields:
     
     - `full_timeline_days`: This is exactly the `timeline_days` agreed upon in Step 1.
-    - `mvp_timeline_days`: Analyze project complexity to suggest a realistic MVP timeline in days. Must be shorter than the full timeline.
+    - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. DO NOT just blindly divide the full timeline in half. It must be a thoughtful estimate based on MVP scope, and shorter than the full timeline.
     - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count=1 unless timeline is tight and budget allows.
     - `full_resource_requirements`: Generate the complete team for full build. Include QA/DevOps if justified.
 
@@ -117,7 +118,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     --------------------------------------
     If `is_gathering_info_complete` is true AND the user has NOT YET confirmed the summary, you MUST display the COMPLETE summary in your `follow_up_message`.
 
-    You MUST include ALL 7 bullet points below. Do NOT omit any bullet points. 
+    You MUST include ALL 6 bullet points below. Do NOT omit any bullet points. 
 
     📋 **Project Summary**
     - **Project Name**: [name]
@@ -125,12 +126,11 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     - **Description**: [full description]
     - **Tech Stack**: [all technologies]
     - **Budget**: $[amount]
-    - **MVP Timeline**: [formatted — use Days if <7, Weeks if multiple of 7, Months if multiple of 30]
-    - **Full Project Timeline**: [formatted same way]
+    - **Timeline**: [formatted timeline — use Days if <7, Weeks if multiple of 7, Months if multiple of 30]
 
     Then ask: "Does this complete summary look correct? Should we proceed to cost estimation, or would you like to modify anything?"
 
-    CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT omit the Full Project Timeline. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
+    CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
 
     STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
     ------------------------------------------------------
