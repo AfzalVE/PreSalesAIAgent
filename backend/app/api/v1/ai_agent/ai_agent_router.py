@@ -37,22 +37,29 @@ async def extract_requirements(input_data: AgentTextInput, db: Session = Depends
                 # Format match summary into the chat message
                 mvp_cost = match_response.get("mvp", {}).get("total_project_cost", "N/A")
                 full_cost = match_response.get("full_project", {}).get("total_project_cost", "N/A")
-                mvp_timeline = match_response.get("mvp", {}).get("timeline_weeks", "N/A")
-                full_timeline = match_response.get("full_project", {}).get("timeline_weeks", "N/A")
+                mvp_timeline = match_response.get("mvp", {}).get("timeline_formatted", "N/A")
+                full_timeline = match_response.get("full_project", {}).get("timeline_formatted", "N/A")
                 client_budget = match_response.get("client_budget")
                 
-                # Format resources
-                resources_str = ""
+                # Format MVP resources
+                mvp_resources_str = ""
                 for res in match_response.get("mvp", {}).get("selected_resources", []):
-                    resources_str += f"\n  - {res.get('role')} (x{res.get('count', 1)})"
+                    skills = ", ".join(res.get("skills", [])[:3]) if res.get("skills") else "General"
+                    mvp_resources_str += f"\n  - {res.get('name', 'TBD')} — {res.get('role')} ({skills})"
                 
-                match_summary = f"\n\n**Estimation Complete!**\n- MVP Budget: ${mvp_cost}\n- Full Product Budget: ${full_cost}\n- MVP Timeline: {mvp_timeline} Weeks\n- Full Product Timeline: {full_timeline} Weeks\n- Recommended Resources: {resources_str if resources_str else 'N/A'}\n"
+                # Format Full resources
+                full_resources_str = ""
+                for res in match_response.get("full_project", {}).get("selected_resources", []):
+                    skills = ", ".join(res.get("skills", [])[:3]) if res.get("skills") else "General"
+                    full_resources_str += f"\n  - {res.get('name', 'TBD')} — {res.get('role')} ({skills})"
+                
+                match_summary = f"\n\n**📊 Estimation Complete!**\n\n**MVP Option:**\n- Budget: ${mvp_cost}\n- Timeline: {mvp_timeline}\n\n**Full Project Option:**\n- Budget: ${full_cost}\n- Timeline: {full_timeline}\n"
                 
                 if client_budget is not None and mvp_cost != "N/A":
                     if mvp_cost > client_budget:
-                        match_summary += f"\n**Notice:** The estimated cost for the MVP (${mvp_cost}) exceeds your approved budget (${client_budget}). The project is not feasible within the current budget constraints.\n"
+                        match_summary += f"\n⚠️ **Notice:** The estimated cost for the MVP (${mvp_cost}) exceeds your approved budget (${client_budget}). The project is not feasible within the current budget constraints.\n"
                     elif full_cost != "N/A" and full_cost > client_budget:
-                        match_summary += f"\n**Notice:** The estimated cost for the Full Product (${full_cost}) exceeds your approved budget (${client_budget}), although the MVP is feasible.\n"
+                        match_summary += f"\n⚠️ **Notice:** The estimated cost for the Full Product (${full_cost}) exceeds your approved budget (${client_budget}), although the MVP is feasible.\n"
                         
                 match_summary += "\nWould you like me to generate the proposal based on these estimates?"
                 extracted_data.follow_up_message += match_summary

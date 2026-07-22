@@ -280,7 +280,7 @@ Do not include explanations.
 Do not include any additional text.
     """
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": json.dumps(user_input_summary)}

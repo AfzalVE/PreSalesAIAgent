@@ -1010,12 +1010,18 @@ def select_resources(
     requirement: ResourceRequirement,
     mode: str = "balanced",
     exclude_ids: Optional[set] = None,
+    timeline_days: int = 0,
+    client_budget: float = 0.0,
+    total_roles: int = 1,
 ) -> List[Dict[str, Any]]:
     """
     Returns developers to fulfill the required daily capacity for a role.
-    If 1 developer is needed, it requires 8 hours/day. If the top candidate
-    only has 4 hours, it will pick the next best candidate(s) until 8 hours
-    are fulfilled.
+    
+    Business-aware allocation:
+    - Primarily matches resources whose skills align with the project tech stack.
+    - By default, selects 1 developer per role (count=1) to avoid unnecessary duplication.
+    - Scales up headcount ONLY when the timeline is very tight relative to 
+      scope AND the budget can support multiple developers for the same role.
     """
     candidates = filter_candidates(employees, requirement)
     if not candidates:
@@ -1028,7 +1034,26 @@ def select_resources(
 
     ranked = rank_candidates(candidates, mode=mode)
     
-    required_daily_capacity = requirement.count * 8
+    # Business-aware count adjustment:
+    # If timeline is tight (< 30 days for a full project) AND budget allows,
+    # keep the AI-suggested count. Otherwise, cap at 1 per role to avoid
+    # allocating unnecessary multiples.
+    effective_count = requirement.count
+    if effective_count > 1 and timeline_days > 0 and client_budget > 0:
+        # Estimate rough cost per dev for this timeline
+        weeks = max(1, timeline_days / 7)
+        avg_hourly = sum(c.get("hourly_cost", 10) for c in ranked[:3]) / max(len(ranked[:3]), 1)
+        cost_per_dev = weeks * WORKING_DAYS_PER_WEEK * 8 * avg_hourly
+        max_affordable_devs = int(client_budget / (cost_per_dev * total_roles)) if cost_per_dev > 0 else 1
+        
+        # Only allow multiple devs per role if timeline is tight (< 6 weeks)
+        # and budget can actually afford the extra headcount
+        if timeline_days >= 42:  # 6+ weeks — not tight, reduce to 1
+            effective_count = 1
+        else:
+            effective_count = min(effective_count, max(1, max_affordable_devs))
+    
+    required_daily_capacity = effective_count * 8
     
     selected = []
     current_capacity = 0
@@ -1175,6 +1200,15 @@ def allocate_resources(
 
     total_developer_cost = 0.0
     already_picked_in_this_call = set(exclude_ids) if exclude_ids else set()
+    
+    # Extract budget for business-aware resource scaling
+    client_budget = 0.0
+    if proposal.get("client_budget"):
+        try:
+            client_budget = float(proposal.get("client_budget"))
+        except:
+            pass
+    total_roles = len(resource_reqs_raw)
 
     for resource in resource_reqs_raw:
         requirement = ResourceRequirement(
@@ -1185,7 +1219,8 @@ def allocate_resources(
         )
 
         selected = select_resources(
-            employees, requirement, mode=mode, exclude_ids=already_picked_in_this_call
+            employees, requirement, mode=mode, exclude_ids=already_picked_in_this_call,
+            timeline_days=timeline_days, client_budget=client_budget, total_roles=total_roles
         )
         already_picked_in_this_call.update(emp["employee_id"] for emp in selected)
 
