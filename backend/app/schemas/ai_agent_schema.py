@@ -49,3 +49,65 @@ class NegotiationResponse(BaseModel):
     response_message: str = Field(..., description="The AI's conversational response explaining the adjustments.")
     success: bool = Field(..., description="Whether the negotiation was successful (e.g. false if budget requested is impossibly low).")
     error_message: Optional[str] = Field(None, description="Warning or error message if success is false.")
+
+
+# ------------------------------------------------------------------
+# Budget Negotiation (Tiered Developer Re-Matching)
+# ------------------------------------------------------------------
+
+class CurrentResourceItem(BaseModel):
+    """Represents one developer currently assigned in the proposal."""
+    employee_id: Optional[str] = Field(None, description="Employee UUID from the DB / CSV.")
+    name: Optional[str] = Field(None, description="Developer name.")
+    role: Optional[str] = Field(None, description="Developer role / designation.")
+    hourly_cost: Optional[float] = Field(None, description="Hourly rate in USD.")
+    experience_years: Optional[int] = Field(None, description="Years of experience.")
+    skills: Optional[List[str]] = Field(default_factory=list, description="Skill list.")
+    estimated_cost: Optional[float] = Field(None, description="Cost for the proposal timeline.")
+    allocated_hours: Optional[int] = Field(None, description="Total hours allocated to this proposal.")
+
+class BudgetNegotiationInput(BaseModel):
+    """
+    Payload sent by the frontend when the client asks to reduce the budget.
+    Tracks how many times the client has already asked so the backend can
+    escalate the strategy (dev swap on attempt 1, timeline extension on attempt 2+).
+    """
+    request_id: Optional[str] = Field(None, description="The active ProposalRequest UUID in the DB.")
+    proposal_type: str = Field("MVP", description="Which proposal variant is being negotiated: 'MVP' or 'FULL'.")
+    target_budget: float = Field(..., description="The budget the client is targeting (in USD).")
+    current_cost: float = Field(..., description="The current total cost of the proposal (in USD).")
+    current_timeline_days: int = Field(..., description="The current project timeline in days.")
+    current_resources: List[CurrentResourceItem] = Field(
+        default_factory=list,
+        description="The full list of developers currently in the proposal so the backend can compute a cost cap."
+    )
+    resource_requirements: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Original resource role requirements (role, count, skills, min_experience) from extraction."
+    )
+    negotiation_attempt: int = Field(
+        1,
+        description=(
+            "1 = first budget reduction request (try cheaper devs first, DO NOT change timeline). "
+            "2+ = subsequent requests (extend timeline to reduce cost after devs are already cheapest available)."
+        )
+    )
+
+class BudgetNegotiationResponse(BaseModel):
+    """
+    Returned after the backend re-runs resource matching with the new constraints.
+    """
+    success: bool = Field(..., description="Whether a valid cheaper team was found.")
+    strategy_used: str = Field(
+        ...,
+        description="'developer_swap' if we found cheaper devs, 'timeline_extension' if we extended the timeline."
+    )
+    new_cost: float = Field(..., description="New total project cost after re-matching.")
+    new_timeline_days: int = Field(..., description="New timeline in days (unchanged on attempt 1).")
+    new_timeline_formatted: str = Field(..., description="Human-readable timeline string.")
+    new_resources: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="The new developer list with updated costs and hourly rates."
+    )
+    response_message: str = Field(..., description="Conversational message explaining what changed and why.")
+    error_message: Optional[str] = Field(None, description="Reason if success is False.")

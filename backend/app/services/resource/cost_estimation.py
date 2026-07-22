@@ -1349,6 +1349,101 @@ def match_resources(
     }
 
 
+def _format_timeline_days(days: int) -> str:
+    """Convert a raw day count to a human-readable string like '10 Weeks' or '3 Months'."""
+    if days < 7:
+        return f"{days} Day{'s' if days > 1 else ''}"
+    elif days % 30 == 0:
+        months = days // 30
+        return f"{months} Month{'s' if months > 1 else ''}"
+    elif days % 7 == 0:
+        weeks = days // 7
+        return f"{weeks} Week{'s' if weeks > 1 else ''}"
+    elif days >= 30:
+        return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
+    else:
+        return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
+
+
+def match_resources_with_budget_cap(
+    resource_requirements: List[Dict[str, Any]],
+    timeline_days: int,
+    max_hourly_rate: float,
+    employees: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    **Attempt-1 budget negotiation strategy — Developer Swap.**
+
+    Re-runs resource allocation using ONLY employees whose hourly_cost is at or
+    below `max_hourly_rate`. Same roles, same counts, same timeline — only the
+    developer pool is restricted to cheaper candidates.
+
+    Returns a dict compatible with `_estimate_to_json` output, or None if no
+    valid team can be assembled within the rate cap.
+    """
+    if employees is None:
+        employees = get_employees_from_db()
+
+    # Filter pool to cheaper developers only
+    affordable_pool = [e for e in employees if e.get("hourly_cost", 0) <= max_hourly_rate]
+
+    if not affordable_pool:
+        return None
+
+    # Build a minimal proposal dict so allocate_resources can run
+    proposal = {
+        "resource_requirements": resource_requirements,
+        "timeline_days": timeline_days,
+    }
+
+    estimate = allocate_resources(proposal, affordable_pool, mode="cost_efficient")
+
+    if not estimate.selected_resources:
+        return None
+
+    result = _estimate_to_json(estimate, timeline_days, resource_requirements)
+    result["timeline_formatted"] = _format_timeline_days(timeline_days)
+    return result
+
+
+def match_resources_with_extended_timeline(
+    resource_requirements: List[Dict[str, Any]],
+    current_timeline_days: int,
+    extension_ratio: float = 1.30,
+    employees: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    **Attempt-2+ budget negotiation strategy — Timeline Extension.**
+
+    Extends the project timeline by `extension_ratio` (default +30%) and
+    re-runs matching against the full employee pool with cost-efficient mode.
+    Spreading the work over more days means fewer parallel hours per developer
+    per week, which lowers the total cost without changing the team composition
+    beyond a normal re-match.
+
+    Returns the same dict shape as `match_resources_with_budget_cap`, or None
+    if no team can be assembled.
+    """
+    if employees is None:
+        employees = get_employees_from_db()
+
+    new_timeline_days = max(current_timeline_days + 14, round(current_timeline_days * extension_ratio))
+
+    proposal = {
+        "resource_requirements": resource_requirements,
+        "timeline_days": new_timeline_days,
+    }
+
+    estimate = allocate_resources(proposal, employees, mode="cost_efficient")
+
+    if not estimate.selected_resources:
+        return None
+
+    result = _estimate_to_json(estimate, new_timeline_days, resource_requirements)
+    result["timeline_formatted"] = _format_timeline_days(new_timeline_days)
+    return result
+
+
 def match_resources_from_db_request(proposal_request_id: str) -> Dict[str, Any]:
     """
     End-to-end wrapper: fetches proposal requirements JSON from PostgreSQL by request ID,

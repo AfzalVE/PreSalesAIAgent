@@ -48,11 +48,44 @@ function StreamingText({ text, onComplete, onUpdate }) {
   return <span>{displayedText}</span>;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers for budget-reduction intent detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the user's message is clearly asking for a budget reduction.
+ * Matches phrases like "reduce budget", "lower the cost", "cheaper", "cut price", etc.
+ */
+function isBudgetReductionIntent(text) {
+  const t = text.toLowerCase();
+  const budgetWords = ["budget", "cost", "price", "spend", "cheaper", "expensive"];
+  const reductionWords = [
+    "reduce", "lower", "cut", "decrease", "less", "cheap", "affordable",
+    "bring down", "scale down", "trim",
+  ];
+  const hasBudget = budgetWords.some((w) => t.includes(w));
+  const hasReduction = reductionWords.some((w) => t.includes(w));
+  // Also catch bare phrases like "too expensive" or "reduce by 20%"
+  const barePhrase = /(too expensive|cut by|reduce by|lower by|save money|cheaper option)/i.test(text);
+  return (hasBudget && hasReduction) || barePhrase;
+}
+
+/**
+ * Parse a percentage from the user's message, e.g. "reduce by 20%" → 0.20.
+ * Returns null if no percentage is found.
+ */
+function parseReductionPercent(text) {
+  const match = text.match(/(\d+(?:\.\d+)?)\s*%/);
+  return match ? parseFloat(match[1]) / 100 : null;
+}
+
 export default function NegotiationChat() {
   const {
     applyNegotiationRequest,
+    negotiateBudgetOnBackend,
     negotiationHistory,
     projectData,
+    activeProposal,
     updateProjectData,
     user,
     activeRequestId,
@@ -71,6 +104,11 @@ export default function NegotiationChat() {
   ]);
 
   const messagesEndRef = useRef(null);
+
+  // Tracks how many budget-reduction negotiations have happened this session.
+  // 0 = none yet → attempt 1 on first request (developer swap).
+  // 1+ = already swapped devs → attempt 2+ triggers timeline extension.
+  const [budgetNegotiationAttempt, setBudgetNegotiationAttempt] = useState(0);
 
   const [recognition, setRecognition] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -131,9 +169,137 @@ export default function NegotiationChat() {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Budget negotiation handler — called when intent is detected
+  // ---------------------------------------------------------------------------
+  const handleBudgetNegotiation = async (text) => {
+    setIsProcessing(true);
+
+    const userMessageId = generateMessageId("user");
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: userMessageId,
+        sender: "user",
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+
+    try {
+      // Determine which proposal is currently displayed in the side panel.
+      // Prefer the tab the user is looking at (activeTab), fall back to mvp.
+      const currentTabType = activeTab === "full" ? "FULL" : "MVP";
+      const currentProposalVariant =
+        proposalData?.proposals?.find((p) => p.proposal_type === currentTabType) ||
+        proposalData?.proposals?.[0] ||
+        activeProposal?.mvp ||
+        activeProposal;
+
+      const currentCost =
+        currentProposalVariant?.estimated_cost ??
+        activeProposal?.inferred_budget ??
+        projectData?.budget ??
+        0;
+
+      // Try to extract a target budget from the user's message (e.g. "reduce by 20%")
+      const reductionPct = parseReductionPercent(text);
+      const targetBudget = reductionPct
+        ? Math.round(currentCost * (1 - reductionPct))
+        : Math.round(currentCost * 0.80); // default: aim for 20% savings
+
+      // Timeline: convert "X Weeks" string to days, or use stored days
+      const timelineStr =
+        currentProposalVariant?.estimated_duration ??
+        activeProposal?.inferred_timeline ??
+        projectData?.timeline ??
+        "12 Weeks";
+      const timelineWeeks = parseInt(timelineStr) || 12;
+      const currentTimelineDays = timelineWeeks * 7;
+
+      // Current resources list from the active variant
+      const currentResources =
+        currentProposalVariant?.selected_resources?.selected_resources ??
+        currentProposalVariant?.selected_resources ??
+        [];
+
+      const attempt = budgetNegotiationAttempt + 1;
+
+      const result = await negotiateBudgetOnBackend({
+        targetBudget,
+        currentCost,
+        currentTimelineDays,
+        currentResources,
+        proposalType: currentTabType,
+        negotiationAttempt: attempt,
+        requestId: activeRequestId,
+      });
+
+      if (result.success) {
+        setBudgetNegotiationAttempt(attempt);
+
+        // If proposal data exists in local state, patch it so the side panel refreshes
+        if (proposalData) {
+          setProposalData((prev) => {
+            if (!prev) return prev;
+            const patchedProposals = (prev.proposals || []).map((p) => {
+              if (p.proposal_type !== currentTabType) return p;
+              return {
+                ...p,
+                estimated_cost: result.newCost,
+                estimated_duration: result.newTimelineFormatted,
+                selected_resources: {
+                  ...(p.selected_resources || {}),
+                  selected_resources: result.newResources,
+                },
+              };
+            });
+            return { ...prev, proposals: patchedProposals };
+          });
+        }
+      }
+
+      const aiMsgId = generateMessageId("ai");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aiMsgId,
+          sender: "ai",
+          text: result.responseMessage,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          success: result.success,
+          warning: result.success ? undefined : result.errorMessage,
+          strategyBadge: result.strategyUsed,
+        },
+      ]);
+    } catch (err) {
+      console.error("handleBudgetNegotiation error:", err);
+      const aiMsgId = generateMessageId("ai");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aiMsgId,
+          sender: "ai",
+          text: "Sorry, I encountered an error while trying to optimise the budget. Please try again.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          success: false,
+        },
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputPrompt;
     if (!text.trim() || isProcessing) return;
+
+    // ── Budget reduction detected: route to the specialist handler ──────────
+    if (isBudgetReductionIntent(text)) {
+      setInputPrompt("");
+      return handleBudgetNegotiation(text);
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     setInputPrompt("");
     setIsProcessing(true);
