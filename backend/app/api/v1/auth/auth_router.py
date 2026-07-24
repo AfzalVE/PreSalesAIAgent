@@ -12,7 +12,7 @@ from app.schemas.auth_schema import (
     RegisterVerifyRequest,
     ResendOTPRequest,
 )
-from app.services.auth.auth_services import (
+from PreSalesAIAgent.backend.app.services.auth.auth_service import (
     login_user,
     register_user,
     resend_otp,
