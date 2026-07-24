@@ -169,41 +169,13 @@ The timeline phases should completely utilize the exact project duration provide
 
 MVP Requirements
 
-The MVP should contain only essential functionality.
-
-Typical MVP characteristics:
-
-• Authentication
-• Core business workflow
-• Basic dashboard
-• CRUD operations
-• Essential APIs
-• Responsive UI
-• Basic deployment
-• Minimal security
-
-Avoid adding advanced enterprise capabilities.
+The MVP should contain only essential functionality needed to validate the core business workflow and meet the immediate client requirements for launch. It should avoid adding advanced enterprise capabilities unless explicitly requested.
 
 ----------------------------------
 
 Full Product Requirements
 
-The Full Product should include everything from the MVP plus advanced enterprise capabilities such as:
-
-• Role-Based Access Control (RBAC)
-• Advanced Admin Dashboard
-• Reporting & Analytics
-• Notifications
-• Audit Logs
-• API Integrations
-• Workflow Automation
-• Performance Optimization
-• Monitoring & Logging
-• Security Best Practices
-• Backup & Recovery
-• CI/CD Pipeline
-• Scalability Improvements
-• Production Readiness
+The Full Product should build upon the MVP to deliver a complete, production-ready enterprise solution. It should dynamically include advanced capabilities that are strictly relevant and necessary for the specific project requirements, such as enhanced security, scalability, performance optimization, and relevant integrations. Do not add generic features if they are completely unrelated to the client's business domain.
 
 ----------------------------------
 
@@ -252,13 +224,12 @@ Do not include explanations.
 Do not include any additional text.
     """
     response = await client.chat.completions.create(
-        model="gpt-4.1",
+        model="gpt-5.5",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": json.dumps(user_input_summary)}
         ],
-        response_format={"type": "json_object"},
-        temperature=0.1
+        response_format={"type": "json_object"}
     )
     
     generation_content = json.loads(response.choices[0].message.content)
@@ -275,7 +246,7 @@ Do not include any additional text.
     if final_budget is None:
         final_budget = 0.0
     
-    final_timeline = mvp_data.get("timeline_formatted", proposal_input.get("timeline", "TBD"))
+    final_timeline = full_data_input.get("timeline_formatted", proposal_input.get("timeline", "TBD"))
 
     estimated_cost = mvp_data.get("total_project_cost", final_budget)
     selected_resources = mvp_data.get("selected_resources", [])

@@ -723,7 +723,10 @@ class ProjectEstimate:
 
 WORKING_DAYS_PER_WEEK = 5
 DEFAULT_DAILY_CAPACITY = 8
-DEFAULT_TIMELINE_WEEKS = 12
+DEFAULT_TIMELINE_WEEKS = 4
+
+# Standard IT agency multiplier to convert internal dev cost to client billing rate
+AGENCY_BILLING_MULTIPLIER = 2.5
 
 # ---- MVP vs FULL tuning knobs (adjust freely, no logic changes needed) ----
 
@@ -734,9 +737,9 @@ MVP_MAX_ROLES = 2
 # MVP reduces headcount per role by this fraction (min 1 dev per role kept).
 MVP_COUNT_REDUCTION_RATIO = 0.5
 
-# MVP timeline is this fraction of the full timeline (min 2 weeks).
+# MVP timeline is this fraction of the full timeline (min 0 weeks to allow ultra-fast MVPs).
 MVP_TIMELINE_RATIO = 0.5
-MVP_MIN_TIMELINE_WEEKS = 2
+MVP_MIN_TIMELINE_WEEKS = 0
 
 # FULL bumps minimum_experience per role by this many years to force
 # selection of more senior / higher-skilled candidates.
@@ -745,10 +748,7 @@ FULL_EXPERIENCE_BOOST_YEARS = 2
 # FULL automatically adds these supporting roles (if not already present
 # in the client's resource_requirements) to reflect a richer, more scalable
 # build. Set to [] to disable this behavior entirely.
-FULL_EXTRA_ROLES: List[Dict[str, Any]] = [
-    {"role": "QA Engineer", "count": 1, "minimum_experience": 3, "skills": ["Testing", "Automation"]},
-    {"role": "DevOps Engineer", "count": 1, "minimum_experience": 3, "skills": ["AWS", "CI/CD"]},
-]
+FULL_EXTRA_ROLES: List[Dict[str, Any]] = []
 
 
 # ==========================================================
@@ -780,7 +780,8 @@ def get_employees_from_db(db: Optional[Session] = None) -> List[Dict[str, Any]]:
                         skills_list = [s.strip() for s in skill_names.split(",") if s.strip()] if skill_names else []
 
                         experience = int(row.get("experience_years") or row.get("years_experience") or 0)
-                        hourly_cost = float(row.get("hourly_cost") or 0.0)
+                        # Apply agency margin to convert internal cost to client billing rate
+                        hourly_cost = float(row.get("hourly_cost") or 0.0) * AGENCY_BILLING_MULTIPLIER
                         
                         try:
                             daily_capacity_hours = int(row.get("daily_capacity_hours") or 8)
@@ -1063,24 +1064,22 @@ def select_resources(
     print(f"[Resource Selection] Evaluating '{requirement.role}' with {len(candidates)} available candidates.")
     print(f"[Resource Selection] Initial AI-suggested headcount: {effective_count}, Timeline: {timeline_days} days, Remaining Budget: ${remaining_budget}")
     
-    if remaining_budget <= 0:
+    # Never artificially inflate the AI's requested headcount
+    if effective_count > requirement.count:
+        effective_count = requirement.count
+    if effective_count < 1:
         effective_count = 1
-        print("[Resource Selection] No remaining budget. Capping headcount at 1.")
-    elif effective_count > 1 and timeline_days > 0:
-        weeks = max(1, timeline_days / 7)
-        avg_hourly = sum(c.get("hourly_cost", 10) for c in ranked[:3]) / max(len(ranked[:3]), 1)
-        cost_per_dev = weeks * WORKING_DAYS_PER_WEEK * 8 * avg_hourly
-        max_affordable_devs = int(remaining_budget / (cost_per_dev * total_roles)) if cost_per_dev > 0 else 1
-        
-        if timeline_days >= 42:
-            effective_count = 1
-            print("[Resource Selection] Timeline is comfortable. Capping headcount at 1.")
-        else:
-            effective_count = min(effective_count, max(1, max_affordable_devs))
-            print(f"[Resource Selection] Timeline is tight. Adjusted headcount to {effective_count} based on budget.")
+    # Business-aware role allocation (part-time for supporting roles)
+    role_lower = requirement.role.lower()
+    if any(k in role_lower for k in ["manager", "architect", "scrum"]):
+        base_daily_hours = 2
+    elif any(k in role_lower for k in ["design", "ui", "ux", "qa", "test", "analyst"]):
+        base_daily_hours = 4
+    else:
+        base_daily_hours = 8
     
-    required_daily_capacity = effective_count * 8
-    print(f"[Resource Selection] Final Headcount: {effective_count}. Required daily capacity: {required_daily_capacity} hours.")
+    required_daily_capacity = effective_count * base_daily_hours
+    print(f"[Resource Selection] Final Headcount: {effective_count}. Required daily capacity: {required_daily_capacity} hours (Base: {base_daily_hours} hrs/day).")
     
     selected = []
     current_capacity = 0
@@ -1115,8 +1114,7 @@ def select_resources(
 def _default_resource_requirements() -> List[Dict[str, Any]]:
     """Fallback team used only when the client/AI extraction gave no roles at all."""
     return [
-        {"role": "Backend Engineer", "count": 1, "minimum_experience": 3, "skills": ["Python"]},
-        {"role": "Frontend Engineer", "count": 1, "minimum_experience": 2, "skills": ["React"]},
+        {"role": "Fullstack Engineer", "count": 1, "minimum_experience": 3, "skills": ["React", "Node.js"]}
     ]
 
 
@@ -1183,9 +1181,11 @@ def _build_variant_proposal(proposal: Dict[str, Any], variant: str) -> Dict[str,
         variant_proposal["resource_requirements"] = mvp_reqs if mvp_reqs else build_mvp_requirements(base_requirements)
         
         mvp_timeline = proposal.get("mvp_timeline_days")
-        variant_proposal["timeline_days"] = int(mvp_timeline) if mvp_timeline else max(
-            MVP_MIN_TIMELINE_WEEKS * 7, round(base_timeline * MVP_TIMELINE_RATIO)
-        )
+        if not mvp_timeline:
+            print("[Cost Calculation] WARNING: mvp_timeline_days missing. Defaulting MVP timeline to a lean 7 days.")
+            variant_proposal["timeline_days"] = min(7, base_timeline)
+        else:
+            variant_proposal["timeline_days"] = int(mvp_timeline)
     elif variant == "full":
         full_reqs = proposal.get("full_resource_requirements")
         variant_proposal["resource_requirements"] = full_reqs if full_reqs else build_full_requirements(base_requirements)

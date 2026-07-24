@@ -198,9 +198,9 @@ export const useAppStore = create((set, get) => ({
   generateProposalsFromBackend: async () => {
     const store = get();
 
-    const techText = store.projectData.techStack?.length ? store.projectData.techStack.join(', ') : "Not provided. INFER appropriate enterprise tech stack based on description.";
-    const budgetText = store.projectData.budget ? `$${store.projectData.budget}` : "Not provided. INFER realistic enterprise budget based on description.";
-    const timelineText = store.projectData.timeline ? store.projectData.timeline : "Not provided. INFER realistic timeline in days based on description.";
+    const techText = store.projectData.techStack?.length ? store.projectData.techStack.join(', ') : "Not provided. INFER appropriate tech stack based on description.";
+    const budgetText = store.projectData.budget ? `$${store.projectData.budget}` : "Not provided. You MUST set client_budget to null.";
+    const timelineText = store.projectData.timeline ? store.projectData.timeline : "Not provided. INFER realistic, highly aggressive and lean timeline in days based on description (e.g. 14-30 days for typical apps).";
 
     // Concatenate details into a single prompt for extract-requirements
     const extractionText = `[SYSTEM OVERRIDE: Form Submission Mode]
@@ -211,8 +211,9 @@ Preferred Tech Stack: ${techText}
 Budget: ${budgetText}
 Timeline: ${timelineText}
 
-Treat this request as fully complete. INFER any missing fields (like budget, timeline_days, tech stack, and resource_requirements) dynamically based on the description.
+Treat this request as fully complete. You MUST use the EXACT provided Project Name, Business Domain, Budget, and Timeline in your JSON output. Do NOT regenerate or change them. INFER any missing fields dynamically based on the description.
 You MUST output mvp_resource_requirements, full_resource_requirements, mvp_timeline_days, and full_timeline_days based on the inferred tech stack and description.
+CRITICAL: Keep the resource headcount strictly proportional to the project's actual complexity. For example, a simple informational or booking website only needs 1 or 2 developers, NOT a full enterprise team.
 DO NOT just divide the timeline in half for the MVP. Make a thoughtful calculation.
 MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_match = true. DO NOT ask follow-up questions.`;
 
@@ -239,15 +240,25 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
         }
       }));
 
+      let timelineDays = extractionData.timeline_days || extractionData.full_timeline_days;
+      if (store.projectData.timeline) {
+        const match = store.projectData.timeline.match(/(\d+)/);
+        if (match) {
+          let mult = 7;
+          if (store.projectData.timeline.toLowerCase().includes("month")) mult = 30;
+          timelineDays = parseInt(match[1]) * mult;
+        }
+      }
+
       // 2. Call resource-allocation/match with the returned data (do NOT send default values!)
       const matchingPayload = {
         proposal_id: extractionData.proposal_id,
-        project_name: extractionData.project_name,
-        timeline_days: extractionData.timeline_days,
-        client_budget: extractionData.client_budget,
+        project_name: store.projectData.name || extractionData.project_name,
+        timeline_days: timelineDays,
+        client_budget: store.projectData.budget || extractionData.client_budget,
         resource_requirements: extractionData.resource_requirements,
         mvp_timeline_days: extractionData.mvp_timeline_days,
-        full_timeline_days: extractionData.full_timeline_days,
+        full_timeline_days: timelineDays || extractionData.full_timeline_days,
         mvp_resource_requirements: extractionData.mvp_resource_requirements,
         full_resource_requirements: extractionData.full_resource_requirements
       };
@@ -284,12 +295,12 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
 
       // 3. Call proposals/generate-demo
       const generationPayload = {
-        project_name: extractionData.project_name,
+        project_name: store.projectData.name || extractionData.project_name,
         project_description: store.projectData.description,
-        business_domain: extractionData.business_domain || store.projectData.domain,
+        business_domain: store.projectData.domain || extractionData.business_domain,
         preferred_technology: finalTechStack,
-        client_budget: extractionData.client_budget || store.projectData.budget,
-        timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline,
+        client_budget: store.projectData.budget || extractionData.client_budget,
+        timeline: store.projectData.timeline || (extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : "12 Weeks"),
         ...matchingData
       };
 

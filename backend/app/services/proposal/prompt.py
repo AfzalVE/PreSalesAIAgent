@@ -109,7 +109,6 @@ The Executive Summary should include:
 
 • The client's business challenge.
 • Why the proposed software solution is required.
-• How Artificial Intelligence (AI) improves the process.
 • The expected business outcomes.
 • Scalability, maintainability, and security considerations.
 • The overall implementation strategy.
@@ -134,12 +133,9 @@ Describe:
 • Complete functional scope.
 • User workflow.
 • Major modules.
-• Artificial Intelligence capabilities.
-• Authentication.
-• Resource allocation.
-• Proposal generation workflow.
-• Reporting.
-• Administrative features.
+• Key technical capabilities relevant to the business requirements.
+• Security and Authentication.
+• Reporting and Administrative features (if applicable).
 • Integration possibilities.
 • Future scalability.
 
@@ -190,11 +186,11 @@ Backend Development
 
 Secure RESTful APIs with Authentication
 
-Artificial Intelligence Integration
+Frontend Development
 
 1 Week
 
-Working Proposal Generation Engine
+Implementation of Core Application Screens and User Flows
 
 Testing and Quality Assurance
 
@@ -222,8 +218,6 @@ Client responsibilities
 Infrastructure
 
 Third-party APIs
-
-Artificial Intelligence models
 
 Availability of stakeholders
 

@@ -111,9 +111,9 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Once ALL 6 client fields above are completely populated AND confirmed by the client, you MUST automatically generate these 4 AI-analyzed fields:
     
     - `full_timeline_days`: This is exactly the `timeline_days` agreed upon in Step 1.
-    - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. DO NOT just blindly divide the full timeline in half. It must be a thoughtful estimate based on MVP scope, and shorter than the full timeline.
-    - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count=1 unless timeline is tight and budget allows.
-    - `full_resource_requirements`: Generate the complete team for full build. Include QA/DevOps if justified.
+    - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. STRICT RULE: For simple websites or small apps, this MUST be extremely fast (e.g. 5 to 14 days).
+    - `mvp_resource_requirements`: Generate the minimal team needed for MVP. STRICT RULE: Keep headcount strictly proportional to project complexity. A simple website only needs 1 Developer with skills frontend and backend experience or 2 developers one is frontend and second is ba. Do not add QA, PMs, or extra roles unless it is a massive enterprise system. Count=1 unless absolutely necessary.
+    - `full_resource_requirements`: Generate the complete team for full build. STRICT RULE: For small projects, limit to 1 or 2 core developers.
 
     After generating these, set `is_gathering_info_complete` to true. If they are already generated, keep the existing values and do NOT regenerate them.
 
@@ -173,13 +173,12 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-5.5",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.text}
             ],
             response_format={"type": "json_object"},
-            temperature=0.4
         )
         
         # Parse the JSON string returned by OpenAI
@@ -294,13 +293,12 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
 
     try:
         response = await client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-5.5",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": input_data.user_request}
             ],
             response_format={"type": "json_object"},
-            temperature=0.2
         )
         
         response_content = response.choices[0].message.content
