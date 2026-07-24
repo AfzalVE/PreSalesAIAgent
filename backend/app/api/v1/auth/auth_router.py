@@ -2,12 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.enums import UserRole
 from app.schemas.auth_schema import (
+    AuthResponse,
+    LoginInitiatedResponse,
     LoginRequest,
-    LoginResponse,
-    OTPRequiredResponse,
-    OTPVerifyRequest,
+    LoginVerifyRequest,
+    RegisterInitiatedResponse,
+    RegisterRequest,
+    RegisterVerifyRequest,
+    ResendOTPRequest,
+)
+from app.services.auth.auth_services import (
+    login_user,
+    register_user,
+    resend_otp,
+    verify_register_otp,
 )
 from app.services.auth.auth_service import initiate_login, verify_login_otp
 from app.core.dependencies import get_current_user
@@ -18,36 +27,34 @@ from app.models.user import User
 router = APIRouter()
 
 
-# ----------------------------------------
-# Step 1: Password check -> sends OTP
-# ----------------------------------------
-
-@router.post("/admin-login", response_model=OTPRequiredResponse)
-async def admin_login(credentials: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Step 1 for Admins/Managers: verify password, email OTP, return pending_token.
-    """
-    return initiate_login(db, credentials, allowed_roles=[UserRole.ADMIN, UserRole.MANAGER])
+@router.post("/register", response_model=RegisterInitiatedResponse)
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    """New user -> creates unverified account, sends OTP."""
+    return register_user(db, payload)
 
 
-@router.post("/user-login", response_model=OTPRequiredResponse)
-async def user_login(credentials: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Step 1 for Clients: verify password, email OTP, return pending_token.
-    """
-    return initiate_login(db, credentials, allowed_roles=[UserRole.CLIENT])
+@router.post("/register/verify-otp", response_model=AuthResponse)
+def verify_register(payload: RegisterVerifyRequest, db: Session = Depends(get_db)):
+    """Verifies OTP -> marks account verified -> logs the user in."""
+    return verify_register_otp(db, payload)
 
 
-# ----------------------------------------
-# Step 2: OTP verification -> issues access_token
-# ----------------------------------------
+@router.post("/resend-otp", response_model=RegisterInitiatedResponse)
+def resend(payload: ResendOTPRequest, db: Session = Depends(get_db)):
+    """Resends OTP for either register or login verification (60s cooldown)."""
+    return resend_otp(db, payload)
 
-@router.post("/verify-otp", response_model=LoginResponse)
-async def verify_otp(payload: OTPVerifyRequest, db: Session = Depends(get_db)):
-    """
-    Step 2 for both Admin and User: verify OTP against pending_token, return access_token.
-    """
-    return verify_login_otp(db, payload)
+
+@router.post("/login", response_model=LoginInitiatedResponse)
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    """Existing user -> checks password, sends OTP (2FA)."""
+    return login_user(db, payload)
+
+
+# @router.post("/login/verify-otp", response_model=AuthResponse)
+# def verify_login(payload: LoginVerifyRequest, db: Session = Depends(get_db)):
+#     """Verifies OTP -> logs the user in."""
+#     return verify_login_otp(db, payload)
 
 
 @router.get("/check-email")
@@ -58,7 +65,7 @@ async def check_email(email: str, db: Session = Depends(get_db)):
     from app.models.user import User
     identifier = email.strip()
     is_phone = "@" not in identifier and any(c.isdigit() for c in identifier)
-    
+
     if is_phone:
         actual_email = f"{identifier.replace(' ', '').replace('+', '')}@phone-auth.local"
         user = db.query(User).filter(
@@ -66,7 +73,7 @@ async def check_email(email: str, db: Session = Depends(get_db)):
         ).first()
     else:
         user = db.query(User).filter(User.email == identifier).first()
-        
+
     return {
         "exists": user is not None,
         "is_verified": user.is_verified if user else False
@@ -91,7 +98,7 @@ async def update_my_profile(
         current_user.email = update_data.email
     if update_data.phone is not None:
         current_user.phone = update_data.phone
-    
+
     db.commit()
     db.refresh(current_user)
     return current_user
@@ -105,7 +112,7 @@ async def update_my_password(
 ):
     if not verify_password(password_data.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect current password")
-        
+
     current_user.password_hash = get_password_hash(password_data.new_password)
     db.commit()
     return {"message": "Password updated successfully"}

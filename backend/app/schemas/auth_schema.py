@@ -5,20 +5,63 @@ from pydantic import BaseModel, EmailStr
 from app.models.enums import UserRole
 
 
+# ----------------------------------------
+# Register
+# ----------------------------------------
+
+class RegisterRequest(BaseModel):
+    full_name: str
+    email: EmailStr
+    company_name: str | None = None
+    phone: str | None = None
+    password: str
+
+
+class RegisterInitiatedResponse(BaseModel):
+    message: str = "OTP sent to your email. Please verify to complete registration."
+
+
+class RegisterVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+# ----------------------------------------
+# Login
+# ----------------------------------------
+
 class LoginRequest(BaseModel):
     email: str
     password: str
-    full_name: str | None = None
-    phone: str | None = None
-    company_name: str | None = None
 
 
-class LoginResponse(BaseModel):
+class LoginInitiatedResponse(BaseModel):
+    message: str = "OTP sent to your email. Please verify to log in."
+
+
+class LoginVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+# ----------------------------------------
+# Resend OTP (shared by register + login)
+# ----------------------------------------
+
+class ResendOTPRequest(BaseModel):
+    email: EmailStr
+
+
+# ----------------------------------------
+# Shared success response (both flows end here)
+# ----------------------------------------
+
+class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_id: UUID
     full_name: str
-    email: str
+    email: EmailStr
     role: UserRole
 
 
