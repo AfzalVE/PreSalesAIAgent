@@ -13,6 +13,7 @@ import { useAppStore } from "../store/useAppStore";
 import FloatingBackground from "../components/common/FloatingBackground";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
+import { apiFetch } from "../utils/api";
 
 const ROLE_OPTIONS = [
   { role: "super-admin", label: "Super Admin", icon: ShieldAlert },
@@ -50,32 +51,96 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
     e.preventDefault();
     setError("");
 
-    if (!emailOrPhone || !password) {
-      setError("Please enter email/phone and password.");
-      return;
+   if (!emailOrPhone.trim()) {
+  setError("Please enter your email.");
+  return;
+}
+
+if (!password.trim()) {
+  setError("Please enter your password.");
+  return;
+}
+    setSubmitting(true);
+    
+    try {
+      console.log("Login button clicked");
+
+      const response = await apiFetch("/admin/requests/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: emailOrPhone,
+          password: password,
+        }),
+      });
+console.log("Login response:", response);
+    const {
+  access_token,
+  token,
+  role: responseRole,
+  full_name,
+  email,
+} = response;
+
+const jwt = access_token || token;
+
+if (jwt) {
+  localStorage.setItem("access_token", jwt);
+}
+
+if (responseRole) {
+  localStorage.setItem("role", responseRole);
+}
+
+if (full_name) {
+  localStorage.setItem("full_name", full_name);
+}
+
+if (email) {
+  localStorage.setItem("email", email);
+}
+      
+      const effectiveRole = responseRole?.toLowerCase() || role;
+setUser({
+    emailOrPhone,
+    email,
+    name: full_name,
+    isVerified: true,
+    role: effectiveRole,
+});
+      if (typeof onLogin === "function") {
+        onLogin({ role: effectiveRole, emailOrPhone });
+      } else {
+       switch (effectiveRole) {
+    case "super-admin":
+        navigate("/super-admin-dashboard");
+        break;
+
+    case "manager":
+        navigate("/admin");
+        break;
+
+    case "admin":
+        navigate("/admin");
+        break;
+
+    default:
+        navigate("/");
+}
+      }
+    }catch (err) {
+
+    if (err.message.includes("403")) {
+        setError("Your account is waiting for Super Admin approval.");
+    }
+    else if (err.message.includes("401")) {
+        setError("Invalid email or password.");
+    }
+    else {
+        setError(err.message);
     }
 
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 650));
-
-    const inferredRole = pickInitialRoleFromEmail(emailOrPhone);
-    const effectiveRole = role || inferredRole;
-
-    setUser({
-      emailOrPhone,
-      isVerified: true,
-      role: effectiveRole,
-    });
-
-    setSubmitting(false);
-    if (typeof onLogin === "function") {
-      onLogin({ role: effectiveRole, emailOrPhone });
-    } else {
-      if (effectiveRole === "super-admin") {
-        navigate("/super-admin-dashboard");
-      } else {
-        navigate("/admin");
-      }
+}finally {
+      setSubmitting(false);
     }
   };
 

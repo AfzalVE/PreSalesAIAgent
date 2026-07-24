@@ -5,16 +5,19 @@ import { UserPlus, Sparkles, ArrowRight, X } from "lucide-react";
 import FloatingBackground from "../components/common/FloatingBackground";
 import Threads from "../components/common/Threads";
 import RotatingText from "../components/common/RotatingText";
+import { apiFetch } from "../utils/api";
 
 export default function AdminSignup({ onCancel, isModal }) {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    password: "",
-    role: "admin",
-  });
+ const [formData, setFormData] = useState({
+  full_name: "",
+  email: "",
+  password: "",
+  company_name: "",
+  phone: "",
+  role: "admin",
+});
   
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,17 +38,36 @@ export default function AdminSignup({ onCancel, isModal }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+if (!/^[0-9]{10}$/.test(formData.phone)) {
+  alert("Please enter a valid 10-digit phone number.");
+  return;
+}
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 650));
+    
+    try {
+      const roleToSubmit = formData.role.toUpperCase(); // Ensure role matches backend Enum (ADMIN, MANAGER)
 
-    console.log(formData);
+ await apiFetch("/admin/requests/request-access", {
+  method: "POST",
+  body: JSON.stringify({
+    full_name: formData.full_name,
+    email: formData.email,
+    password: formData.password,
+    company_name: formData.company_name,
+    phone: formData.phone,
+    role: roleToSubmit,
+  }),
+});
 
-    // TODO: Call Backend Signup API here
-
-    alert("Registration Successful!\nPlease wait for Super Admin Approval.");
-    setSubmitting(false);
-    navigate("/admin/login");
+     alert(
+  "Request submitted successfully.\n\nYour account is pending Super Admin approval.\nYou will be able to log in after approval."
+);
+      navigate("/admin/login");
+    } catch (err) {
+      alert(`Registration Failed: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -186,7 +208,36 @@ export default function AdminSignup({ onCancel, isModal }) {
                     required
                   />
                 </div>
+<div>
+  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+    Company Name
+  </label>
 
+  <input
+    type="text"
+    name="company_name"
+    placeholder="Company Name"
+    value={formData.company_name}
+    onChange={handleChange}
+    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+    required
+  />
+</div>
+<div>
+  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+    Phone Number
+  </label>
+
+  <input
+    type="text"
+    name="phone"
+    placeholder="Phone Number"
+    value={formData.phone}
+    onChange={handleChange}
+    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+    required
+  />
+</div>
                 <div>
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
                     Password

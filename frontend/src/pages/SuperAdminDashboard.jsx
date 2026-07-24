@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiFetch } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -43,53 +44,66 @@ export default function SuperAdminDashboard() {
   const [search, setSearch] = useState("");
 
   // Pre-seeded + dynamic super admin directory state
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "Dipti Bhowmik",
-      email: "dipti@gmail.com",
-      phone: "+1 (555) 234-5678",
-      role: "Admin",
-      company: "PreSales AI Internal",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Rahul Sharma",
-      email: "rahul@gmail.com",
-      phone: "+1 (555) 345-6789",
-      role: "Manager",
-      company: "Enterprise Ops Team",
-      status: "Inactive",
-    },
-    {
-      id: 3,
-      name: "Anushka Das",
-      email: "anushka@gmail.com",
-      phone: "+1 (555) 456-7890",
-      role: "Admin",
-      company: "Core Governance",
-      status: "Active",
-    },
-    {
-      id: 4,
-      name: "Vikram Mehta",
-      email: "vikram.mehta@enterprise.com",
-      phone: "+1 (555) 567-8901",
-      role: "Manager",
-      company: "Solutions Architecture Dept",
-      status: "Active",
-    },
-    {
-      id: 5,
-      name: "Sneha Kapoor",
-      email: "sneha.k@cloudworks.io",
-      phone: "+1 (555) 678-9012",
-      role: "Admin",
-      company: "Security Compliance Group",
-      status: "Active",
+  const [users, setUsers] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+
+  useEffect(() => {
+  console.log("SuperAdminDashboard mounted");
+
+  fetchUsers();
+  fetchPendingRequests();
+}, []);
+
+  const fetchUsers = async () => {
+    try {
+    console.log("Calling Users API...");
+
+const data = await apiFetch("/users");
+
+console.log(data);
+      setUsers(data || []);
+    } catch (e) {
+      console.error("Failed to fetch users:", e);
     }
-  ]);
+  };
+
+ const fetchPendingRequests = async () => {
+  console.log("Calling Pending Request API...");
+
+  try {
+    const data = await apiFetch("/admin/requests/pending-requests");
+
+    console.log("Pending API Response:", data);
+
+    setPendingRequests(data || []);
+  } catch (e) {
+    console.error("Pending API Error:", e);
+  }
+};
+
+ const approveRequest = async (userId) => {
+  try {
+    await apiFetch(`/admin/requests/approve/${userId}`, {
+      method: "PUT",
+    });
+
+    await fetchPendingRequests();
+    await fetchUsers();
+
+    alert("User approved successfully.");
+  } catch (e) {
+    alert("Failed to approve: " + e.message);
+  }
+};
+  const rejectRequest = async (userId) => {
+    if (!window.confirm("Are you sure you want to reject this request?")) return;
+    try {
+      await apiFetch(`/admin/requests/reject/${userId}`, { method: "DELETE" });
+     await fetchPendingRequests();
+    } catch (e) {
+      alert("Failed to reject: " + e.message);
+    }
+  };
 
   // Merge store usersList into display if not already present
   const mergedUsers = [...users];
@@ -259,6 +273,7 @@ export default function SuperAdminDashboard() {
           <div className="flex items-center overflow-x-auto whitespace-nowrap scrollbar-none w-full 2xl:w-auto gap-1 border border-neutral-200/80 bg-neutral-100/70 p-1.5 rounded-2xl text-xs sm:text-sm font-semibold self-start shadow-inner relative z-10 backdrop-blur-sm max-w-full">
             {[
               { id: "overview", label: "Overview" },
+              { id: "pending", label: `Pending Approvals (${pendingRequests.length})` },
               { id: "admins", label: `Admins (${mergedUsers.filter((u) => u.role === "Admin").length})` },
               { id: "managers", label: `Managers (${mergedUsers.filter((u) => u.role === "Manager").length})` },
               { id: "settings", label: "Governance & Settings" },
@@ -297,7 +312,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* Metric Cards Row */}
-        {activeTab !== "settings" && (
+        {activeTab !== "settings" && activeTab !== "pending" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <MetricCard
               title="Total System Directory"
@@ -337,7 +352,7 @@ export default function SuperAdminDashboard() {
         )}
 
         {/* Governance Catalog Table View */}
-        {activeTab !== "settings" && (
+        {activeTab !== "settings" && activeTab !== "pending" && (
           <div className="bg-white border border-neutral-200/80 rounded-3xl p-6 md:p-8 shadow-soft space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-xl font-bold text-neutral-800 tracking-tight flex items-center">
@@ -450,6 +465,72 @@ export default function SuperAdminDashboard() {
                     <tr>
                       <td colSpan="6" className="py-10 text-center text-neutral-400 font-semibold italic text-base">
                         No administrative or managerial accounts found matching your query.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Approvals View */}
+        {activeTab === "pending" && (
+          <div className="bg-white border border-neutral-200/80 rounded-3xl p-6 md:p-8 shadow-soft space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h3 className="text-xl font-bold text-neutral-800 tracking-tight flex items-center">
+                <ShieldAlert size={20} className="text-amber-500 mr-2" />
+                Pending Access Requests ({pendingRequests.length})
+              </h3>
+            </div>
+
+            <div className="overflow-x-auto w-full -mx-4 sm:mx-0 px-4 sm:px-0">
+              <table className="w-full text-left border-collapse text-sm min-w-[650px]">
+                <thead>
+                  <tr className="border-b border-neutral-200/80 text-neutral-400 font-bold uppercase tracking-wider text-xs">
+                    <th className="py-4 px-2">Account Profile</th>
+                    <th className="py-4 px-2">Email Address</th>
+                    <th className="py-4 px-2">Requested Role</th>
+                    <th className="py-4 px-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 font-medium text-neutral-700">
+                  {pendingRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-neutral-50/70 transition-colors">
+                      <td className="py-4 px-2 font-bold text-neutral-900 flex items-center space-x-3.5">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center font-bold text-amber-600 text-sm flex-shrink-0 shadow-xs">
+                          {(req.full_name || req.name || "U").charAt(0)}
+                        </div>
+                        <div>
+                          <span className="block font-bold text-neutral-900 text-sm">{req.full_name || req.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-2 text-neutral-600 font-medium text-sm">{req.email}</td>
+                      <td className="py-4 px-2">
+                        <span className="px-3 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {req.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-2 text-right space-x-2">
+                        <button
+                          onClick={() => approveRequest(req.id)}
+                          className="px-3 py-1.5 rounded-xl transition-colors inline-flex items-center gap-1.5 font-bold text-xs shadow-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60"
+                        >
+                          <CheckCircle2 size={14} /> Approve
+                        </button>
+                        <button
+                          onClick={() => rejectRequest(req.id)}
+                          className="px-3 py-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors inline-flex items-center gap-1.5 font-bold text-xs border border-red-200/60 shadow-xs"
+                        >
+                          <XCircle size={14} /> Reject
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {pendingRequests.length === 0 && (
+                    <tr>
+                      <td colSpan="4" className="py-10 text-center text-neutral-400 font-semibold italic text-base">
+                        No pending access requests.
                       </td>
                     </tr>
                   )}
