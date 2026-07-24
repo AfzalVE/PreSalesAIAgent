@@ -12,13 +12,14 @@ from app.schemas.auth_schema import (
     RegisterVerifyRequest,
     ResendOTPRequest,
 )
-from PreSalesAIAgent.backend.app.services.auth.auth_service import (
+from app.services.auth.auth_service import (
     login_user,
     register_user,
     resend_otp,
     verify_register_otp,
+    initiate_login,
+    verify_login_otp,
 )
-from app.services.auth.auth_service import initiate_login, verify_login_otp
 from app.core.dependencies import get_current_user
 from app.schemas.user_schema import UserResponse, UserProfileUpdate, PasswordChangeRequest
 from app.core.security import verify_password, get_password_hash
