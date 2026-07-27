@@ -115,10 +115,25 @@ async def generate_demo_proposals(
             match_data = match_resources(payload)
             payload.update(match_data)
             
+        # Extract existing_request_id from payload so the service reuses the
+        # ProposalRequest created by extract-requirements instead of creating a duplicate.
+        existing_request_id_str = payload.pop("existing_request_id", None)
+        existing_request_id = None
+        if existing_request_id_str:
+            try:
+                existing_request_id = uuid.UUID(str(existing_request_id_str))
+            except (ValueError, AttributeError):
+                pass
+
+        kwargs = {}
+        if existing_request_id:
+            kwargs["existing_request_id"] = existing_request_id
+
         result = await generate_proposals_for_request(
             db=db,
             client_id=client_id,
-            proposal_input=payload
+            proposal_input=payload,
+            **kwargs
         )
         return result
 
