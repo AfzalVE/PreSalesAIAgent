@@ -48,17 +48,17 @@ def _issue_auth_response(user: User) -> AuthResponse:
 def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedResponse:
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
-        if existing.is_verified:
-            if verify_password(payload.password, existing.password_hash):
-                return _issue_auth_response(existing)
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email already registered, but incorrect password.")
-        existing.password_hash = get_password_hash(payload.password)
+        # Reuse the existing user and update details
         existing.full_name = payload.full_name
-        if payload.company_name:
-            existing.company_name = payload.company_name
-        if payload.phone:
-            existing.phone = payload.phone
+        existing.company_name = payload.company_name
+        existing.phone = payload.phone
+        existing.password_hash = get_password_hash(payload.password)
+
+        user = existing
+
         db.commit()
+        db.refresh(user)
+
     else:
         user = User(
             full_name=payload.full_name,
