@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import FloatingBackground from "../components/common/FloatingBackground";
 import AnimatedCard from "../components/common/AnimatedCard";
+import { AudioRecorder, transcribeWithWhisper } from "../utils/audioRecorder";
 // Access it directly where you need it
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -36,72 +37,35 @@ export default function ClientPortal() {
   const [newProjTimeline, setNewProjTimeline] = useState("");
   const [newProjComm, setNewProjComm] = useState("Slack");
 
-  const recognitionModalRef = useRef(null);
+  const audioRecorderModalRef = useRef(null);
   const [isListeningModal, setIsListeningModal] = useState(false);
 
-  const handleModalVoiceClick = () => {
+  const handleModalVoiceClick = async () => {
     if (isListeningModal) {
-      if (recognitionModalRef.current) {
-        recognitionModalRef.current.stop();
-      }
       setIsListeningModal(false);
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Voice input is not supported in your browser.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = window.navigator.language || 'en-US';
-    recognitionModalRef.current = recognition;
-
-    recognition.onstart = () => {
-      setIsListeningModal(true);
-    };
-
-    let finalTranscriptAtStart = newProjDesc;
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
+      try {
+        if (audioRecorderModalRef.current) {
+          const audioBlob = await audioRecorderModalRef.current.stop();
+          const transcript = await transcribeWithWhisper(audioBlob);
+          if (transcript && transcript.trim()) {
+            setNewProjDesc((prev) => (prev ? prev + " " + transcript.trim() : transcript.trim()));
+          }
         }
+      } catch (err) {
+        console.error("Whisper Modal Transcription error:", err);
+        alert(`Transcription error: ${err.message || "Failed to process audio"}`);
       }
-      
-      const newText = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript + interimTranscript;
-      setNewProjDesc(newText);
-      
-      if (finalTranscript) {
-         finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
-      }
-    };
+      return;
+    }
 
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      if (event.error === 'network') {
-        alert("Network Error: Speech recognition failed. This could be due to browser restrictions or network issues.");
-      } else if (event.error === 'not-allowed') {
-        alert("Microphone access denied. Please allow permissions in your browser.");
-      } else {
-        alert(`Speech recognition error: ${event.error}`);
-      }
-      setIsListeningModal(false);
-    };
-
-    recognition.onend = () => {
-      setIsListeningModal(false);
-    };
-
-    recognition.start();
+    try {
+      const recorder = new AudioRecorder();
+      await recorder.start();
+      audioRecorderModalRef.current = recorder;
+      setIsListeningModal(true);
+    } catch (err) {
+      alert(err.message || "Failed to start microphone.");
+    }
   };
 
   // Filtering states for requests list
@@ -121,31 +85,7 @@ export default function ClientPortal() {
   const [chatRequestId, setChatRequestId] = useState(null);
   const [isDemosLoading, setIsDemosLoading] = useState(false);
 
-  const [recognition, setRecognition] = useState(null);
-
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setChatInput((prev) => (prev + " " + transcript).trim());
-        setIsRecordingVoice(false);
-      };
-      rec.onerror = (e) => {
-        console.error(e);
-        setIsRecordingVoice(false);
-      };
-      rec.onend = () => setIsRecordingVoice(false);
-      setRecognition(rec);
-    }
-  }, []);
+  const audioRecorderChatRef = useRef(null);
 
   // List of client's proposal requests dynamically fetched from PostgreSQL
   const [requestsList, setRequestsList] = useState([]);
@@ -455,18 +395,31 @@ export default function ClientPortal() {
     }
   };
 
-  const toggleVoiceRecording = () => {
-    if (!recognition) {
-      alert("Speech recognition not supported in this browser.");
+  const toggleVoiceRecording = async () => {
+    if (isRecordingVoice) {
+      setIsRecordingVoice(false);
+      try {
+        if (audioRecorderChatRef.current) {
+          const audioBlob = await audioRecorderChatRef.current.stop();
+          const transcript = await transcribeWithWhisper(audioBlob);
+          if (transcript && transcript.trim()) {
+            setChatInput((prev) => (prev ? prev + " " + transcript.trim() : transcript.trim()));
+          }
+        }
+      } catch (err) {
+        console.error("Whisper Chat Transcription error:", err);
+        alert(`Transcription error: ${err.message || "Failed to process audio"}`);
+      }
       return;
     }
 
-    if (isRecordingVoice) {
-      recognition.stop();
-      setIsRecordingVoice(false);
-    } else {
-      recognition.start();
+    try {
+      const recorder = new AudioRecorder();
+      await recorder.start();
+      audioRecorderChatRef.current = recorder;
       setIsRecordingVoice(true);
+    } catch (err) {
+      alert(err.message || "Failed to start microphone.");
     }
   };
 

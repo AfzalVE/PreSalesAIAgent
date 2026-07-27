@@ -13,6 +13,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
+import { AudioRecorder, transcribeWithWhisper } from "../../utils/audioRecorder";
 // Access it directly where you need it
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -130,53 +131,33 @@ export default function NegotiationChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing, completedStreams]);
 
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = true;
+  const audioRecorderRef = useRef(null);
 
-      rec.onresult = (event) => {
-        let currentTranscript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
+  const toggleMic = async () => {
+    if (isRecording) {
+      setIsRecording(false);
+      try {
+        if (audioRecorderRef.current) {
+          const audioBlob = await audioRecorderRef.current.stop();
+          const transcript = await transcribeWithWhisper(audioBlob);
+          if (transcript && transcript.trim()) {
+            setInputPrompt((prev) => (prev ? prev + " " + transcript.trim() : transcript.trim()));
+          }
         }
-        setInputPrompt(currentTranscript);
-      };
-
-      rec.onerror = (e) => {
-        console.error(e);
-        setIsRecording(false);
-      };
-
-      rec.onend = () => {
-        setIsRecording(false);
-      };
-
-      setRecognition(rec);
-    }
-  }, []);
-
-  const toggleMic = () => {
-    if (!recognition) {
-      alert("Speech recognition not supported in this browser.");
+      } catch (err) {
+        console.error("Whisper Negotiation Transcription error:", err);
+        alert(`Transcription error: ${err.message || "Failed to process audio"}`);
+      }
       return;
     }
 
-    if (isRecording) {
-      recognition.stop();
-      setIsRecording(false);
-      // Let user manually send the prompt after stopping or we could auto-send.
-      // Auto-sending is a bit abrupt if they want to review it.
-    } else {
-      setInputPrompt("");
-      recognition.start();
+    try {
+      const recorder = new AudioRecorder();
+      await recorder.start();
+      audioRecorderRef.current = recorder;
       setIsRecording(true);
+    } catch (err) {
+      alert(err.message || "Failed to start microphone.");
     }
   };
 

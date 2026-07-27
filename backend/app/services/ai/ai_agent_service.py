@@ -336,3 +336,19 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
     except Exception as e:
         print(f"Error calling OpenAI API during negotiation: {str(e)}")
         raise e
+
+
+async def transcribe_audio_bytes(file_bytes: bytes, filename: str = "voice.webm") -> str:
+    """
+    Transcribes audio bytes using OpenAI Whisper-1 model.
+    """
+    try:
+        response = await client.audio.transcriptions.create(
+            model="whisper-1",
+            file=(filename, file_bytes)
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error transcribing audio with OpenAI Whisper: {str(e)}")
+        raise e
+

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Mic, MicOff, Sparkles, Loader2, ArrowRight } from "lucide-react";
 import WaveformVisualizer from "./WaveformVisualizer";
 import { useAppStore } from "../../store/useAppStore";
+import { AudioRecorder, transcribeWithWhisper } from "../../utils/audioRecorder";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 export default function VoiceRecorder({ onComplete }) {
@@ -17,8 +18,8 @@ export default function VoiceRecorder({ onComplete }) {
   const [liveTranscript, setLiveTranscript] = useState("");
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [recognition, setRecognition] = useState(null);
   const [chatRequestId, setChatRequestId] = useState(null);
+  const audioRecorderRef = useRef(null);
 
   const [extractedData, setExtractedData] = useState({
     name: "Pending...",
@@ -35,58 +36,46 @@ export default function VoiceRecorder({ onComplete }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatLog, liveTranscript, isAiThinking]);
 
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-    ) {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      const rec = new SpeechRecognition();
-      rec.continuous = true;
-      rec.interimResults = true;
-
-      rec.onresult = (event) => {
-        let currentTranscript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
-        }
-        setLiveTranscript(currentTranscript);
-      };
-
-      rec.onerror = (e) => {
-        console.error(e);
-        setIsRecording(false);
-      };
-
-      setRecognition(rec);
-    }
-  }, []);
-
-  const startVoiceCapture = () => {
-    if (!recognition) {
-      alert("Speech recognition not supported in this browser.");
-      return;
-    }
-
+  const startVoiceCapture = async () => {
     if (isRecording) {
-      recognition.stop();
       setIsRecording(false);
-      processVoiceInput();
+      setIsAiThinking(true);
+      try {
+        if (audioRecorderRef.current) {
+          const audioBlob = await audioRecorderRef.current.stop();
+          setLiveTranscript("Transcribing with OpenAI Whisper-1...");
+          const userText = await transcribeWithWhisper(audioBlob);
+          setLiveTranscript("");
+          if (userText && userText.trim()) {
+            await processVoiceInput(userText.trim());
+          }
+        }
+      } catch (err) {
+        console.error("Whisper Transcription Error:", err);
+        setChatLog((prev) => [
+          ...prev,
+          { sender: "ai", text: `Voice transcription error: ${err.message || "Failed to process audio."}` },
+        ]);
+        setLiveTranscript("");
+      } finally {
+        setIsAiThinking(false);
+      }
     } else {
-      setLiveTranscript("");
-      recognition.start();
-      setIsRecording(true);
-      setHasInteracted(true);
+      try {
+        const recorder = new AudioRecorder();
+        await recorder.start();
+        audioRecorderRef.current = recorder;
+        setLiveTranscript("");
+        setIsRecording(true);
+        setHasInteracted(true);
+      } catch (err) {
+        alert(err.message || "Failed to start microphone.");
+      }
     }
   };
 
-  const processVoiceInput = async () => {
-    if (!liveTranscript.trim()) return;
-
-    const userText = liveTranscript.trim();
+  const processVoiceInput = async (userText) => {
     setChatLog((prev) => [...prev, { sender: "user", text: userText }]);
-    setLiveTranscript("");
     setIsAiThinking(true);
 
     try {
@@ -112,7 +101,7 @@ export default function VoiceRecorder({ onComplete }) {
       // Update extracted panel
       setExtractedData((prev) => ({
         name: data.project_name || prev.name,
-        features: [], // Since backend doesn't explicitly return features in the new schema, we just clear or keep.
+        features: [],
         budget: data.client_budget !== null ? data.client_budget : prev.budget,
         timeline: data.timeline_weeks
           ? `${data.timeline_weeks} Weeks`

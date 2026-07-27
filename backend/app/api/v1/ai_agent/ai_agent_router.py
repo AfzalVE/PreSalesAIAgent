@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.schemas.ai_agent_schema import (
@@ -9,7 +9,7 @@ from app.schemas.ai_agent_schema import (
     BudgetNegotiationInput,
     BudgetNegotiationResponse,
 )
-from app.services.ai.ai_agent_service import extract_proposal_requirements, negotiate_proposal
+from app.services.ai.ai_agent_service import extract_proposal_requirements, negotiate_proposal, transcribe_audio_bytes
 import uuid
 from app.services.resource import (
     match_resources_from_db_request,
@@ -310,3 +310,20 @@ async def negotiate_budget(payload: BudgetNegotiationInput):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Budget negotiation failed: {str(e)}")
+
+
+@router.post("/transcribe")
+async def transcribe_voice_audio(file: UploadFile = File(...)):
+    """
+    Transcribes uploaded audio file (WebM/WAV/MP3/M4A) using OpenAI Whisper-1 model.
+    """
+    if not file:
+        raise HTTPException(status_code=400, detail="No audio file provided.")
+    try:
+        contents = await file.read()
+        filename = file.filename or "voice.webm"
+        transcript = await transcribe_audio_bytes(contents, filename)
+        return {"transcript": transcript}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+

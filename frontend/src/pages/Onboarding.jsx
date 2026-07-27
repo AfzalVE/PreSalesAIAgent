@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAppStore } from '../store/useAppStore';
 import FloatingBackground from '../components/common/FloatingBackground';
+import { AudioRecorder, transcribeWithWhisper } from '../utils/audioRecorder';
 
 const ONBOARDING_QUESTIONS = [
   {
@@ -81,69 +82,39 @@ export default function Onboarding() {
 
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleVoiceClick = () => {
+  const audioRecorderRef = useRef(null);
+
+  const handleVoiceClick = async () => {
     if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
       setIsListening(false);
-      return;
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Voice input is not supported in your browser.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = window.navigator.language || 'en-US';
-    recognitionRef.current = recognition;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    let finalTranscriptAtStart = formDescription;
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
+      const toastId = toast.loading("Transcribing audio with OpenAI Whisper...");
+      try {
+        if (audioRecorderRef.current) {
+          const audioBlob = await audioRecorderRef.current.stop();
+          const transcript = await transcribeWithWhisper(audioBlob);
+          if (transcript && transcript.trim()) {
+            setFormDescription((prev) => (prev ? prev + " " + transcript.trim() : transcript.trim()));
+            toast.success("Voice transcribed successfully!", { id: toastId });
+          } else {
+            toast.dismiss(toastId);
+          }
         }
+      } catch (err) {
+        console.error("Whisper transcription error:", err);
+        toast.error(`Transcription failed: ${err.message || "Unknown error"}`, { id: toastId });
       }
+      return;
+    }
 
-      const newText = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript + interimTranscript;
-      setFormDescription(newText);
-
-      if (finalTranscript) {
-        finalTranscriptAtStart = (finalTranscriptAtStart ? finalTranscriptAtStart + ' ' : '') + finalTranscript;
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      if (event.error === 'network') {
-        toast.error("Network Error: Speech recognition failed. This could be due to browser restrictions or network issues.");
-      } else if (event.error === 'not-allowed') {
-        toast.error("Microphone access denied. Please allow permissions in your browser.");
-      } else {
-        toast.error(`Speech recognition error: ${event.error}`);
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
+    try {
+      const recorder = new AudioRecorder();
+      await recorder.start();
+      audioRecorderRef.current = recorder;
+      setIsListening(true);
+      toast.success("Recording started... Speak your requirements, then click mic to finish.");
+    } catch (err) {
+      toast.error(err.message || "Failed to start microphone.");
+    }
   };
 
   const handleSinglePageSubmit = async (e) => {
