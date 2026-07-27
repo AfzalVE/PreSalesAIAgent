@@ -19,6 +19,7 @@ const ROLE_OPTIONS = [
   { role: "super-admin", label: "Super Admin", icon: ShieldAlert },
   { role: "admin", label: "Admin", icon: UserCheck },
   { role: "manager", label: "Manager", icon: UserCheck },
+  { role: "developer", label: "Developer", icon: Sparkles },
 ];
 
 function pickInitialRoleFromEmail(email) {
@@ -42,6 +43,8 @@ export default function AdminLogin({ onLogin, onCancel, isModal }) {
   const [role, setRole] = useState("admin");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isSignup, setIsSignup] = useState(false);
+  const [fullName, setFullName] = useState("");
 
   const initialHint = useMemo(() => {
     return "Use any credentials (mock). Try: super@corp.com, manager@corp.com";
@@ -65,12 +68,19 @@ if (!password.trim()) {
     try {
       console.log("Login button clicked");
 
-      const response = await apiFetch("/admin/requests/login", {
+      let url = "/admin/requests/login";
+      let bodyData = { email: emailOrPhone, password: password };
+
+      if (role === "developer") {
+        url = isSignup ? "/employee/auth/signup" : "/employee/auth/login";
+        bodyData = isSignup
+          ? { full_name: fullName, password: password }
+          : { employee_code: emailOrPhone, password: password };
+      }
+
+      const response = await apiFetch(url, {
         method: "POST",
-        body: JSON.stringify({
-          email: emailOrPhone,
-          password: password,
-        }),
+        body: JSON.stringify(bodyData),
       });
 console.log("Login response:", response);
     const {
@@ -121,6 +131,11 @@ setUser({
 
     case "admin":
         navigate("/admin");
+        break;
+
+    case "developer":
+    case "employee":
+        navigate("/employee/dashboard");
         break;
 
     default:
@@ -255,23 +270,45 @@ setUser({
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
-                    Email or Phone
-                  </label>
+                {role === "developer" && (
+                  <div className="flex gap-2 mb-4 bg-neutral-100 p-1 rounded-lg">
+                    <button type="button" onClick={() => setIsSignup(false)} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${!isSignup ? 'bg-white shadow text-navy-accent' : 'text-neutral-500 hover:text-navy-accent'}`}>Sign In</button>
+                    <button type="button" onClick={() => setIsSignup(true)} className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-all ${isSignup ? 'bg-white shadow text-navy-accent' : 'text-neutral-500 hover:text-navy-accent'}`}>Register</button>
+                  </div>
+                )}
 
-                  <input
-                    type="text"
-                    value={emailOrPhone}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEmailOrPhone(v);
-                      setRole(pickInitialRoleFromEmail(v));
-                    }}
-                    placeholder="name@company.com"
-                    className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
-                  />
-                </div>
+                {isSignup && role === "developer" ? (
+                  <div>
+                    <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Sayan Banerjee"
+                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">
+                      {role === "developer" ? "Employee Code" : "Email or Phone"}
+                    </label>
+  
+                    <input
+                      type="text"
+                      value={emailOrPhone}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEmailOrPhone(v);
+                        if (role !== "developer") setRole(pickInitialRoleFromEmail(v));
+                      }}
+                      placeholder={role === "developer" ? "e.g. EMP1501" : "name@company.com"}
+                      className="h-11 w-full rounded-md border border-[#e5e5e5] bg-white px-4 font-body-md text-base text-[#0a0a0a] outline-none transition-all duration-200 placeholder:text-[#a8a8aa] focus:border-2 focus:border-[#00d4a4]"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-2 block font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-[#3a3a3c]">

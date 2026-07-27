@@ -24,6 +24,9 @@ import ResourceContactPage from "./pages/ResourceContactPage";
 import DeveloperContactTestPage from "./pages/DeveloperContactTestPage";
 import ProfilePage from "./pages/ProfilePage";
 
+import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import EmployeeProfile from "./pages/employee/EmployeeProfile";
+import EmployeeChats from "./pages/employee/EmployeeChats";
 import AdminPortal from "./pages/AdminPortal";
 import AdminLogin from "./pages/AdminLogin";
 import AdminSignup from "./pages/AdminSignup";
@@ -153,6 +156,8 @@ function App() {
             element={
               user?.role === "super-admin" ? (
                 <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role === "employee" || user?.role === "developer" ? (
+                <Navigate to="/employee/profile" replace />
               ) : user?.role ? (
                 <Navigate to="/admin" replace />
               ) : (
@@ -160,6 +165,8 @@ function App() {
                   onLogin={({ role }) => {
                     if (role === "super-admin") {
                       navigate("/super-admin-dashboard");
+                    } else if (role === "employee" || role === "developer") {
+                      navigate("/employee/profile");
                     } else {
                       navigate("/admin");
                     }
@@ -176,6 +183,8 @@ function App() {
             element={
               user?.role === "super-admin" ? (
                 <Navigate to="/super-admin-dashboard" replace />
+              ) : user?.role === "employee" || user?.role === "developer" ? (
+                <Navigate to="/employee/profile" replace />
               ) : user?.role ? (
                 <Navigate to="/admin" replace />
               ) : (
@@ -183,6 +192,8 @@ function App() {
                   onLogin={({ role }) => {
                     if (role === "super-admin") {
                       navigate("/super-admin-dashboard");
+                    } else if (role === "employee" || role === "developer") {
+                      navigate("/employee/profile");
                     } else {
                       navigate("/admin");
                     }
@@ -192,6 +203,13 @@ function App() {
               )
             }
           />
+
+          {/* Employee Dashboard */}
+          <Route path="/employee" element={<EmployeeDashboard />}>
+            <Route index element={<Navigate to="profile" replace />} />
+            <Route path="profile" element={<EmployeeProfile />} />
+            <Route path="chats" element={<EmployeeChats />} />
+          </Route>
 
           {/* Admin Dashboard */}
 

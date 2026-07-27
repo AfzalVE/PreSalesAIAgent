@@ -37,12 +37,14 @@ export default function ResourceContactPage() {
       storedId = crypto.randomUUID();
       localStorage.setItem("clientId", storedId);
     }
-    return user?.id ? `client_${user.id}` : `client_${storedId}`;
+    const currentUserId = user?.id || user?.user_id;
+    return currentUserId ? `client_${currentUserId}` : `client_${storedId}`;
   });
 
   useEffect(() => {
-    if (user?.id) {
-      setResolvedClientId(`client_${user.id}`);
+    const currentUserId = user?.id || user?.user_id;
+    if (currentUserId) {
+      setResolvedClientId(`client_${currentUserId}`);
     }
   }, [user]);
 

@@ -184,6 +184,47 @@ async def get_client_conversations(client_id: str, db: Session = Depends(get_db)
         
     return convo_list
 
+@router.get("/employee-conversations/{employee_id}")
+async def get_employee_conversations(employee_id: str, db: Session = Depends(get_db)):
+    """
+    Fetch a unique list of clients a developer has chatted with.
+    """
+    try:
+        e_uuid = uuid.UUID(employee_id)
+    except ValueError:
+        return []
+
+    # Get all chats for this employee, ordered by newest first
+    chats = db.query(ClientEmployeeChat).filter(
+        ClientEmployeeChat.employee_id == e_uuid
+    ).order_by(ClientEmployeeChat.timestamp.desc()).all()
+
+    # Group by client to get the latest message per client
+    conversations = {}
+    for chat in chats:
+        client_id_str = str(chat.client_id)
+        if client_id_str not in conversations:
+            # We need the client's name. Let's fetch from User model.
+            db_client = db.query(User).filter(User.id == chat.client_id).first()
+            client_name = db_client.full_name if db_client else "Client"
+            client_email = db_client.email if db_client else "Unknown Email"
+            
+            conversations[client_id_str] = {
+                "client_id": client_id_str,
+                "client_name": client_name,
+                "client_email": client_email,
+                "last_message": chat.message,
+                "last_message_time": chat.timestamp.strftime("%b %d, %I:%M %p"),
+                "timestamp": chat.timestamp
+            }
+
+    convo_list = list(conversations.values())
+    convo_list.sort(key=lambda x: x["timestamp"], reverse=True)
+    for c in convo_list:
+        del c["timestamp"]
+        
+    return convo_list
+
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = Depends(get_db)):
     """
@@ -250,9 +291,13 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = D
                     if db_employee:
                         e_uuid = db_employee.id
 
-                    # Foreign Key Bypass: Ensure client_id exists
+                    # Fetch the client to save their actual ID, or default to first User
                     db_client = db.query(User).filter(User.id == c_uuid).first()
+                    print(f"[DEBUG WS] Target User UUID: {c_uuid}")
+                    print(f"[DEBUG WS] Found db_client: {db_client}")
+                    
                     if not db_client:
+                        print(f"[DEBUG WS] DB CLIENT NOT FOUND FOR {c_uuid}. FALLING BACK TO DEMO USER.")
                         db_client = db.query(User).first()
                         if db_client:
                             c_uuid = db_client.id
