@@ -10,6 +10,7 @@ import {
   X,
   Mic,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
@@ -24,8 +25,15 @@ export default function ClientPortal() {
     useAppStore();
   const navigate = useNavigate();
 
-  // Navigation: "overview" | "requests" | "chat"
+  // Navigation: "overview" | "requests" | "chat" | "dev-chats"
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Developer Chats States
+  const [devConversations, setDevConversations] = useState([]);
+  const [activeDevChatId, setActiveDevChatId] = useState(null);
+  const [activeDevChatName, setActiveDevChatName] = useState("");
+  const [devChatHistory, setDevChatHistory] = useState([]);
+  const [isDevChatsLoading, setIsDevChatsLoading] = useState(false);
 
   // New Proposal Form Dialog State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -183,6 +191,53 @@ export default function ClientPortal() {
   useEffect(() => {
     fetchClientData();
   }, []);
+
+  // Fetch Dev Conversations when switching to dev-chats tab
+  useEffect(() => {
+    if (activeTab === "dev-chats") {
+      const fetchDevChats = async () => {
+        setIsDevChatsLoading(true);
+        try {
+          const currentUser = useAppStore.getState().user;
+          const currentUserId = (currentUser?.id || currentUser?.user_id || "").trim();
+          let storedId = localStorage.getItem("clientId") || "";
+          storedId = storedId.replace(/client_/g, "");
+          const clientIdStr = currentUserId ? `client_${currentUserId}` : `client_${storedId || crypto.randomUUID()}`;
+          
+          const res = await fetch(`${API}/api/v1/chats/conversations/${clientIdStr}`);
+          if (res.ok) {
+            const data = await res.json();
+            setDevConversations(data);
+          }
+        } catch (err) {
+          console.error("Failed to fetch developer conversations:", err);
+        } finally {
+          setIsDevChatsLoading(false);
+        }
+      };
+      fetchDevChats();
+    }
+  }, [activeTab]);
+
+  const handleSelectDevChat = async (empId, empName) => {
+    setActiveDevChatId(empId);
+    setActiveDevChatName(empName);
+    try {
+      const currentUser = useAppStore.getState().user;
+      const currentUserId = (currentUser?.id || currentUser?.user_id || "").trim();
+      let storedId = localStorage.getItem("clientId") || "";
+      storedId = storedId.replace(/client_/g, "");
+      const clientIdStr = currentUserId ? `client_${currentUserId}` : `client_${storedId || crypto.randomUUID()}`;
+
+      const res = await fetch(`${API}/api/v1/chats/history/${clientIdStr}/${empId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDevChatHistory(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch developer chat history:", err);
+    }
+  };
 
   const handleRestart = () => {
     resetStore();
@@ -515,6 +570,7 @@ export default function ClientPortal() {
           {[
             { id: "overview", label: "Overview" },
             { id: "requests", label: "Proposal Requests" },
+            { id: "dev-chats", label: "Developer Chats" },
             { id: "chat", label: "AI Assistant Chat" },
             ...(isDemoReady ? [{ id: "demos", label: "Generated Demos" }] : []),
           ].map((tab) => (
@@ -921,6 +977,110 @@ export default function ClientPortal() {
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3.5. DEVELOPER CHATS VIEW */}
+        {activeTab === "dev-chats" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            {/* Conversations Sidebar */}
+            <div className="lg:col-span-4 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft space-y-4">
+              <h4 className="font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant">
+                Your Developer Contacts
+              </h4>
+              <div className="space-y-2">
+                {isDevChatsLoading ? (
+                  <p className="text-sm text-neutral-500">Loading contacts...</p>
+                ) : devConversations.length === 0 ? (
+                  <p className="text-sm text-neutral-500 italic py-2">No active developer conversations found.</p>
+                ) : (
+                  devConversations.map((convo) => (
+                    <button
+                      key={convo.employee_id}
+                      onClick={() => handleSelectDevChat(convo.employee_id, convo.employee_name)}
+                      className={`w-full p-3.5 rounded-xl border text-left hover:bg-neutral-50/50 transition-all duration-200 ${
+                        activeDevChatId === convo.employee_id
+                          ? "border-primary bg-primary-container/20 ring-1 ring-primary"
+                          : "border-neutral-100"
+                      }`}
+                    >
+                      <span className="font-body-md text-sm font-semibold text-navy-accent block truncate">
+                        {convo.employee_name}
+                      </span>
+                      <span className="font-body-md text-xs text-on-surface-variant mt-1 block truncate">
+                        {convo.last_message}
+                      </span>
+                      <span className="font-body-md text-[10px] text-neutral-400 mt-1 block">
+                        {convo.last_message_time}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Chat History Pane */}
+            <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between min-h-[500px]">
+              {activeDevChatId ? (
+                <>
+                  <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                    <div>
+                      <span className="font-body-md text-base font-semibold text-navy-accent block">
+                        Chat History with {activeDevChatName}
+                      </span>
+                      <span className="text-xs text-neutral-500">Read-only history view</span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/client/resource-contact?employeeId=${activeDevChatId}&employeeName=${encodeURIComponent(activeDevChatName)}`)}
+                      className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-primary text-white font-button-text text-xs font-semibold hover:bg-primary/90 transition-all duration-200 shadow-sm"
+                    >
+                      Resume Live Chat
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto my-4 space-y-4">
+                    {devChatHistory.length === 0 ? (
+                      <div className="flex justify-center p-12 text-neutral-400 text-sm">
+                        Loading history...
+                      </div>
+                    ) : (
+                      devChatHistory.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${msg.sender === "client" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div className="flex flex-col max-w-[80%]">
+                            <div
+                              className={`px-4 py-3 rounded-2xl font-body-md text-sm leading-relaxed ${
+                                msg.sender === "client"
+                                  ? "bg-navy-accent text-white rounded-tr-none"
+                                  : "bg-neutral-50 text-neutral-800 border border-neutral-100 rounded-tl-none"
+                              }`}
+                            >
+                              {msg.text.startsWith("[AUDIO_CALL:") ? (
+                                <span className="flex items-center text-xs opacity-90"><Mic size={12} className="mr-2" /> Audio Call Recorded</span>
+                              ) : msg.text.startsWith("[VIDEO_CALL:") ? (
+                                <span className="flex items-center text-xs opacity-90"><Eye size={12} className="mr-2" /> Video Call Recorded</span>
+                              ) : (
+                                msg.text
+                              )}
+                            </div>
+                            <span className={`text-[10px] text-neutral-400 mt-1 ${msg.sender === "client" ? "text-right" : "text-left"}`}>
+                              {msg.time}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm font-medium flex-col gap-2">
+                  <MessageSquare size={32} className="opacity-20" />
+                  <p>Select a developer contact from the left to view history.</p>
+                </div>
+              )}
             </div>
           </div>
         )}

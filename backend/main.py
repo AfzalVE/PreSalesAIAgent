@@ -17,8 +17,7 @@ from app.api.v1.resource_allocation.resource_router import router as resource_ro
 from app.api.v1.proposals.proposal_router import router as proposal_router
 from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
 from app.api.v1.admin.admin_router import router as admin_router
-
-
+from app.api.v1.chats.chat_router import router as chat_router
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -116,6 +115,7 @@ app.include_router(resource_router, prefix="/api/v1/resource-allocation", tags=[
 app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals"])
 app.include_router(ai_agent_router, prefix="/api/v1/ai-agent", tags=["AI Agent"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin Studio"])
+app.include_router(chat_router, prefix="/api/v1/chats", tags=["Chats"])
 
 # Mount static folder for proposals
 import os
