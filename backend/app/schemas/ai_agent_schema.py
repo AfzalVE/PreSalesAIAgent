@@ -15,6 +15,7 @@ class WorkflowState(str, Enum):
 class AgentTextInput(BaseModel):
     text: str = Field(..., description="The unstructured text or transcribed voice input from the user.")
     request_id: Optional[str] = Field(None, description="Optional request ID if continuing an existing chat.") # newly added
+    client_id: Optional[str] = Field(None, description="The user id making the request")
 
 class ResourceRequirement(BaseModel):
     role: str = Field(..., description="The role of the resource, e.g., 'Backend Developer'.")

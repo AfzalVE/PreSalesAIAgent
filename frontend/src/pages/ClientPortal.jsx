@@ -91,6 +91,26 @@ export default function ClientPortal() {
   const [requestsList, setRequestsList] = useState([]);
   const { adminProposals, user, isDemoReady, setIsDemoReady, generatedDemos } =
     useAppStore(); // Load existing admin-curated proposals for review
+  const [viewingProposal, setViewingProposal] = useState(null);
+
+  const handleApproveProposal = async (proposalId) => {
+    try {
+      const response = await fetch(`${API}/api/v1/proposals/${proposalId}/select`, {
+        method: "POST"
+      });
+      if (response.ok) {
+        await fetchClientData();
+      } else {
+        console.error("Failed to approve proposal");
+      }
+    } catch (err) {
+      console.error("Error approving proposal:", err);
+    }
+  };
+
+  const handleDownloadPdf = (proposalId) => {
+    window.open(`${API}/api/v1/proposals/${proposalId}/download`, "_blank");
+  };
 
   const fetchClientData = async () => {
     try {
@@ -164,15 +184,7 @@ export default function ClientPortal() {
       if (propsRes.ok) {
         const propsData = await propsRes.json();
         if (propsData && Array.isArray(propsData)) {
-          const filteredProps = currentUserEmail
-            ? propsData.filter(
-              (p) =>
-                !p.clientEmail ||
-                p.clientEmail.toLowerCase() ===
-                currentUserEmail.toLowerCase(),
-            )
-            : propsData;
-          useAppStore.setState({ adminProposals: filteredProps });
+          useAppStore.setState({ adminProposals: propsData });
         }
       }
     } catch (err) {
@@ -343,7 +355,10 @@ export default function ClientPortal() {
     setIsChatLoading(true);
 
     try {
-      const payload = { text: userText };
+      const payload = { 
+        text: userText,
+        client_id: user?.id || user?.user_id 
+      };
       if (chatRequestId) {
         payload.request_id = chatRequestId;
       }
@@ -431,16 +446,7 @@ export default function ClientPortal() {
     navigate("/broker");
   };
 
-  const clientProposals = (adminProposals || []).filter((prop) => {
-    if (!user || !user.isVerified) return true;
-    const uEmail = (user.email || user.emailOrPhone || "").toLowerCase().trim();
-    const uId = (user.id || user.user_id || "").toString().trim();
-    if (!prop.clientEmail && !prop.clientId) return true;
-    if (uEmail && prop.clientEmail && prop.clientEmail.toLowerCase() === uEmail)
-      return true;
-    if (uId && prop.clientId && prop.clientId.toString() === uId) return true;
-    return false;
-  });
+  const clientProposals = adminProposals || [];
 
   const totalRequestsCount = requestsList.length;
   const approvedCount =
@@ -681,20 +687,22 @@ export default function ClientPortal() {
                             {prop.status}
                           </span>
                           <div className="space-x-2">
+                            {prop.status !== "Approved" && (
+                              <button
+                                onClick={() => handleApproveProposal(prop.id)}
+                                className="text-green-600 hover:underline pr-2 border-r border-neutral-200"
+                              >
+                                Approve
+                              </button>
+                            )}
                             <button
-                              onClick={() =>
-                                alert(`Reviewing proposal: ${prop.projectName}`)
-                              }
+                              onClick={() => setViewingProposal(prop)}
                               className="text-primary hover:underline"
                             >
                               View Specs
                             </button>
                             <button
-                              onClick={() =>
-                                alert(
-                                  `Downloading final package for ${prop.projectName}`,
-                                )
-                              }
+                              onClick={() => handleDownloadPdf(prop.id)}
                               className="text-neutral-700 hover:underline"
                             >
                               Download PDF
@@ -1234,6 +1242,102 @@ export default function ClientPortal() {
                   </pre>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* PROPOSAL SPECS MODAL */}
+      {viewingProposal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-elevation-4 border border-outline-variant/30">
+            <div className="flex justify-between items-start mb-6 border-b border-outline-variant/30 pb-4">
+              <div>
+                <h3 className="font-headline-md text-2xl font-bold text-on-surface">
+                  {viewingProposal.projectName} Specs
+                </h3>
+                <p className="text-on-surface-variant font-body-md text-sm mt-1">
+                  Review the technical specifications for this proposal.
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingProposal(null)}
+                className="p-2 rounded-full hover:bg-surface-variant/50 text-on-surface-variant transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-6 text-on-surface font-body-md">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-surface-variant/20 p-4 rounded-xl border border-outline-variant/20">
+                  <span className="font-label-caps text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant block mb-1">
+                    Timeline
+                  </span>
+                  <span className="font-semibold text-primary">{viewingProposal.timeline}</span>
+                </div>
+                <div className="bg-surface-variant/20 p-4 rounded-xl border border-outline-variant/20">
+                  <span className="font-label-caps text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant block mb-1">
+                    Budget
+                  </span>
+                  <span className="font-semibold text-primary">${Number(viewingProposal.budget || 0).toLocaleString()}</span>
+                </div>
+              </div>
+              
+              <div>
+                <span className="font-label-caps text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant block mb-2">
+                  Tech Stack
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {Array.isArray(viewingProposal.techStack) ? viewingProposal.techStack.map((tech, i) => (
+                    <span key={i} className="px-2.5 py-1 bg-secondary-container/50 text-on-secondary-container rounded-lg text-sm font-medium border border-secondary-container">
+                      {tech}
+                    </span>
+                  )) : (
+                    <span className="px-2.5 py-1 bg-secondary-container/50 text-on-secondary-container rounded-lg text-sm font-medium border border-secondary-container">
+                      {viewingProposal.techStack || "Modern Stack"}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {viewingProposal.features && viewingProposal.features.length > 0 && (
+                <div>
+                  <span className="font-label-caps text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant block mb-2">
+                    Key Features & Scope
+                  </span>
+                  <ul className="list-disc pl-5 space-y-1.5 text-[15px] text-on-surface/80">
+                    {viewingProposal.features.map((f, i) => <li key={i}>{f}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {viewingProposal.team && viewingProposal.team.length > 0 && (
+                <div>
+                  <span className="font-label-caps text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant block mb-2">
+                    Proposed Team
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {viewingProposal.team.map((m, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/30 bg-surface">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                          {m.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm">{m.name}</div>
+                          <div className="text-xs text-on-surface-variant">{m.role}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="mt-8 pt-6 border-t border-outline-variant/30 flex justify-end">
+              <button
+                onClick={() => setViewingProposal(null)}
+                className="px-6 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-full font-semibold transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

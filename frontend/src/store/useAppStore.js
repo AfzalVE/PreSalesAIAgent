@@ -219,6 +219,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
 
     try {
       const token = store.user?.accessToken;
+      const clientId = store.user?.id || store.user?.user_id;
       // 1. Call ai-agent/extract-requirements
       const extractionResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/ai-agent/extract-requirements`, {
         method: "POST",
@@ -226,7 +227,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` })
         },
-        body: JSON.stringify({ text: extractionText })
+        body: JSON.stringify({ text: extractionText, client_id: clientId })
       });
       if (!extractionResponse.ok) throw new Error("Failed to extract requirements");
       const extractionData = await extractionResponse.json();
@@ -291,6 +292,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
         preferred_technology: finalTechStack,
         client_budget: extractionData.client_budget || store.projectData.budget,
         timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline,
+        client_id: clientId,
         ...matchingData
       };
 
