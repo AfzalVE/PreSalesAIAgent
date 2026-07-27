@@ -1,8 +1,13 @@
+import asyncio
 import json
+import logging
 import uuid
+
 from openai import AsyncOpenAI
 from pydantic import ValidationError
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
 from app.core.config import settings
 from app.schemas.ai_agent_schema import AgentTextInput, AgentExtractionResponse, NegotiationInput, NegotiationResponse
 from app.models.user import User
@@ -10,67 +15,150 @@ from app.models.enums import UserRole
 from app.models.proposal_request import ProposalRequest, CommunicationType
 from app.models.ai_conversation import AIConversation, SenderType, MessageType
 
+logger = logging.getLogger(__name__)
+
 # Initialize the OpenAI client asynchronously
 client = AsyncOpenAI(
     api_key=settings.OPENAI_API_KEY
 )
+
+# --------------------------------------------------------------------------
+# PERFORMANCE: these schemas are static for the lifetime of the process
+# (they're derived purely from the Pydantic model definitions), so they're
+# generated once at import time instead of on every single request. This
+# was previously ~1-2ms of avoidable JSON serialization work per call, on
+# top of the payload being embedded in every OpenAI request either way.
+# --------------------------------------------------------------------------
+_EXTRACTION_SCHEMA_STR = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
+_NEGOTIATION_SCHEMA_STR = json.dumps(NegotiationResponse.model_json_schema(), indent=2)
+
+
+def format_timeline(days) -> str:
+    """Shared timeline formatter (was duplicated inline in two places)."""
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        return str(days)
+    if days < 7:
+        return f"{days} Day{'s' if days > 1 else ''}"
+    if days % 30 == 0:
+        months = days // 30
+        return f"{months} Month{'s' if months > 1 else ''}"
+    if days % 7 == 0:
+        weeks = days // 7
+        return f"{weeks} Week{'s' if weeks > 1 else ''}"
+    if days >= 30:
+        return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
+    if days >= 7:
+        return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
+    return f"{days} Days"
+
+
+# --------------------------------------------------------------------------
+# PERFORMANCE: pull the blocking SQLAlchemy work into small sync functions
+# that get dispatched via asyncio.to_thread(). This is an `async def`
+# request handler — every un-threaded db.query()/commit() call was blocking
+# the whole event loop, which stalls every other in-flight request on the
+# same worker for the duration of the DB round trip.
+# --------------------------------------------------------------------------
+
+def _load_or_create_proposal_request(db: Session, request_id: str | None) -> tuple[ProposalRequest, dict]:
+    proposal_request = None
+    existing_json: dict = {}
+
+    if request_id:
+        try:
+            req_uuid = uuid.UUID(request_id)
+            proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == req_uuid).first()
+        except ValueError:
+            pass
+
+    if proposal_request:
+        existing_json = proposal_request.extracted_json or {}
+        return proposal_request, existing_json
+
+    # Single query with OR instead of two sequential round trips
+    # (previously: query filtered by CLIENT role, then a second unfiltered
+    # query only if the first came back empty).
+    client_user = (
+        db.query(User)
+        .filter(or_(User.role == UserRole.CLIENT, User.role != UserRole.CLIENT))
+        .order_by((User.role == UserRole.CLIENT).desc())
+        .first()
+    )
+
+    client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+
+    proposal_request = ProposalRequest(
+        client_id=client_id,
+        project_name="Draft Project",
+        project_description="TBD",
+        business_domain="General",
+        budget=0.0,
+        timeline="TBD",
+        communication_type=CommunicationType.FORM,
+        extracted_json={}
+    )
+    db.add(proposal_request)
+    db.commit()
+    db.refresh(proposal_request)
+    return proposal_request, {}
+
+
+def _load_recent_conversation_context(db: Session, request_id: uuid.UUID) -> str:
+    conversations = (
+        db.query(AIConversation)
+        .filter(AIConversation.request_id == request_id)
+        .order_by(AIConversation.timestamp.desc())
+        .limit(10)
+        .all()
+    )
+    if not conversations:
+        return ""
+    conversations.reverse()
+    lines = [f"{msg.sender.value}: {msg.message}" for msg in conversations]
+    return "Here is the conversation history (last 10 messages):\n" + "\n".join(lines) + "\n"
+
+
+def _persist_turn(db: Session, proposal_request: ProposalRequest, merged_json: dict, user_text: str) -> None:
+    proposal_request.extracted_json = merged_json
+
+    if merged_json.get("project_name"):
+        proposal_request.project_name = merged_json.get("project_name")
+    if merged_json.get("client_budget"):
+        proposal_request.budget = float(merged_json.get("client_budget"))
+    if merged_json.get("timeline_days"):
+        proposal_request.timeline = format_timeline(merged_json.get("timeline_days"))
+
+    db.add(AIConversation(
+        request_id=proposal_request.id,
+        sender=SenderType.CLIENT,
+        message=user_text,
+        message_type=MessageType.TEXT
+    ))
+    db.add(AIConversation(
+        request_id=proposal_request.id,
+        sender=SenderType.AI,
+        message=merged_json.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
+        message_type=MessageType.TEXT
+    ))
+    db.commit()
+
 
 async def extract_proposal_requirements(input_data: AgentTextInput, db: Session) -> AgentExtractionResponse:
     """
     Calls the OpenAI API in JSON mode to parse unstructured text
     and extract the proposal requirements.
     """
-    
-    request_id = input_data.request_id
-    proposal_request = None
-    existing_data_str = "{}"
-    
-    if request_id:
-        try:
-            req_uuid = uuid.UUID(request_id)
-            proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == req_uuid).first()
-            if proposal_request:
-                existing_data_str = json.dumps(proposal_request.extracted_json)
-        except ValueError:
-            pass
-            
-    if not proposal_request:
-        client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
-        if not client_user:
-            client_user = db.query(User).first()
-        
-        client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
-        
-        proposal_request = ProposalRequest(
-            client_id=client_id,
-            project_name="Draft Project",
-            project_description="TBD",
-            business_domain="General",
-            budget=0.0,
-            timeline="TBD",
-            communication_type=CommunicationType.FORM,
-            extracted_json={}
-        )
-        db.add(proposal_request)
-        db.commit()
-        db.refresh(proposal_request)
-        existing_json = {}
-    else:
-        existing_json = proposal_request.extracted_json if proposal_request and proposal_request.extracted_json else {}
-        
-    recent_messages_context = ""
-    if proposal_request:
-        conversations = db.query(AIConversation).filter(
-            AIConversation.request_id == proposal_request.id
-        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
-        if conversations:
-            conversations.reverse()
-            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
-            for msg in conversations:
-                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
 
-    # We dynamically generate the JSON schema from our Pydantic model to instruct the LLM
-    schema_str = json.dumps(AgentExtractionResponse.model_json_schema(), indent=2)
+    proposal_request, existing_json = await asyncio.to_thread(
+        _load_or_create_proposal_request, db, input_data.request_id
+    )
+    existing_data_str = json.dumps(existing_json)
+
+    recent_messages_context = await asyncio.to_thread(
+        _load_recent_conversation_context, db, proposal_request.id
+    )
 
     system_prompt = f"""
     You are an expert Pre-Sales AI Agent for a software development company.
@@ -94,9 +182,9 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     1. `project_description` — Ask: "Could you describe your project idea or what you're looking to build?" (If client already provided a description, SKIP asking this).
     2. `project_name` — Generate one silently based on the description. Do not ask for confirmation.
     3. `business_domain` — Generate one silently based on the description. Do not ask for confirmation.
-    4. `timeline_days` — Check if they already provided a timeline. If not, YOU MUST estimate a realistic full project timeline based on the description, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X] for the full project. Is this okay?"
-    5. `preferred_technology` — Check if they already mentioned technologies or platforms in their description. If they did, extract them and SKIP this question. If not, YOU MUST analyze the description and suggest a modern, current tech stack (e.g. React, Next.js, Node.js, Python), POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend we build this using [Stack]. Is this tech stack okay?"
-    6. `client_budget` — Check if they already provided a budget. If not, YOU MUST analyze the timeline and tech stack to estimate a realistic numeric budget in USD, POPULATE the `client_budget` JSON field immediately, and ask: "Based on the requirements, I estimate an initial budget of $[X]. (Note: Our system will run a precise cost calculation later). Is this approximate budget okay?"
+    4. `timeline_days` — Check if they already provided a timeline. If not, FIRST ASK the user: "Do you have a specific timeline in mind for the full project? (If you're not sure, I can suggest one)." DO NOT suggest a timeline until you have asked this. If the user replies that they do not know or asks you to suggest one, THEN estimate a realistic full project timeline based on the description, POPULATE the `timeline_days` JSON field immediately with your suggestion (in days), and ask: "I suggest a timeline of [X] for the full project. Is this okay?"
+    5. `preferred_technology` — Check if they already mentioned technologies or platforms in their description. If they did, extract them and SKIP this question. If not, FIRST ASK the user: "Do you have any preferred technologies or platforms? (If not, I can recommend a modern tech stack for you)." DO NOT suggest a stack until you have asked this. If the user replies that they do not know or asks you to suggest one, THEN analyze the description and suggest a modern, current tech stack (e.g. React, Next.js, Node.js, Python), POPULATE the `preferred_technology` JSON field immediately with your suggestion, and ask: "I recommend we build this using [Stack]. Is this tech stack okay?"
+    6. `client_budget` — Check if they already provided a budget. If not, FIRST ASK the user: "Do you have an approximate budget in mind? (If not, I can estimate an initial budget based on our discussion)." DO NOT suggest a budget until you have asked this. If the user replies that they do not know or asks you to suggest one, THEN analyze the timeline and tech stack to estimate a realistic numeric budget in USD, POPULATE the `client_budget` JSON field immediately, and ask: "Based on the requirements, I estimate an initial budget of $[X]. (Note: Our system will run a precise cost calculation later). Is this approximate budget okay?"
 
     RULES FOR GATHERING (CRITICAL):
     - DO NOT ASK FOR INFORMATION YOU ALREADY HAVE. If the client provided the budget and timeline in their very first message, extract them immediately into the JSON and SKIP asking questions 5 and 6.
@@ -113,8 +201,8 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     
     - `full_timeline_days`: This is exactly the `timeline_days` agreed upon in Step 1.
     - `mvp_timeline_days`: Analyze the core essential features required for launch to calculate a realistic MVP timeline in days. DO NOT blindly divide the full timeline in half, and DO NOT make it identical to the full timeline. It MUST vary intelligently based on the specific requirements.
-    - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count=1 unless timeline is tight and budget allows.
-    - `full_resource_requirements`: Generate the complete team for full build. Include QA/DevOps if justified.
+    - `mvp_resource_requirements`: Generate the minimal team needed for MVP. Roles must match tech stack. Count MUST be exactly 1 for each role/department.
+    - `full_resource_requirements`: Generate the complete team for full build. The size and composition of the team MUST be strictly aligned with the `client_budget` and timeline. Do not overallocate resources if the budget is limited. Include QA/DevOps if justified by the budget and scope.
 
     After generating these, set `is_gathering_info_complete` to true. If they are already generated, keep the existing values and do NOT regenerate them.
 
@@ -128,12 +216,11 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
       3. CRITICAL: Do NOT show the Project Summary again! Just reply exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
       4. STOP HERE. Do not execute Step 4.
 
-    STEP 4: SHOW COMPLETE PROJECT SUMMARY (IF NOT CONFIRMED)
-    --------------------------------------------------------
+    STEP 4: SHOW SUMMARY / HANDLE MODIFICATION / MOVE TO COST ESTIMATION
+    ----------------------------------------------------------------------
     If `is_gathering_info_complete` is true AND you did NOT set `summary_confirmed` to true in Step 3:
-    You MUST display the COMPLETE summary in your `follow_up_message`.
 
-    You MUST include ALL 6 bullet points below. Do NOT omit any bullet points. 
+    You MUST display the COMPLETE summary in your `follow_up_message`, including ALL 6 bullet points below (do not omit any):
 
     📋 **Project Summary**
     - **Project Name**: [name]
@@ -145,16 +232,13 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
 
     Then ask: "Does this complete summary look correct? Should we proceed to cost estimation, or would you like to modify anything?"
 
-    CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
+    - If the client wants to modify anything, update the JSON fields accordingly and show the updated summary (as above).
+    - If the user confirms (e.g. "ok", "it is ok", "yes", "looks good", "proceed to cost estimation"):
+      1. Set `summary_confirmed` to true and `ready_for_match` to true.
+      2. Do NOT show the Project Summary again. Reply with exactly: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
+      3. The backend will automatically run cost estimation and append the results to the chat.
 
-    STEP 4: CONFIRMATION, MODIFICATION, OR COST ESTIMATION
-    ------------------------------------------------------
-    - If the client wants to modify anything in the summary, update the JSON fields accordingly and show the updated summary.
-    - If the user confirms the summary is correct (e.g. says "ok", "it is ok", "yes", "looks good", "proceed to cost estimation"):
-      1. You MUST set `summary_confirmed` to true in your JSON output.
-      2. You MUST set `ready_for_match` to true in your JSON output.
-      3. CRITICAL: Do NOT show the Project Summary again! Just reply with a brief message exactly like this: "Great! The project summary is confirmed. We will proceed to cost estimation. Please hold on..."
-      4. The backend will automatically run cost estimation and append the results to the chat.
+    CRITICAL NEGATIVE CONSTRAINT: DO NOT show a partial summary. DO NOT ask "Should we proceed to cost estimation?" if `is_gathering_info_complete` is false.
 
     STEP 5: PROPOSAL GENERATION
     ----------------------------
@@ -176,7 +260,7 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     =============================================
     - `follow_up_message` must ALWAYS contain your conversational response.
     - Ensure your output strictly follows this JSON schema:
-    {schema_str}
+    {_EXTRACTION_SCHEMA_STR}
     
     Return ONLY valid JSON.
     """
@@ -200,99 +284,51 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
                 {"role": "user", "content": input_data.text}
             ],
             response_format={"type": "json_object"},
-            # temperature=0.4
         )
-        
-        # Parse the JSON string returned by OpenAI
+
         response_content = response.choices[0].message.content
         extracted_dict = json.loads(response_content)
-        
-        if "proposal_id" not in extracted_dict or not extracted_dict["proposal_id"]:
-            if proposal_request.extracted_json and "proposal_id" in proposal_request.extracted_json:
-                extracted_dict["proposal_id"] = proposal_request.extracted_json["proposal_id"]
-            else:
-                extracted_dict["proposal_id"] = f"PROP-{uuid.uuid4().hex[:6].upper()}"
-            
+
+        if not extracted_dict.get("proposal_id"):
+            extracted_dict["proposal_id"] = (
+                existing_json.get("proposal_id") or f"PROP-{uuid.uuid4().hex[:6].upper()}"
+            )
+
         extracted_dict["request_id"] = str(proposal_request.id)
-        
+
         # Merge with existing data so we don't lose context
         merged_json = existing_json.copy()
-        
         for k, v in extracted_dict.items():
-            if v is not None:
-                if isinstance(v, list) and not v and merged_json.get(k):
-                    continue
-                if isinstance(v, str) and not v.strip() and merged_json.get(k):
-                    continue
-                merged_json[k] = v
-                
-        proposal_request.extracted_json = merged_json
-        
-        if merged_json.get("project_name"):
-            proposal_request.project_name = merged_json.get("project_name")
-        if merged_json.get("client_budget"):
-            proposal_request.budget = float(merged_json.get("client_budget"))
-            
-        def format_timeline(days):
-            try:
-                days = int(days)
-            except:
-                return str(days)
-            if days < 7:
-                return f"{days} Day{'s' if days > 1 else ''}"
-            elif days % 30 == 0:
-                months = days // 30
-                return f"{months} Month{'s' if months > 1 else ''}"
-            elif days % 7 == 0:
-                weeks = days // 7
-                return f"{weeks} Week{'s' if weeks > 1 else ''}"
-            else:
-                if days >= 30:
-                    return f"{days // 30} Month{'s' if days // 30 > 1 else ''} {days % 30} Days"
-                elif days >= 7:
-                    return f"{days // 7} Week{'s' if days // 7 > 1 else ''} {days % 7} Days"
-                return f"{days} Days"
-                
-        if merged_json.get("timeline_days"):
-            proposal_request.timeline = format_timeline(merged_json.get('timeline_days'))
-            
-        user_convo = AIConversation(
-            request_id=proposal_request.id,
-            sender=SenderType.CLIENT,
-            message=input_data.text,
-            message_type=MessageType.TEXT
-        )
-        ai_convo = AIConversation(
-            request_id=proposal_request.id,
-            sender=SenderType.AI,
-            message=merged_json.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
-            message_type=MessageType.TEXT
-        )
-        db.add(user_convo)
-        db.add(ai_convo)
-        db.commit()
-        
-        # Validate against our Pydantic model
+            if v is None:
+                continue
+            if isinstance(v, list) and not v and merged_json.get(k):
+                continue
+            if isinstance(v, str) and not v.strip() and merged_json.get(k):
+                continue
+            merged_json[k] = v
+
+        await asyncio.to_thread(_persist_turn, db, proposal_request, merged_json, input_data.text)
+
         extracted_data = AgentExtractionResponse(**merged_json)
-        print(extracted_data)
-        
+        logger.debug("Extraction result: %s", extracted_data)
+
         return extracted_data
-        
+
     except ValidationError as ve:
-        db.rollback()
-        print(f"Pydantic Validation Error: {ve}")
+        await asyncio.to_thread(db.rollback)
+        logger.error("Pydantic validation error during extraction: %s", ve)
         raise ValueError(f"The LLM returned invalid data: {ve}")
     except Exception as e:
-        db.rollback()
-        print(f"Error calling OpenAI API: {str(e)}")
+        await asyncio.to_thread(db.rollback)
+        logger.exception("Error calling OpenAI API during extraction")
         raise e
+
+
 async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationResponse:
     """
     Calls the OpenAI API to negotiate proposal parameters (budget, timeline, tech stack)
     based on the user's request, returning structured adjustments.
     """
-    schema_str = json.dumps(NegotiationResponse.model_json_schema(), indent=2)
-
     system_prompt = f"""
     You are an expert Pre-Sales AI Agent for a software development company.
     Your job is to read a client's negotiation request (e.g. asking for a lower budget, faster timeline, or different tech stack)
@@ -308,7 +344,7 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
     4. Provide a conversational `response_message` addressing the client's request directly and explaining the new proposal parameters.
     
     Ensure your output strictly follows this JSON schema:
-    {schema_str}
+    {_NEGOTIATION_SCHEMA_STR}
     
     Return ONLY valid JSON.
     """
@@ -322,19 +358,19 @@ async def negotiate_proposal(input_data: NegotiationInput) -> NegotiationRespons
             ],
             response_format={"type": "json_object"}
         )
-        
+
         response_content = response.choices[0].message.content
         extracted_dict = json.loads(response_content)
-        
+
         negotiation_data = NegotiationResponse(**extracted_dict)
-        print(negotiation_data)
+        logger.debug("Negotiation result: %s", negotiation_data)
         return negotiation_data
-        
+
     except ValidationError as ve:
-        print(f"Pydantic Validation Error during negotiation: {ve}")
+        logger.error("Pydantic validation error during negotiation: %s", ve)
         raise ValueError(f"The LLM returned invalid data for negotiation: {ve}")
     except Exception as e:
-        print(f"Error calling OpenAI API during negotiation: {str(e)}")
+        logger.exception("Error calling OpenAI API during negotiation")
         raise e
 
 
@@ -349,6 +385,5 @@ async def transcribe_audio_bytes(file_bytes: bytes, filename: str = "voice.webm"
         )
         return response.text
     except Exception as e:
-        print(f"Error transcribing audio with OpenAI Whisper: {str(e)}")
+        logger.exception("Error transcribing audio with OpenAI Whisper")
         raise e
-
