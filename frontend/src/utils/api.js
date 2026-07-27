@@ -31,8 +31,8 @@ export async function apiFetch(endpoint, options = {}) {
     let errorData = null;
     try {
       errorData = await response.json();
-    } catch (e) {
-      // Not JSON
+    } catch {
+      // If backend returns text instead of json, ignore
     }
     const message = errorData?.detail || errorData?.message || `Error ${response.status}: ${response.statusText}`;
     throw new Error(message);

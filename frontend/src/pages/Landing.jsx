@@ -261,6 +261,7 @@ export default function Landing({ onAdminClick }) {
         setTimeout(() => {
           setFloatingLoader({ active: false, text: "" });
           setUser({
+            id: data.user_id,
             emailOrPhone: data.email,
             fullName: data.full_name,
             companyName: data.company_name || "Sovereign Enterprise",
@@ -337,6 +338,7 @@ export default function Landing({ onAdminClick }) {
         setTimeout(() => {
           setFloatingLoader({ active: false, text: "" });
           setUser({
+            id: data.user_id,
             emailOrPhone: data.email,
             fullName: data.full_name,
             companyName: data.company_name || "Sovereign Enterprise",
@@ -430,6 +432,7 @@ export default function Landing({ onAdminClick }) {
           setOtpCode("");
         } else {
           setUser({
+            id: data.user_id,
             emailOrPhone: data.email,
             fullName: data.full_name,
             companyName:

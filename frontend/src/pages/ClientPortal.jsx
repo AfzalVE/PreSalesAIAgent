@@ -117,7 +117,7 @@ export default function ClientPortal() {
   };
 
   const handleDownloadPdf = (proposalId) => {
-    window.open(`${API}/api/v1/proposals/${proposalId}/download`, "_blank");
+    window.open(`${API}/api/v1/proposals/${proposalId}/export`, "_blank");
   };
 
   const fetchClientData = async () => {
@@ -201,8 +201,10 @@ export default function ClientPortal() {
   };
 
   useEffect(() => {
-    fetchClientData();
-  }, []);
+    if (activeTab === "overview" || activeTab === "requests") {
+      fetchClientData();
+    }
+  }, [activeTab]);
 
   // Fetch Dev Conversations when switching to dev-chats tab
   useEffect(() => {
@@ -442,6 +444,7 @@ export default function ClientPortal() {
         setActiveTab("demos");
         reply +=
           "\n\n✨ **Status:** I have all the information I need! I am generating your proposal now. Please check the Proposals tab in a few moments.";
+        fetchClientData();
       }
 
       setChatLog((prev) => [...prev, { sender: "ai", text: reply }]);
@@ -504,27 +507,19 @@ export default function ClientPortal() {
   const clientProposals = adminProposals || [];
 
   const totalRequestsCount = requestsList.length;
-  const approvedCount =
-    requestsList.filter(
-      (r) => r.status === "Approved" || r.status === "COMPLETED",
-    ).length +
-    clientProposals.filter(
-      (p) => p.status === "Approved" || p.status === "Completed",
-    ).length;
-  const pendingCount =
-    Math.max(
-      0,
-      totalRequestsCount -
-      requestsList.filter(
-        (r) => r.status === "Approved" || r.status === "COMPLETED",
-      ).length,
-    ) +
-    clientProposals.filter(
-      (p) => p.status !== "Approved" && p.status !== "Completed",
-    ).length;
-  const totalEstimatedBudget =
-    requestsList.reduce((sum, r) => sum + (Number(r.budget) || 0), 0) +
-    clientProposals.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
+  const approvedCount = clientProposals.filter(
+    (p) => p.status === "Approved" || p.status === "Completed",
+  ).length;
+
+  const pendingCount = clientProposals.filter(
+    (p) => p.status !== "Approved" && p.status !== "Completed",
+  ).length;
+
+  // For total estimated budget, we only sum the budgets of APPROVED proposals 
+  // (to prevent summing both MVP and FULL options simultaneously)
+  const totalEstimatedBudget = clientProposals
+    .filter((p) => p.status === "Approved" || p.status === "Completed")
+    .reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
 
   return (
     <div className="relative min-h-[calc(100vh-73px)] overflow-hidden py-12 px-4 bg-surface">

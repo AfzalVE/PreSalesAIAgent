@@ -94,10 +94,14 @@ async def generate_demo_proposals(
         try:
             client_id = uuid.UUID(payload["client_id"])
         except ValueError:
-            client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
-            if not client_user:
-                client_user = db.query(User).first()
-            client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+            user_by_email = db.query(User).filter(User.email == payload["client_id"]).first()
+            if user_by_email:
+                client_id = user_by_email.id
+            else:
+                client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
+                if not client_user:
+                    client_user = db.query(User).first()
+                client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
     else:
         client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
         if not client_user:

@@ -219,7 +219,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
 
     try {
       const token = store.user?.accessToken;
-      const clientId = store.user?.id || store.user?.user_id;
+      const clientId = store.user?.id || store.user?.user_id || store.user?.emailOrPhone;
       // 1. Call ai-agent/extract-requirements
       const extractionResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/ai-agent/extract-requirements`, {
         method: "POST",
@@ -293,6 +293,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
         client_budget: extractionData.client_budget || store.projectData.budget,
         timeline: extractionData.timeline_weeks ? (extractionData.timeline_weeks + " Weeks") : store.projectData.timeline,
         client_id: clientId,
+        existing_request_id: extractionData.request_id,
         ...matchingData
       };
 
@@ -674,7 +675,10 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
       negotiationHistory: [],
       negotiationError: '',
       proposalStages: null,
-      activeRequestId: null
+      activeRequestId: null,
+      adminProposals: [],
+      generatedDemos: [],
+      isDemoReady: false
     });
   },
 

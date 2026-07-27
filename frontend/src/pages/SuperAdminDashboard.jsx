@@ -47,39 +47,33 @@ export default function SuperAdminDashboard() {
   const [users, setUsers] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
 
-  useEffect(() => {
-  console.log("SuperAdminDashboard mounted");
-
-  fetchUsers();
-  fetchPendingRequests();
-}, []);
-
   const fetchUsers = async () => {
     try {
-    console.log("Calling Users API...");
-
-const data = await apiFetch("/users");
-
-console.log(data);
+      console.log("Calling Users API...");
+      const data = await apiFetch("/users");
+      console.log(data);
       setUsers(data || []);
     } catch (e) {
       console.error("Failed to fetch users:", e);
     }
   };
 
- const fetchPendingRequests = async () => {
-  console.log("Calling Pending Request API...");
+  const fetchPendingRequests = async () => {
+    console.log("Calling Pending Request API...");
+    try {
+      const data = await apiFetch("/admin/requests/pending-requests");
+      console.log("Pending API Response:", data);
+      setPendingRequests(data || []);
+    } catch (e) {
+      console.error("Pending API Error:", e);
+    }
+  };
 
-  try {
-    const data = await apiFetch("/admin/requests/pending-requests");
-
-    console.log("Pending API Response:", data);
-
-    setPendingRequests(data || []);
-  } catch (e) {
-    console.error("Pending API Error:", e);
-  }
-};
+  useEffect(() => {
+    console.log("SuperAdminDashboard mounted");
+    fetchUsers();
+    fetchPendingRequests();
+  }, []);
 
  const approveRequest = async (userId) => {
   try {

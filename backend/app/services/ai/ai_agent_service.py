@@ -43,7 +43,12 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
             try:
                 client_id = uuid.UUID(input_data.client_id)
             except ValueError:
-                client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+                # Try to look up by email
+                user_by_email = db.query(User).filter(User.email == input_data.client_id).first()
+                if user_by_email:
+                    client_id = user_by_email.id
+                else:
+                    client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
         else:
             client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
         
