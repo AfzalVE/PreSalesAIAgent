@@ -117,7 +117,7 @@ export default function ClientPortal() {
   };
 
   const handleDownloadPdf = (proposalId) => {
-    window.open(`${API}/api/v1/proposals/${proposalId}/export`, "_blank");
+    window.open(`${API}/api/v1/proposals/${proposalId}/download`, "_blank");
   };
 
   const fetchClientData = async () => {
@@ -158,7 +158,7 @@ export default function ClientPortal() {
           timeline: req.estimated_duration || req.timeline || "TBD",
           status:
             req.status === "COMPLETED"
-              ? "Approved"
+              ? "Generated"
               : req.status === "PROCESSING"
                 ? "Processing"
                 : "Draft",
@@ -733,7 +733,12 @@ export default function ClientPortal() {
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-neutral-200/60 font-body-md text-sm font-semibold">
                           <span
-                            className={`px-2 py-0.5 rounded ${prop.status === "Approved" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}
+                            onClick={() => {
+                              if (prop.status === "Approved") {
+                                setActiveTab("requests");
+                              }
+                            }}
+                            className={`px-2 py-0.5 rounded ${prop.status === "Approved" ? "bg-green-50 text-green-700 cursor-pointer hover:bg-green-100" : "bg-amber-50 text-amber-700"}`}
                           >
                             {prop.status}
                           </span>
@@ -828,10 +833,13 @@ export default function ClientPortal() {
                           </td>
                           <td className="py-4">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${req.status === "Approved"
-                                ? "bg-primary-container/40 text-primary border border-primary-container"
-                                : "bg-neutral-100 text-neutral-500"
-                                }`}
+                              className={`px-2.5 py-0.5 rounded-full font-label-caps text-[11px] font-semibold uppercase tracking-[0.05em] ${
+                                req.status === "Approved"
+                                  ? "bg-green-50 text-green-700 border border-green-200"
+                                  : req.status === "Generated"
+                                    ? "bg-primary-container/40 text-primary border border-primary-container"
+                                    : "bg-neutral-100 text-neutral-500"
+                              }`}
                             >
                               {req.status}
                             </span>
