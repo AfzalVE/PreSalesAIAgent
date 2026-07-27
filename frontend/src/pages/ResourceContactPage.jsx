@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Check
 } from "lucide-react";
+import { useAppStore } from "../store/useAppStore";
 
 export default function ResourceContactPage() {
   const [searchParams] = useSearchParams();
@@ -26,6 +27,24 @@ export default function ResourceContactPage() {
   const employeeId = searchParams.get("employeeId") || "N/A";
   const employeeName = searchParams.get("employeeName") || "Resource Specialist";
   const employeeRole = searchParams.get("role") || "Senior Developer";
+
+  const { user } = useAppStore();
+
+  const [resolvedClientId, setResolvedClientId] = useState(() => {
+    let storedId = localStorage.getItem("clientId") || "";
+    storedId = storedId.replace(/client_/g, "");
+    if (!storedId || storedId.length < 30) {
+      storedId = crypto.randomUUID();
+      localStorage.setItem("clientId", storedId);
+    }
+    return user?.id ? `client_${user.id}` : `client_${storedId}`;
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      setResolvedClientId(`client_${user.id}`);
+    }
+  }, [user]);
 
   const [activeMode, setActiveMode] = useState("chat"); // 'chat', 'call', 'video'
   const [timeLeft, setTimeLeft] = useState(5 * 24 * 60 * 60); // 5 days in seconds
@@ -35,7 +54,7 @@ export default function ResourceContactPage() {
     {
       sender: "employee",
       text: `Hello! I'm ${employeeName}. I saw you were reviewing my profile for your project. How can I help you today?`,
-      time: "Just now"
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -48,6 +67,77 @@ export default function ResourceContactPage() {
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const callTimerRef = useRef(null);
+
+  // WebSocket & WebRTC Refs
+  const ws = useRef(null);
+  const pc = useRef(null);
+  const localStream = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+
+  // Fetch Chat History
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const backendHost = window.location.hostname === "localhost" ? "localhost:8000" : window.location.host;
+        const res = await fetch(`http://${backendHost}/api/v1/chats/history/${resolvedClientId}/${employeeId}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Always set the history, or clear it back to welcome message if no history
+          setChatMessages(data.length > 0 ? data : [
+            {
+              sender: "employee",
+              text: `Hello! I'm ${employeeName}. I saw you were reviewing my profile for your project. How can I help you today?`,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch chat history", err);
+      }
+    };
+    fetchHistory();
+  }, [employeeId, resolvedClientId]);
+
+  // Initialize WebSocket
+  useEffect(() => {
+    // Determine WS URL based on current host (handle dev vs prod)
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    // Assuming backend is on port 8000 when frontend is on 5173, adjust if different
+    const backendHost = window.location.hostname === "localhost" ? "localhost:8000" : window.location.host;
+    ws.current = new WebSocket(`${wsProtocol}//${backendHost}/api/v1/chats/ws/${resolvedClientId}`);
+
+    ws.current.onopen = () => console.log("WebSocket Connected");
+    
+    ws.current.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      console.log("WS Received:", data);
+
+      if (data.type === "chat") {
+        setChatMessages(prev => [...prev, {
+          sender: "employee",
+          text: data.content,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } else if (data.type === "call_offer") {
+        // Incoming call from developer!
+        handleIncomingCall(data.content, data.isVideo);
+      } else if (data.type === "call_answer") {
+        await handleCallAnswer(data.content);
+      } else if (data.type === "ice_candidate") {
+        await handleIceCandidate(data.content);
+      } else if (data.type === "end_call") {
+        hangUpCall(false); // false = don't send another end_call msg
+      }
+    };
+
+    return () => {
+      if (ws.current) ws.current.close();
+      if (pc.current) pc.current.close();
+      if (localStream.current) localStream.current.getTracks().forEach(t => t.stop());
+    };
+  }, [resolvedClientId]);
 
   // 5 days countdown timer simulator
   useEffect(() => {
@@ -104,58 +194,189 @@ export default function ResourceContactPage() {
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
-    setChatInput("");
+    
+    // Send via WebSocket
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: "chat",
+        target_id: employeeId,
+        content: chatInput.trim()
+      }));
+    }
 
-    // Simulate developer typing response
-    setTimeout(() => {
-      const autoResponses = [
-        "That sounds like an interesting feature! We can definitely build that using a secure async pipeline.",
-        "For scaling the database, I'd suggest starting with a clean model layout and indexing key columns.",
-        "Absolutely. I have experience with this architecture and can implement it within the proposed timeline.",
-        "Would you like me to walk you through a brief live demo of a similar project I've delivered?",
-        "Great point. We should ensure we have proper unit tests for those endpoints to maintain robustness."
-      ];
-      const randomReply = autoResponses[Math.floor(Math.random() * autoResponses.length)];
-      
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: "employee",
-          text: randomReply,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    }, 1500);
+    setChatInput("");
   };
 
-  // Trigger calls
-  const startAudioCall = () => {
+  const [remoteStream, setRemoteStream] = useState(null);
+
+  // --- WebRTC Logic --- //
+  const setupWebRTC = async (isVideo) => {
+    pc.current = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    pc.current.onicecandidate = (event) => {
+      if (event.candidate && ws.current) {
+        ws.current.send(JSON.stringify({
+          type: "ice_candidate",
+          target_id: employeeId,
+          content: event.candidate
+        }));
+      }
+    };
+
+    pc.current.ontrack = (event) => {
+      setRemoteStream(event.streams[0]);
+    };
+
+    try {
+      localStream.current = await navigator.mediaDevices.getUserMedia({
+        video: isVideo,
+        audio: true
+      });
+      
+      localStream.current.getTracks().forEach(track => {
+        pc.current.addTrack(track, localStream.current);
+      });
+
+      if (isVideo && localVideoRef.current) {
+        localVideoRef.current.srcObject = localStream.current;
+      }
+    } catch (err) {
+      console.error("Error accessing media devices.", err);
+      alert("Could not access camera/microphone.");
+    }
+  };
+
+  useEffect(() => {
+    if (remoteStream) {
+      if (activeMode === "video" && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+      } else if (activeMode === "call" && remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+      }
+    }
+  }, [remoteStream, activeMode, callStatus]);
+
+  const startAudioCall = async () => {
     setActiveMode("call");
     setCallStatus("ringing");
-    setTimeout(() => {
-      setCallStatus("connected");
-    }, 2500);
+    await setupWebRTC(false);
+    
+    const offer = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offer);
+    
+    ws.current.send(JSON.stringify({
+      type: "call_offer",
+      target_id: employeeId,
+      content: offer,
+      isVideo: false
+    }));
+
+    // Log call in DB
+    ws.current.send(JSON.stringify({
+      type: "save_call_log",
+      target_id: employeeId,
+      content: `[AUDIO_CALL: ${crypto.randomUUID()}]`
+    }));
   };
 
-  const startVideoCall = () => {
+  const startVideoCall = async () => {
     setActiveMode("video");
     setCallStatus("ringing");
-    setTimeout(() => {
-      setCallStatus("connected");
-    }, 2500);
+    await setupWebRTC(true);
+    
+    const offer = await pc.current.createOffer();
+    await pc.current.setLocalDescription(offer);
+    
+    ws.current.send(JSON.stringify({
+      type: "call_offer",
+      target_id: employeeId,
+      content: offer,
+      isVideo: true
+    }));
+
+    // Log call in DB
+    ws.current.send(JSON.stringify({
+      type: "save_call_log",
+      target_id: employeeId,
+      content: `[VIDEO_CALL: ${crypto.randomUUID()}]`
+    }));
   };
 
-  const hangUpCall = () => {
+  const handleIncomingCall = async (offer, isVideo) => {
+    setActiveMode(isVideo ? "video" : "call");
+    setCallStatus("connected"); // Auto-answer for demo purposes, could be 'ringing'
+    await setupWebRTC(isVideo);
+    await pc.current.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.current.createAnswer();
+    await pc.current.setLocalDescription(answer);
+    ws.current.send(JSON.stringify({
+      type: "call_answer",
+      target_id: employeeId,
+      content: answer
+    }));
+  };
+
+  const handleCallAnswer = async (answer) => {
+    setCallStatus("connected");
+    if (pc.current) {
+      await pc.current.setRemoteDescription(new RTCSessionDescription(answer));
+    }
+  };
+
+  const handleIceCandidate = async (candidate) => {
+    if (pc.current) {
+      await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  };
+
+  const hangUpCall = (emit = true) => {
     setCallStatus("ended");
+    
+    if (emit && ws.current) {
+      ws.current.send(JSON.stringify({
+        type: "end_call",
+        target_id: employeeId,
+        content: "ended"
+      }));
+    }
+
+    if (pc.current) {
+      pc.current.close();
+      pc.current = null;
+    }
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(t => t.stop());
+      localStream.current = null;
+    }
+
     setTimeout(() => {
       setCallStatus("idle");
     }, 1500);
   };
 
+  // Toggle Media
+  useEffect(() => {
+    if (localStream.current) {
+      localStream.current.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (localStream.current) {
+      localStream.current.getVideoTracks().forEach(track => {
+        track.enabled = !isVideoMuted;
+      });
+    }
+  }, [isVideoMuted]);
+
   return (
     <div className="relative min-h-[calc(100vh-73px)] py-12 px-4 md:px-8 font-sans bg-white text-[#0a0a0a] overflow-hidden">
-      
-      {/* Background Soft Sky gradient header matching Mintlify marketing bands */}
+      <audio ref={remoteAudioRef} autoPlay className="hidden" />
+      {/* Background Soft Sky gradient header */}
       <div 
         className="absolute top-0 left-0 w-full h-[320px] -z-10 opacity-70 pointer-events-none"
         style={{
@@ -181,7 +402,7 @@ export default function ResourceContactPage() {
           </div>
         </div>
 
-        {/* 3-Column Mintlify Layout split */}
+        {/* 3-Column Layout split */}
         <div className="grid lg:grid-cols-12 gap-8 items-stretch">
           
           {/* Left Column: Sidebar / Profile (4 cols) */}
@@ -199,7 +420,7 @@ export default function ResourceContactPage() {
                 </div>
               </div>
 
-              {/* Mode Selectors as Secondary Pill Buttons */}
+              {/* Mode Selectors */}
               <div className="space-y-4">
                 <h4 className="text-[11px] uppercase font-bold text-[#888888] tracking-wider font-mono">
                   Select channel
@@ -260,10 +481,10 @@ export default function ResourceContactPage() {
             </div>
           </div>
 
-          {/* Right Column: High-density prose & interaction panel (8 cols) */}
+          {/* Right Column: Content */}
           <div className="lg:col-span-8 bg-white border border-[#e5e5e5] rounded-xl overflow-hidden shadow-xs flex flex-col justify-between min-h-[500px]">
             
-            {/* Header with active status indicators */}
+            {/* Header */}
             <div className="bg-[#f7f7f7] px-6 py-4 border-b border-[#e5e5e5] flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 rounded-full bg-[#0a0a0a] flex items-center justify-center font-bold text-xs text-[#00d4a4]">
@@ -364,7 +585,7 @@ export default function ResourceContactPage() {
                         <p className="text-xs font-mono text-[#00d4a4] mt-1 font-bold bg-[#00d4a4]/10 px-3 py-1 rounded-full">{formatDuration(callDuration)}</p>
                       </div>
 
-                      {/* Call Action buttons as outline/solid pills */}
+                      {/* Call Action buttons */}
                       <div className="flex items-center justify-center space-x-4">
                         <button
                           onClick={() => setIsMuted(!isMuted)}
@@ -378,8 +599,8 @@ export default function ResourceContactPage() {
                         </button>
 
                         <button
-                          onClick={hangUpCall}
-                          className="px-6 py-3 rounded-full bg-red-650 hover:bg-red-700 text-white cursor-pointer transition-all hover:scale-105 shadow-sm font-bold text-xs flex items-center space-x-1.5"
+                          onClick={() => hangUpCall(true)}
+                          className="px-6 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-all hover:scale-105 shadow-sm font-bold text-xs flex items-center space-x-1.5"
                         >
                           <PhoneOff size={14} />
                           <span>Hang up</span>
@@ -435,29 +656,26 @@ export default function ResourceContactPage() {
 
                   {callStatus === "connected" && (
                     <div className="relative w-full aspect-video rounded-xl border border-[#e5e5e5] overflow-hidden bg-neutral-950 flex flex-col justify-end p-4 shadow-sm">
-                      {/* Big video feed simulation (Developer) */}
-                      {!isVideoMuted ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-tr from-[#1a3d4a] to-[#2d5a4f]">
-                          <div className="text-center space-y-3">
-                            <div className="w-16 h-16 rounded-full bg-[#00d4a4] flex items-center justify-center mx-auto text-xl font-black text-[#0a0a0a] shadow-md animate-pulse">
-                              {employeeName.charAt(0)}
-                            </div>
-                            <h4 className="text-xs font-bold text-[#00d4a4] tracking-tight">{employeeName} is presenting...</h4>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a] text-neutral-500 text-xs">
+                      {/* Big video feed (Developer) */}
+                      <video 
+                        ref={remoteVideoRef} 
+                        autoPlay 
+                        playsInline 
+                        className={`absolute inset-0 w-full h-full object-cover bg-neutral-900 ${isVideoMuted ? 'opacity-0' : 'opacity-100'}`} 
+                      />
+                      {isVideoMuted && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a] text-neutral-500 text-xs z-0">
                           Camera feed offline
                         </div>
                       )}
 
                       {/* Small PiP Video Feed (Client) */}
-                      <div className="absolute top-4 right-4 w-28 h-20 rounded-xl border border-[#e5e5e5]/20 bg-[#0a0a0a] overflow-hidden shadow-2xl flex items-center justify-center text-[9px] text-[#5a5a5c] font-mono">
-                        Client Webcam
+                      <div className="absolute top-4 right-4 w-28 h-20 rounded-xl border border-[#e5e5e5]/20 bg-[#0a0a0a] overflow-hidden shadow-2xl flex items-center justify-center text-[9px] text-[#5a5a5c] font-mono z-10">
+                        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                       </div>
 
                       {/* Overlay Controls */}
-                      <div className="relative z-10 flex items-center justify-center space-x-3 bg-white/95 backdrop-blur-sm py-2 px-4 rounded-full border border-[#e5e5e5] max-w-xs mx-auto mb-2 shadow-sm">
+                      <div className="relative z-10 flex items-center justify-center space-x-3 bg-white/95 backdrop-blur-sm py-2 px-4 rounded-full border border-[#e5e5e5] max-w-xs mx-auto mb-2 shadow-sm mt-auto">
                         <button
                           onClick={() => setIsMuted(!isMuted)}
                           className={`p-2 rounded-full cursor-pointer ${
@@ -477,8 +695,8 @@ export default function ResourceContactPage() {
                         </button>
 
                         <button
-                          onClick={hangUpCall}
-                          className="px-4 py-2 rounded-full bg-red-650 hover:bg-red-700 text-white cursor-pointer transition-all text-xs font-bold"
+                          onClick={() => hangUpCall(true)}
+                          className="px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-all text-xs font-bold"
                         >
                           End Call
                         </button>
