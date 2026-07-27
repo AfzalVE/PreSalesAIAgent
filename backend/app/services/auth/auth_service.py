@@ -12,7 +12,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.email_otp import EmailOTP
-from app.models.enums import OTPPurpose, UserRole
+from app.models.enums import OTPPurpose, UserRole, UserStatus
 from app.models.user import User
 from app.schemas.auth_schema import (
     AuthResponse,
@@ -48,10 +48,17 @@ def _issue_auth_response(user: User) -> AuthResponse:
 
 def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedResponse:
     existing = db.query(User).filter(User.email == payload.email).first()
+
     if existing:
         if existing.is_verified:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-        # user = existing  # unverified retry: resend OTP on the same row
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+
+        # Reuse the existing unverified user
+        user = existing
+
     else:
         user = User(
             full_name=payload.full_name,
@@ -59,32 +66,53 @@ def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedRes
             password_hash=get_password_hash(payload.password),
             company_name=payload.company_name,
             phone=payload.phone,
+            role=UserRole.CLIENT,
+            status=UserStatus.ACTIVE,
             is_verified=False,
+            is_verification_required=True,
         )
+
         db.add(user)
         db.commit()
+        db.refresh(user)
 
     otp = create_otp(db, payload.email, OTPPurpose.REGISTRATION)
     send_otp_email(payload.email, otp)
+
     return RegisterInitiatedResponse(dev_otp=otp)
+
+
 
 
 def verify_register_otp(db: Session, payload: RegisterVerifyRequest) -> AuthResponse:
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    success, error = verify_otp(db, payload.email, OTPPurpose.REGISTRATION, payload.otp)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    success, error = verify_otp(
+        db,
+        payload.email,
+        OTPPurpose.REGISTRATION,
+        payload.otp,
+    )
+
     if not success:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error,
+        )
 
     user.is_verified = True
     user.is_verification_required = False
+    user.status = UserStatus.ACTIVE
+
     db.commit()
 
     return _issue_auth_response(user)
-
-
 # ----------------------------------------
 # Login: existing verified user -> straight in, no OTP
 # ----------------------------------------
