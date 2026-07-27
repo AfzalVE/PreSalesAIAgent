@@ -11,6 +11,54 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+import csv
+import os
+from app.models.employee import Employee
+from app.models.user import User
+
+def sync_employee_from_csv(e_uuid: uuid.UUID, db: Session) -> Employee:
+    # Check if already in DB
+    emp = db.query(Employee).filter(Employee.id == e_uuid).first()
+    if emp:
+        return emp
+
+    # Read CSV
+    csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "services", "resource", "employees.csv"))
+    if not os.path.exists(csv_path):
+        logger.error(f"CSV file not found at: {csv_path}")
+        return None
+
+    try:
+        with open(csv_path, mode="r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if uuid.UUID(row["id"].strip()) == e_uuid:
+                    db_emp = Employee(
+                        id=uuid.UUID(row["id"].strip()),
+                        employee_code=row["employee_code"].strip(),
+                        full_name=row["full_name"].strip(),
+                        designation=row["designation"].strip(),
+                        department=row["department"].strip(),
+                        experience_years=int(row["experience_years"].strip()) if row.get("experience_years") else 0,
+                        hourly_cost=float(row["hourly_cost"].strip()) if row.get("hourly_cost") else 0.0,
+                        daily_capacity_hours=int(row["daily_capacity_hours"].strip()) if row.get("daily_capacity_hours") else 8,
+                        allocated_hours=int(row["allocated_hours"].strip()) if row.get("allocated_hours") else 0,
+                        available_hours=int(row["available_hours"].strip()) if row.get("available_hours") else 8,
+                        bench_status=row["bench_status"].strip().lower() == "true",
+                        global_bench=row["global_bench"].strip().lower() == "true",
+                        skill_names=row["skill_names"].strip(),
+                        years_experience=int(row["years_experience"].strip()) if row.get("years_experience") else 0,
+                    )
+                    db.add(db_emp)
+                    db.commit()
+                    db.refresh(db_emp)
+                    return db_emp
+    except Exception as ex:
+        logger.error(f"Error syncing employee from CSV: {ex}")
+        db.rollback()
+    
+    return None
+
 class ConnectionManager:
     def __init__(self):
         # Maps user_id (string) to their WebSocket connection
@@ -50,12 +98,22 @@ async def get_chat_history(client_id: str, employee_id: str, db: Session = Depen
         # Fallback for dummy IDs if they aren't valid UUIDs
         return []
 
-    # Map dummy/missing employee to the first real employee
-    db_employee = db.query(Employee).filter(Employee.id == e_uuid).first()
+    # Map dummy/missing employee to the first real employee in CSV
+    db_employee = sync_employee_from_csv(e_uuid, db)
     if not db_employee:
-        db_employee = db.query(Employee).first()
-        if db_employee:
-            e_uuid = db_employee.id
+        try:
+            csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "services", "resource", "employees.csv"))
+            if os.path.exists(csv_path):
+                with open(csv_path, mode="r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    first_row = next(reader, None)
+                    if first_row:
+                        fallback_uuid = uuid.UUID(first_row["id"].strip())
+                        db_employee = sync_employee_from_csv(fallback_uuid, db)
+        except Exception as csv_err:
+            logger.error(f"Error loading fallback from CSV: {csv_err}")
+    if db_employee:
+        e_uuid = db_employee.id
 
     # Map dummy/missing client to the first real user
     db_client = db.query(User).filter(User.id == c_uuid).first()
@@ -126,9 +184,6 @@ async def get_client_conversations(client_id: str, db: Session = Depends(get_db)
         
     return convo_list
 
-from app.models.employee import Employee
-from app.models.user import User
-
 @router.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = Depends(get_db)):
     """
@@ -177,12 +232,23 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = D
                     except ValueError:
                         e_uuid = uuid.UUID('00000000-0000-0000-0000-000000000002')
 
-                    # Foreign Key Bypass: Ensure employee_id exists
-                    db_employee = db.query(Employee).filter(Employee.id == e_uuid).first()
+                    # Foreign Key Bypass: Ensure employee exists in DB from CSV
+                    db_employee = sync_employee_from_csv(e_uuid, db)
                     if not db_employee:
-                        db_employee = db.query(Employee).first()
-                        if db_employee:
-                            e_uuid = db_employee.id
+                        # Grab first employee in CSV as fallback
+                        try:
+                            csv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "services", "resource", "employees.csv"))
+                            if os.path.exists(csv_path):
+                                with open(csv_path, mode="r", encoding="utf-8") as f:
+                                    reader = csv.DictReader(f)
+                                    first_row = next(reader, None)
+                                    if first_row:
+                                        fallback_uuid = uuid.UUID(first_row["id"].strip())
+                                        db_employee = sync_employee_from_csv(fallback_uuid, db)
+                        except Exception as csv_err:
+                            logger.error(f"Error loading fallback from CSV: {csv_err}")
+                    if db_employee:
+                        e_uuid = db_employee.id
 
                     # Foreign Key Bypass: Ensure client_id exists
                     db_client = db.query(User).filter(User.id == c_uuid).first()
@@ -193,7 +259,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = D
 
                     db_chat = ClientEmployeeChat(
                         employee_id=e_uuid,
-                        employee_name=db_employee.name if db_employee else "Developer", 
+                        employee_name=db_employee.full_name if db_employee else "Developer", 
                         client_id=c_uuid,
                         sender="CLIENT" if is_client else "EMPLOYEE",
                         message=content
