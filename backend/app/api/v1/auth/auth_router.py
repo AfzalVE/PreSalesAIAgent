@@ -28,7 +28,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/register", response_model=RegisterInitiatedResponse)
+@router.post("/register")
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     """New user -> creates unverified account, sends OTP."""
     return register_user(db, payload)
@@ -46,7 +46,7 @@ def resend(payload: ResendOTPRequest, db: Session = Depends(get_db)):
     return resend_otp(db, payload)
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """Existing user -> checks password, logs in."""
     return login_user(db, payload)

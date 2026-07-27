@@ -21,6 +21,7 @@ import Negotiation from "./pages/Negotiation";
 import FinalApproval from "./pages/FinalApproval";
 import ClientPortal from "./pages/ClientPortal";
 import ResourceContactPage from "./pages/ResourceContactPage";
+import DeveloperContactTestPage from "./pages/DeveloperContactTestPage";
 import ProfilePage from "./pages/ProfilePage";
 
 import AdminPortal from "./pages/AdminPortal";
@@ -102,6 +103,10 @@ function App() {
           <Route
             path="/client/resource-contact"
             element={<ClientProtectedRoute><ResourceContactPage /></ClientProtectedRoute>}
+          />
+          <Route
+            path="/developer/resource-contact"
+            element={<DeveloperContactTestPage />}
           />
           <Route path="/broker" element={<ClientProtectedRoute><Negotiation /></ClientProtectedRoute>} />
           <Route path="/sign" element={<ClientProtectedRoute><FinalApproval /></ClientProtectedRoute>} />

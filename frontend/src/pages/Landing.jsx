@@ -328,6 +328,34 @@ export default function Landing({ onAdminClick }) {
         throw new Error(data.detail || "Registration failed.");
       }
 
+      if (data.access_token) {
+        setOtpStatus("success");
+        setFloatingLoader({
+          active: true,
+          text: "Authentication Confirmed! Launching Workspace...",
+        });
+        setTimeout(() => {
+          setFloatingLoader({ active: false, text: "" });
+          setUser({
+            emailOrPhone: data.email,
+            fullName: data.full_name,
+            companyName: data.company_name || "Sovereign Enterprise",
+            role: data.role,
+            isVerified: true,
+            accessToken: data.access_token,
+          });
+          const targetPath =
+            data.role === "super-admin" ||
+            data.email?.toLowerCase().includes("superadmin")
+              ? "/super-admin-dashboard"
+              : data.role === "admin"
+                ? "/admin"
+                : "/client-portal";
+          navigate(targetPath);
+        }, 500);
+        return;
+      }
+
       setPendingToken(data.dev_otp || "N/A");
       setOtpPurpose("register");
       setFloatingLoader({
