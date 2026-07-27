@@ -16,12 +16,26 @@ import {
   Star,
   CheckCircle2,
   Package,
-  ListChecks
+  ListChecks,
+  MessageSquare
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import FloatingBackground from "../components/common/FloatingBackground";
 import { useAppStore } from "../store/useAppStore";
+
+const toDisplayLabels = (value) => {
+  if (!value) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(toDisplayLabels);
+  if (typeof value === "object") {
+    return Object.entries(value).flatMap(([group, items]) => {
+      const labels = toDisplayLabels(items);
+      return labels.length ? labels : [group.replace(/_/g, " ")];
+    });
+  }
+  return [String(value)];
+};
 
 export default function ProposalPreviewPage() {
   const navigate = useNavigate();
@@ -196,7 +210,7 @@ export default function ProposalPreviewPage() {
               </h2>
             </div>
             <div className="flex flex-wrap gap-3">
-              {(activeProposal.preferred_technology || []).map((technology, index) => (
+              {toDisplayLabels(activeProposal.preferred_technology).map((technology, index) => (
                 <span
                   key={index}
                   className="px-4 py-2 rounded-full bg-primary/10 text-primary font-semibold text-sm"
@@ -426,7 +440,7 @@ export default function ProposalPreviewPage() {
                     {layer}
                   </p>
                   <h3 className="mt-3 text-lg font-bold text-neutral-900">
-                    {technology}
+                    {toDisplayLabels(technology).join(", ")}
                   </h3>
                 </motion.div>
               ))}
@@ -669,6 +683,16 @@ export default function ProposalPreviewPage() {
             >
               Edit Project Details
             </button>
+
+            {/* Negotiate button — opens broker chat with full proposal context loaded */}
+            <button
+              onClick={() => navigate("/broker")}
+              className="px-8 py-4 rounded-full border border-primary text-primary font-semibold hover:bg-primary/5 transition flex items-center justify-center gap-2"
+            >
+              <MessageSquare size={16} />
+              Negotiate
+            </button>
+
             {activeProposal?.docx_url && activeProposal.docx_url !== "#" ? (
               <button
                 onClick={handleDownload}

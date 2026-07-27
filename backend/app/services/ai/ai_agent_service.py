@@ -203,6 +203,58 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         DO NOT ask any questions in `follow_up_message`. Just say "Form submitted successfully."
         """
 
+    # -------------------------------------------------------------------------
+    # POST-PROPOSAL NEGOTIATION MODE
+    # Detected when all gathering & generation flags are already true.
+    # The user has an existing generated proposal and wants to negotiate it —
+    # NOT start a new requirements gathering session.
+    # -------------------------------------------------------------------------
+    elif (
+        existing_json.get("is_gathering_info_complete")
+        and existing_json.get("summary_confirmed")
+        and existing_json.get("ready_for_proposal_generation")
+        and "[SYSTEM OVERRIDE" not in input_data.text
+    ):
+        project_name = existing_json.get("project_name", "the project")
+        budget = existing_json.get("client_budget", "unknown")
+        timeline = existing_json.get("timeline_days", "unknown")
+        tech = existing_json.get("preferred_technology", [])
+        tech_str = ", ".join(
+            tech[0] if tech and isinstance(tech[0], list) else tech
+        ) if tech else "as previously discussed"
+
+        system_prompt += f"""
+
+        =============================================
+        CRITICAL: POST-PROPOSAL NEGOTIATION MODE
+        =============================================
+        The proposal for "{project_name}" has ALREADY been generated and confirmed.
+        Current parameters: Budget=${budget}, Timeline={timeline} days, Tech={tech_str}
+        
+        ALL requirements-gathering steps are COMPLETE. You MUST NOT:
+        - Re-ask for project details, budget, timeline, or tech stack
+        - Show the Project Summary again
+        - Set any flags to false
+        - Restart the gathering flow
+        
+        You are now a POST-PROPOSAL NEGOTIATION AGENT. The user wants to negotiate
+        or adjust their existing proposal. Your responsibilities:
+        1. Understand the change the user is requesting (budget, timeline, tech, features, team size, scope)
+        2. Explain the impact of that change clearly (trade-offs, risks, cost implications)
+        3. Suggest alternative approaches if the request presents challenges
+        4. Update only the specific JSON fields the user wants to change
+        5. Keep ALL boolean flags (is_gathering_info_complete, summary_confirmed, ready_for_match,
+           estimation_confirmed, ready_for_proposal_generation) as TRUE
+        6. Respond conversationally in `follow_up_message` — be direct, helpful, and concise
+        
+        Example responses:
+        - If user says "reduce budget by 20%": Acknowledge the target, explain what trade-offs
+          this implies (e.g. smaller team, longer timeline), and confirm what you can do.
+        - If user says "can we use Vue instead of React?": Confirm the tech switch is feasible,
+          note any implications, and update preferred_technology.
+        - If user asks a question about the proposal: Answer it directly from the context.
+        """
+
     try:
         response = await client.chat.completions.create(
             model="gpt-5.5",

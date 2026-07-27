@@ -58,7 +58,7 @@ const ONBOARDING_QUESTIONS = [
 ];
 
 export default function Onboarding() {
-  const { updateProjectData, generateProposalsFromBackend } = useAppStore();
+  const { updateProjectData, generateProposalsFromBackend, setActiveRequestId } = useAppStore();
   const navigate = useNavigate();
 
   const recognitionRef = useRef(null);
@@ -399,7 +399,11 @@ export default function Onboarding() {
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => navigate("/broker")}
+                onClick={() => {
+                  // Clear any previous proposal context so chat starts fresh
+                  setActiveRequestId(null);
+                  navigate("/broker");
+                }}
                 className="px-4 sm:px-5 py-2.5 rounded-full border border-primary text-primary hover:bg-primary/5 transition-all font-bold text-xs flex-1 sm:flex-initial text-center justify-center inline-flex"
               >
                 Skip to Broker Chat

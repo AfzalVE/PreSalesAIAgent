@@ -61,8 +61,21 @@ export const useAppStore = create((set, get) => ({
   generatedDemos: [],
   setGeneratedDemos: (demos) => set({ generatedDemos: demos }),
 
-  activeRequestId: null,
-  setActiveRequestId: (id) => set({ activeRequestId: id }),
+  activeRequestId: (() => {
+    try {
+      return localStorage.getItem("active_request_id") || null;
+    } catch { return null; }
+  })(),
+  setActiveRequestId: (id) => {
+    set({ activeRequestId: id });
+    try {
+      if (id) {
+        localStorage.setItem("active_request_id", id);
+      } else {
+        localStorage.removeItem("active_request_id");
+      }
+    } catch { /* ignore */ }
+  },
 
   // Proposals & Stages
   proposalStages: null,
@@ -388,6 +401,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
    * @param {Array}    params.currentResources       - Developer list from the active proposal
    * @param {Array}    [params.resourceRequirements] - Original role specs (optional)
    * @param {string}   [params.proposalType]         - "MVP" or "FULL"
+   * @param {string}   [params.proposalId]           - Exact proposal UUID being negotiated
    * @param {number}   params.negotiationAttempt     - 1 = first try, 2+ = second+ try
    * @param {string}   [params.requestId]            - Active proposal request UUID
    */
@@ -398,6 +412,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
     currentResources = [],
     resourceRequirements = null,
     proposalType = "MVP",
+    proposalId = null,
     negotiationAttempt = 1,
     requestId = null,
   }) => {
@@ -405,6 +420,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
       const token = get().user?.accessToken;
 
       const payload = {
+        proposal_id: proposalId,
         request_id: requestId || get().activeRequestId || null,
         proposal_type: proposalType,
         target_budget: targetBudget,
@@ -666,6 +682,7 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
 
   resetStore: () => {
     localStorage.removeItem("user_session");
+    localStorage.removeItem("active_request_id");
     set({
       user: { emailOrPhone: '', isVerified: false },
       activeStep: 0,

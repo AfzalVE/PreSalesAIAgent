@@ -27,6 +27,19 @@ const SUGGESTIONS = [
   "Add AI recommendations",
 ];
 
+const toTechnologyLabels = (value) => {
+  if (!value) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(toTechnologyLabels);
+  if (typeof value === "object") {
+    return Object.entries(value).flatMap(([group, items]) => {
+      const labels = toTechnologyLabels(items);
+      return labels.length ? labels : [group.replace(/_/g, " ")];
+    });
+  }
+  return [String(value)];
+};
+
 const renderFormattedText = (text) => {
   if (!text) return null;
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -106,11 +119,63 @@ export default function NegotiationChat() {
   const [inputPrompt, setInputPrompt] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [completedStreams, setCompletedStreams] = useState({});
-  const [messages, setMessages] = useState([
+  const [isHydrating, setIsHydrating] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Build a personalised opening message when proposal context is available.
+  // Falls back to the generic greeting when no prior proposal exists.
+  // ---------------------------------------------------------------------------
+  const buildContextualGreeting = (proposalSnapshot) => {
+    const snap = proposalSnapshot || activeProposal;
+    const name =
+      snap?.inferred_project_name ||
+      snap?.project_name ||
+      projectData?.name;
+    const budget =
+      snap?.inferred_budget ??
+      snap?.budget ??
+      projectData?.budget;
+    const timeline =
+      snap?.inferred_timeline ??
+      snap?.timeline ??
+      projectData?.timeline;
+    const techStack =
+      snap?.inferred_preferred_technology ??
+      snap?.preferred_technology ??
+      projectData?.techStack;
+
+    if (name || budget || timeline) {
+      const parts = ["Hello! I'm your AI Proposal Broker."];
+      parts.push(`I've loaded your proposal for **${name || "your project"}**.`);
+      const details = [];
+      if (budget != null)
+        details.push(`Budget: **$${Number(budget).toLocaleString()}**`);
+      if (timeline) details.push(`Timeline: **${timeline}**`);
+      const techArr = toTechnologyLabels(techStack);
+      if (techArr.length)
+        details.push(`Tech Stack: **${techArr.join(", ")}**`);
+      if (details.length)
+        parts.push(`Current parameters — ${details.join(" • ")}.`);
+      parts.push(
+        "\nYou can negotiate budget, timeline, team composition, or technical stack right here. " +
+        'Try something like "reduce budget by 15%" or "what if we extend the timeline?"'
+      );
+      return parts.join(" ");
+    }
+
+    // Fallback: no proposal context yet
+    return (
+      "Hello! I am your AI Proposal Broker. You can adjust the project budget, " +
+      "timeline, team structures, or technical parameters here. Try typing a " +
+      "request, or click one of the quick suggestions below."
+    );
+  };
+
+  const [messages, setMessages] = useState(() => [
     {
       id: "init",
       sender: "ai",
-      text: "Hello! I am your AI Proposal Broker. You can adjust the project budget, timeline, team structures, or technical parameters here. Try typing a request, or click one of the quick suggestions below.",
+      text: buildContextualGreeting(),
       timestamp: "Just now",
     },
   ]);
@@ -127,11 +192,144 @@ export default function NegotiationChat() {
   const [proposalData, setProposalData] = useState(null);
   const [activeTab, setActiveTab] = useState("mvp");
   const [finalizedProposals, setFinalizedProposals] = useState({});
+  const [downloadingProposalId, setDownloadingProposalId] = useState(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isProcessing, completedStreams]);
 
+  // ---------------------------------------------------------------------------
+  // On mount: pre-populate sidebar from store + fetch prior chat history.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const hydrate = async () => {
+      // 1. Pre-populate proposal sidebar panel from Zustand store if available
+      if (activeProposal?.proposals?.length > 0) {
+        const snap = {
+          project_name: activeProposal.inferred_project_name,
+          business_domain: activeProposal.inferred_business_domain,
+          inferred_project_description: activeProposal.inferred_project_description,
+          preferred_technology: activeProposal.inferred_preferred_technology,
+          proposals: activeProposal.proposals,
+        };
+        setProposalData(snap);
+        // Update greeting now that we have proposal context
+        setMessages((prev) => {
+          const isStillInitOnly =
+            prev.length === 1 && prev[0].id === "init";
+          if (!isStillInitOnly) return prev;
+          return [
+            {
+              id: "init",
+              sender: "ai",
+              text: buildContextualGreeting(activeProposal),
+              timestamp: "Just now",
+            },
+          ];
+        });
+      }
+
+      // 2. Fetch prior AI conversation history from the backend
+      if (!activeRequestId) return;
+      setIsHydrating(true);
+      try {
+        const res = await fetch(
+          `${API}/api/v1/proposal-requests/${activeRequestId}/conversations`
+        );
+        if (!res.ok) return;
+        const history = await res.json();
+
+        // Filter out the internal [SYSTEM OVERRIDE] form-submission messages
+        const userFacingHistory = history.filter(
+          (msg) => !msg.text?.includes("[SYSTEM OVERRIDE")
+        );
+
+        if (userFacingHistory.length > 0) {
+          const hydratedMessages = userFacingHistory.map((msg, i) => ({
+            id: msg.id || `hydrated-${i}`,
+            sender: msg.sender === "client" ? "user" : "ai",
+            text: msg.text,
+            timestamp: msg.created_at
+              ? new Date(msg.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Earlier",
+          }));
+
+          // Mark all loaded AI messages as already-streamed so they don't replay
+          const alreadyStreamed = {};
+          hydratedMessages.forEach((m) => {
+            if (m.sender === "ai") alreadyStreamed[m.id] = true;
+          });
+          setCompletedStreams((prev) => ({ ...prev, ...alreadyStreamed }));
+
+          setMessages((prev) => {
+            const greeting = prev.find((m) => m.id === "init");
+            return [
+              ...(greeting ? [greeting] : []),
+              ...hydratedMessages,
+            ];
+          });
+        }
+      } catch (err) {
+        console.error("[NegotiationChat] Failed to hydrate chat history:", err);
+      } finally {
+        setIsHydrating(false);
+      }
+    };
+
+    hydrate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
   const audioRecorderRef = useRef(null);
+
+  const downloadProposalDocument = async (targetProposal) => {
+    if (!targetProposal?.id || downloadingProposalId) return;
+
+    setDownloadingProposalId(targetProposal.id);
+    try {
+      const token = user?.accessToken;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      if (!finalizedProposals[targetProposal.id]) {
+        const selectRes = await fetch(`${API}/api/v1/proposals/${targetProposal.id}/select`, {
+          method: "POST",
+          headers,
+        });
+        if (!selectRes.ok) {
+          const err = await selectRes.json().catch(() => ({}));
+          throw new Error(err.detail || "Failed to create Final POC.");
+        }
+        setFinalizedProposals((prev) => ({ ...prev, [targetProposal.id]: true }));
+      }
+
+      const downloadRes = await fetch(`${API}/api/v1/proposals/${targetProposal.id}/download`, {
+        headers,
+      });
+      if (!downloadRes.ok) {
+        const err = await downloadRes.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to download POC document.");
+      }
+
+      const blob = await downloadRes.blob();
+      const filename = `${(targetProposal.proposal_type || "POC").toLowerCase()}_proposal_${targetProposal.id}.docx`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("[NegotiationChat] Failed to download POC:", err);
+      alert(err.message || "Failed to download POC.");
+    } finally {
+      setDownloadingProposalId(null);
+    }
+  };
 
   const toggleMic = async () => {
     if (isRecording) {
@@ -223,6 +421,7 @@ export default function NegotiationChat() {
         currentTimelineDays,
         currentResources,
         proposalType: currentTabType,
+        proposalId: currentProposalVariant?.id,
         negotiationAttempt: attempt,
         requestId: activeRequestId,
       });
@@ -424,7 +623,14 @@ export default function NegotiationChat() {
 
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto my-2 space-y-4 pr-1 min-h-0">
-          {messages.map((msg) => {
+          {/* Hydration loading indicator */}
+          {isHydrating && (
+            <div className="flex justify-center items-center py-6 text-neutral-400 text-xs gap-2">
+              <RefreshCw size={13} className="animate-spin text-primary" />
+              <span className="font-medium">Loading previous conversation context...</span>
+            </div>
+          )}
+          {!isHydrating && messages.map((msg) => {
             const isLatest = messages[messages.length - 1].id === msg.id;
             const shouldStream =
               msg.sender === "ai" &&
@@ -485,7 +691,7 @@ export default function NegotiationChat() {
             );
           })}
 
-          {isProcessing && (
+          {!isHydrating && isProcessing && (
             <div className="flex justify-start items-center space-x-2.5 py-2 text-neutral-400 text-xs pl-8">
               <RefreshCw size={14} className="animate-spin text-primary" />
               <span className="font-medium">
@@ -636,13 +842,13 @@ export default function NegotiationChat() {
                     )}
                   </div>
 
-                  {proposalData.preferred_technology && proposalData.preferred_technology.length > 0 && (
+                  {toTechnologyLabels(proposalData.preferred_technology).length > 0 && (
                     <div>
                       <h5 className="text-primary-container font-bold mb-2 flex items-center gap-1.5">
                         <Cpu size={12} /> Preferred Technologies
                       </h5>
                       <div className="flex flex-wrap gap-1.5">
-                        {proposalData.preferred_technology.map((technology, index) => (
+                        {toTechnologyLabels(proposalData.preferred_technology).map((technology, index) => (
                           <span
                             key={index}
                             className="px-2.5 py-1 rounded-full bg-primary/15 text-primary-container font-semibold text-[10px]"
@@ -980,36 +1186,43 @@ export default function NegotiationChat() {
 
                   return isFinalized ? (
                     <button
-                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20"
-                      onClick={(e) => {
+                      className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={downloadingProposalId === targetProposal.id}
+                      onClick={async (e) => {
                         e.preventDefault();
-                        if (!targetProposal?.id) return;
-                        const token = user?.accessToken;
-                        window.location.href = `${import.meta.env.VITE_API_BASE_URL}/api/v1/proposals/${targetProposal.id}/download${token ? `?token=${token}` : ""}`;
+                        await downloadProposalDocument(targetProposal);
                       }}
                     >
-                      Download POC
+                      {downloadingProposalId === targetProposal.id ? "Downloading..." : "Download POC"}
                     </button>
                   ) : (
                     <button
-                      className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition shadow-lg shadow-primary/20"
+                      className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={downloadingProposalId === targetProposal.id}
                       onClick={async () => {
                         if (!targetProposal) return;
                         try {
+                          setDownloadingProposalId(targetProposal.id);
+                          const token = user?.accessToken;
+                          const headers = token ? { Authorization: `Bearer ${token}` } : {};
                           const res = await fetch(`${API}/api/v1/proposals/${targetProposal.id}/select`, {
-                            method: "POST"
+                            method: "POST",
+                            headers,
                           });
                           if (res.ok) {
                             setFinalizedProposals(prev => ({ ...prev, [targetProposal.id]: true }));
                           } else {
-                            alert("Failed to create Final POC.");
+                            const err = await res.json().catch(() => ({}));
+                            alert(err.detail || "Failed to create Final POC.");
                           }
                         } catch (e) {
                           alert("Error calling endpoint");
+                        } finally {
+                          setDownloadingProposalId(null);
                         }
                       }}
                     >
-                      Create Final POC
+                      {downloadingProposalId === targetProposal.id ? "Creating..." : "Create Final POC"}
                     </button>
                   );
                 })()}
