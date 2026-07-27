@@ -37,12 +37,14 @@ export default function ResourceContactPage() {
       storedId = crypto.randomUUID();
       localStorage.setItem("clientId", storedId);
     }
-    return user?.id ? `client_${user.id}` : `client_${storedId}`;
+    const currentUserId = user?.id || user?.user_id;
+    return currentUserId ? `client_${currentUserId}` : `client_${storedId}`;
   });
 
   useEffect(() => {
-    if (user?.id) {
-      setResolvedClientId(`client_${user.id}`);
+    const currentUserId = user?.id || user?.user_id;
+    if (currentUserId) {
+      setResolvedClientId(`client_${currentUserId}`);
     }
   }, [user]);
 
@@ -100,44 +102,6 @@ export default function ResourceContactPage() {
     fetchHistory();
   }, [employeeId, resolvedClientId]);
 
-  // Initialize WebSocket
-  useEffect(() => {
-    // Determine WS URL based on current host (handle dev vs prod)
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    // Assuming backend is on port 8000 when frontend is on 5173, adjust if different
-    const backendHost = window.location.hostname === "localhost" ? "localhost:8000" : window.location.host;
-    ws.current = new WebSocket(`${wsProtocol}//${backendHost}/api/v1/chats/ws/${resolvedClientId}`);
-
-    ws.current.onopen = () => console.log("WebSocket Connected");
-    
-    ws.current.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      console.log("WS Received:", data);
-
-      if (data.type === "chat") {
-        setChatMessages(prev => [...prev, {
-          sender: "employee",
-          text: data.content,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }]);
-      } else if (data.type === "call_offer") {
-        // Incoming call from developer!
-        handleIncomingCall(data.content, data.isVideo);
-      } else if (data.type === "call_answer") {
-        await handleCallAnswer(data.content);
-      } else if (data.type === "ice_candidate") {
-        await handleIceCandidate(data.content);
-      } else if (data.type === "end_call") {
-        hangUpCall(false); // false = don't send another end_call msg
-      }
-    };
-
-    return () => {
-      if (ws.current) ws.current.close();
-      if (pc.current) pc.current.close();
-      if (localStream.current) localStream.current.getTracks().forEach(t => t.stop());
-    };
-  }, [resolvedClientId]);
 
   // 5 days countdown timer simulator
   useEffect(() => {
@@ -171,7 +135,7 @@ export default function ResourceContactPage() {
       if (callTimerRef.current) {
         clearInterval(callTimerRef.current);
       }
-      setCallDuration(0);
+      setTimeout(() => setCallDuration(0), 0);
     }
     return () => {
       if (callTimerRef.current) clearInterval(callTimerRef.current);
@@ -355,6 +319,44 @@ export default function ResourceContactPage() {
       setCallStatus("idle");
     }, 1500);
   };
+  // Initialize WebSocket
+  useEffect(() => {
+    // Determine WS URL based on current host (handle dev vs prod)
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    // Assuming backend is on port 8000 when frontend is on 5173, adjust if different
+    const backendHost = window.location.hostname === "localhost" ? "localhost:8000" : window.location.host;
+    ws.current = new WebSocket(`${wsProtocol}//${backendHost}/api/v1/chats/ws/${resolvedClientId}`);
+
+    ws.current.onopen = () => console.log("WebSocket Connected");
+    
+    ws.current.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      console.log("WS Received:", data);
+
+      if (data.type === "chat") {
+        setChatMessages(prev => [...prev, {
+          sender: "employee",
+          text: data.content,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      } else if (data.type === "call_offer") {
+        // Incoming call from developer!
+        handleIncomingCall(data.content, data.isVideo);
+      } else if (data.type === "call_answer") {
+        await handleCallAnswer(data.content);
+      } else if (data.type === "ice_candidate") {
+        await handleIceCandidate(data.content);
+      } else if (data.type === "end_call") {
+        hangUpCall(false); // false = don't send another end_call msg
+      }
+    };
+
+    return () => {
+      if (ws.current) ws.current.close();
+      if (pc.current) pc.current.close();
+      if (localStream.current) localStream.current.getTracks().forEach(t => t.stop());
+    };
+  }, [resolvedClientId]);
 
   // Toggle Media
   useEffect(() => {

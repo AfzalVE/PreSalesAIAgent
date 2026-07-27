@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShieldAlert, Sparkles, ArrowRight, Mail, Lock, X } from "lucide-react";
+import { Sparkles, ArrowRight, Mail, Lock, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../store/useAppStore";
 import FloatingBackground from "../components/common/FloatingBackground";

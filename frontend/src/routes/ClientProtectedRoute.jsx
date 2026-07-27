@@ -9,5 +9,10 @@ export default function ClientProtectedRoute({ children }) {
     return <Navigate to="/" replace />;
   }
 
+  // If user is an employee/developer, redirect them to their dedicated profile
+  if (user.role === "employee" || user.role === "developer") {
+    return <Navigate to="/employee/profile" replace />;
+  }
+
   return children;
 }

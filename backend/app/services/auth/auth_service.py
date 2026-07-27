@@ -45,22 +45,22 @@ def _issue_auth_response(user: User) -> AuthResponse:
 # ----------------------------------------
 # Register: new user -> OTP -> verified -> let him enter
 # ----------------------------------------
-
 def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedResponse:
     existing = db.query(User).filter(User.email == payload.email).first()
-
     if existing:
+        if existing.is_verified:
+            if verify_password(payload.password, existing.password_hash):
+                return _issue_auth_response(existing)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email already registered, but incorrect password.")
+        
         # Reuse the existing user and update details
         existing.full_name = payload.full_name
         existing.company_name = payload.company_name
         existing.phone = payload.phone
         existing.password_hash = get_password_hash(payload.password)
-
         user = existing
-
         db.commit()
         db.refresh(user)
-
     else:
         user = User(
             full_name=payload.full_name,
@@ -68,19 +68,16 @@ def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedRes
             password_hash=get_password_hash(payload.password),
             company_name=payload.company_name,
             phone=payload.phone,
-            role=UserRole.CLIENT,
-            status=UserStatus.ACTIVE,
             is_verified=False,
-            is_verification_required=True,
         )
-
         db.add(user)
         db.commit()
-        db.refresh(user)
 
     otp = create_otp(db, payload.email, OTPPurpose.REGISTRATION)
-    send_otp_email(payload.email, otp)
-
+    try:
+        send_otp_email(payload.email, otp)
+    except Exception as e:
+        print(f"SMTP Error: {e}")
     return RegisterInitiatedResponse(dev_otp=otp)
 
 
@@ -151,7 +148,10 @@ def resend_otp(db: Session, payload: ResendOTPRequest) -> RegisterInitiatedRespo
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     otp = create_otp(db, payload.email, OTPPurpose.REGISTRATION)
-    send_otp_email(payload.email, otp)
+    try:
+        send_otp_email(payload.email, otp)
+    except Exception as e:
+        print(f"SMTP Error: {e}")
     return RegisterInitiatedResponse(message="A new OTP has been sent to your email.", dev_otp=otp)
 
 

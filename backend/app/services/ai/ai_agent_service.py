@@ -62,65 +62,72 @@ def format_timeline(days) -> str:
 # same worker for the duration of the DB round trip.
 # --------------------------------------------------------------------------
 
-def _load_or_create_proposal_request(db: Session, request_id: str | None) -> tuple[ProposalRequest, dict]:
+def _load_or_create_proposal_request(db: Session, request_id: str | None, input_data) -> tuple[ProposalRequest, dict, str, str]:
     proposal_request = None
     existing_json: dict = {}
+    existing_data_str: str = "{}"
 
     if request_id:
         try:
             req_uuid = uuid.UUID(request_id)
             proposal_request = db.query(ProposalRequest).filter(ProposalRequest.id == req_uuid).first()
+            if proposal_request:
+                existing_data_str = json.dumps(proposal_request.extracted_json)
         except ValueError:
             pass
 
+    if not proposal_request:
+        client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
+        if not client_user:
+            client_user = db.query(User).first()
+
+        # Prefer client_id from input if provided
+        if getattr(input_data, "client_id", None):
+            try:
+                client_id = uuid.UUID(input_data.client_id)
+            except ValueError:
+                # Try to look up by email
+                user_by_email = db.query(User).filter(User.email == input_data.client_id).first()
+                if user_by_email:
+                    client_id = user_by_email.id
+                else:
+                    client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+        else:
+            client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+
+        proposal_request = ProposalRequest(
+            client_id=client_id,
+            project_name="Draft Project",
+            project_description="TBD",
+            business_domain="General",
+            budget=0.0,
+            timeline="TBD",
+            communication_type=CommunicationType.FORM,
+            extracted_json={}
+        )
+        db.add(proposal_request)
+        db.commit()
+        db.refresh(proposal_request)
+        existing_json = {}
+    else:
+        existing_json = proposal_request.extracted_json if proposal_request and proposal_request.extracted_json else {}
+
+    recent_messages_context = ""
     if proposal_request:
-        existing_json = proposal_request.extracted_json or {}
-        return proposal_request, existing_json
+        conversations = db.query(AIConversation).filter(
+            AIConversation.request_id == proposal_request.id
+        ).order_by(AIConversation.timestamp.desc()).limit(10).all()
+        if conversations:
+            conversations.reverse()
+            recent_messages_context = "Here is the conversation history (last 10 messages):\n"
+            for msg in conversations:
+                recent_messages_context += f"{msg.sender.value}: {msg.message}\n"
 
-    # Single query with OR instead of two sequential round trips
-    # (previously: query filtered by CLIENT role, then a second unfiltered
-    # query only if the first came back empty).
-    client_user = (
-        db.query(User)
-        .filter(or_(User.role == UserRole.CLIENT, User.role != UserRole.CLIENT))
-        .order_by((User.role == UserRole.CLIENT).desc())
-        .first()
-    )
-
-    client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
-
-    proposal_request = ProposalRequest(
-        client_id=client_id,
-        project_name="Draft Project",
-        project_description="TBD",
-        business_domain="General",
-        budget=0.0,
-        timeline="TBD",
-        communication_type=CommunicationType.FORM,
-        extracted_json={}
-    )
-    db.add(proposal_request)
-    db.commit()
-    db.refresh(proposal_request)
-    return proposal_request, {}
-
-
-def _load_recent_conversation_context(db: Session, request_id: uuid.UUID) -> str:
-    conversations = (
-        db.query(AIConversation)
-        .filter(AIConversation.request_id == request_id)
-        .order_by(AIConversation.timestamp.desc())
-        .limit(10)
-        .all()
-    )
-    if not conversations:
-        return ""
-    conversations.reverse()
-    lines = [f"{msg.sender.value}: {msg.message}" for msg in conversations]
-    return "Here is the conversation history (last 10 messages):\n" + "\n".join(lines) + "\n"
+    return proposal_request, existing_json, existing_data_str, recent_messages_context
 
 
 def _persist_turn(db: Session, proposal_request: ProposalRequest, merged_json: dict, user_text: str) -> None:
+    """Persist the merged extraction result and conversation turns to the database."""
     proposal_request.extracted_json = merged_json
 
     if merged_json.get("project_name"):
@@ -130,18 +137,20 @@ def _persist_turn(db: Session, proposal_request: ProposalRequest, merged_json: d
     if merged_json.get("timeline_days"):
         proposal_request.timeline = format_timeline(merged_json.get("timeline_days"))
 
-    db.add(AIConversation(
+    user_convo = AIConversation(
         request_id=proposal_request.id,
         sender=SenderType.CLIENT,
         message=user_text,
         message_type=MessageType.TEXT
-    ))
-    db.add(AIConversation(
+    )
+    ai_convo = AIConversation(
         request_id=proposal_request.id,
         sender=SenderType.AI,
         message=merged_json.get("follow_up_message") or "I've extracted your requirements and updated the project scope.",
         message_type=MessageType.TEXT
-    ))
+    )
+    db.add(user_convo)
+    db.add(ai_convo)
     db.commit()
 
 
@@ -150,14 +159,10 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
     Calls the OpenAI API in JSON mode to parse unstructured text
     and extract the proposal requirements.
     """
+    request_id = input_data.request_id
 
-    proposal_request, existing_json = await asyncio.to_thread(
-        _load_or_create_proposal_request, db, input_data.request_id
-    )
-    existing_data_str = json.dumps(existing_json)
-
-    recent_messages_context = await asyncio.to_thread(
-        _load_recent_conversation_context, db, proposal_request.id
+    proposal_request, existing_json, existing_data_str, recent_messages_context = await asyncio.to_thread(
+        _load_or_create_proposal_request, db, request_id, input_data
     )
 
     system_prompt = f"""
@@ -274,6 +279,58 @@ async def extract_proposal_requirements(input_data: AgentTextInput, db: Session)
         You MUST calculate `mvp_timeline_days` and `full_timeline_days` such that they are DIFFERENT values (e.g., MVP is 30-40% of the full project time).
         You MUST set `is_gathering_info_complete`, `summary_confirmed`, `ready_for_match`, `estimation_confirmed`, and `ready_for_proposal_generation` ALL to TRUE.
         DO NOT ask any questions in `follow_up_message`. Just say "Form submitted successfully."
+        """
+
+    # -------------------------------------------------------------------------
+    # POST-PROPOSAL NEGOTIATION MODE
+    # Detected when all gathering & generation flags are already true.
+    # The user has an existing generated proposal and wants to negotiate it —
+    # NOT start a new requirements gathering session.
+    # -------------------------------------------------------------------------
+    elif (
+        existing_json.get("is_gathering_info_complete")
+        and existing_json.get("summary_confirmed")
+        and existing_json.get("ready_for_proposal_generation")
+        and "[SYSTEM OVERRIDE" not in input_data.text
+    ):
+        project_name = existing_json.get("project_name", "the project")
+        budget = existing_json.get("client_budget", "unknown")
+        timeline = existing_json.get("timeline_days", "unknown")
+        tech = existing_json.get("preferred_technology", [])
+        tech_str = ", ".join(
+            tech[0] if tech and isinstance(tech[0], list) else tech
+        ) if tech else "as previously discussed"
+
+        system_prompt += f"""
+
+        =============================================
+        CRITICAL: POST-PROPOSAL NEGOTIATION MODE
+        =============================================
+        The proposal for "{project_name}" has ALREADY been generated and confirmed.
+        Current parameters: Budget=${budget}, Timeline={timeline} days, Tech={tech_str}
+        
+        ALL requirements-gathering steps are COMPLETE. You MUST NOT:
+        - Re-ask for project details, budget, timeline, or tech stack
+        - Show the Project Summary again
+        - Set any flags to false
+        - Restart the gathering flow
+        
+        You are now a POST-PROPOSAL NEGOTIATION AGENT. The user wants to negotiate
+        or adjust their existing proposal. Your responsibilities:
+        1. Understand the change the user is requesting (budget, timeline, tech, features, team size, scope)
+        2. Explain the impact of that change clearly (trade-offs, risks, cost implications)
+        3. Suggest alternative approaches if the request presents challenges
+        4. Update only the specific JSON fields the user wants to change
+        5. Keep ALL boolean flags (is_gathering_info_complete, summary_confirmed, ready_for_match,
+           estimation_confirmed, ready_for_proposal_generation) as TRUE
+        6. Respond conversationally in `follow_up_message` — be direct, helpful, and concise
+        
+        Example responses:
+        - If user says "reduce budget by 20%": Acknowledge the target, explain what trade-offs
+          this implies (e.g. smaller team, longer timeline), and confirm what you can do.
+        - If user says "can we use Vue instead of React?": Confirm the tech switch is feasible,
+          note any implications, and update preferred_technology.
+        - If user asks a question about the proposal: Answer it directly from the context.
         """
 
     try:

@@ -15,6 +15,7 @@ class WorkflowState(str, Enum):
 class AgentTextInput(BaseModel):
     text: str = Field(..., description="The unstructured text or transcribed voice input from the user.")
     request_id: Optional[str] = Field(None, description="Optional request ID if continuing an existing chat.") # newly added
+    client_id: Optional[str] = Field(None, description="The user id making the request")
 
 class ResourceRequirement(BaseModel):
     role: str = Field(..., description="The role of the resource, e.g., 'Backend Developer'.")
@@ -83,6 +84,7 @@ class BudgetNegotiationInput(BaseModel):
     Tracks how many times the client has already asked so the backend can
     escalate the strategy (dev swap on attempt 1, timeline extension on attempt 2+).
     """
+    proposal_id: Optional[str] = Field(None, description="The exact Proposal UUID being negotiated.")
     request_id: Optional[str] = Field(None, description="The active ProposalRequest UUID in the DB.")
     proposal_type: str = Field("MVP", description="Which proposal variant is being negotiated: 'MVP' or 'FULL'.")
     target_budget: float = Field(..., description="The budget the client is targeting (in USD).")

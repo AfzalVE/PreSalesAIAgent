@@ -201,7 +201,7 @@ async def get_request_conversations(request_id: str, db: Session = Depends(get_d
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID format")
         
-    convos = db.query(AIConversation).filter(AIConversation.request_id == req_uuid).order_by(AIConversation.created_at.asc()).all()
+    convos = db.query(AIConversation).filter(AIConversation.request_id == req_uuid).order_by(AIConversation.timestamp.asc()).all()
     
     result = []
     for c in convos:
@@ -209,6 +209,6 @@ async def get_request_conversations(request_id: str, db: Session = Depends(get_d
             "id": str(c.id),
             "sender": c.sender.value.lower() if hasattr(c.sender, 'value') else str(c.sender).lower(),
             "text": c.message,
-            "created_at": c.created_at.isoformat() if c.created_at else ""
+            "created_at": c.timestamp.isoformat() if c.timestamp else ""
         })
     return result

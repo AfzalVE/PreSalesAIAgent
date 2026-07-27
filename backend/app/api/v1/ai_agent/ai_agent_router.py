@@ -19,6 +19,7 @@ from app.services.resource import (
 )
 from app.services.proposal.proposal_generation_service import generate_proposals_for_request
 from app.models.proposal_request import ProposalRequest
+from app.models.proposal import Proposal, ProposalType
 
 router = APIRouter()
 
@@ -153,8 +154,62 @@ async def negotiate(input_data: NegotiationInput):
         raise HTTPException(status_code=500, detail=f"Failed to negotiate: {str(e)}")
 
 
+def _persist_negotiated_proposal(
+    db: Session,
+    payload: BudgetNegotiationInput,
+    result: dict,
+    timeline_days: int,
+) -> None:
+    proposal = None
+
+    if payload.proposal_id:
+        try:
+            proposal = db.query(Proposal).filter(Proposal.id == uuid.UUID(payload.proposal_id)).first()
+        except (TypeError, ValueError):
+            proposal = None
+
+    if not proposal and payload.request_id:
+        try:
+            proposal_type = ProposalType.FULL if payload.proposal_type.upper() == "FULL" else ProposalType.MVP
+            proposal = (
+                db.query(Proposal)
+                .filter(
+                    Proposal.request_id == uuid.UUID(payload.request_id),
+                    Proposal.proposal_type == proposal_type,
+                )
+                .order_by(Proposal.created_at.desc())
+                .first()
+            )
+        except (TypeError, ValueError):
+            proposal = None
+
+    if not proposal:
+        return
+
+    existing_resources = proposal.selected_resources if isinstance(proposal.selected_resources, dict) else {}
+    negotiated_cost = round(result["total_project_cost"], 2)
+    negotiated_duration = result.get("timeline_formatted", f"{timeline_days // 7} Weeks")
+
+    proposal.estimated_cost = negotiated_cost
+    proposal.estimated_duration = negotiated_duration
+    proposal.selected_resources = {
+        **existing_resources,
+        "selected_resources": result["selected_resources"],
+        "timeline_days": result.get("timeline_days", timeline_days),
+        "timeline_formatted": negotiated_duration,
+        "total_project_cost": negotiated_cost,
+    }
+    proposal.version = (proposal.version or 1) + 1
+
+    if proposal.proposal_request:
+        proposal.proposal_request.budget = negotiated_cost
+        proposal.proposal_request.timeline = negotiated_duration
+
+    db.commit()
+
+
 @router.post("/negotiate-budget", response_model=BudgetNegotiationResponse)
-async def negotiate_budget(payload: BudgetNegotiationInput):
+async def negotiate_budget(payload: BudgetNegotiationInput, db: Session = Depends(get_db)):
     """
     **Tiered Budget Negotiation — Developer Re-Matching.**
 
@@ -221,6 +276,8 @@ async def negotiate_budget(payload: BudgetNegotiationInput):
 
             if result and result["total_project_cost"] < payload.current_cost:
                 # Success — we found a cheaper team
+                _persist_negotiated_proposal(db, payload, result, timeline_days)
+
                 old_devs = {d.name for d in payload.current_resources if d.name}
                 new_devs = {r["name"] for r in result["selected_resources"] if r.get("name")}
                 swapped = new_devs - old_devs
@@ -267,6 +324,8 @@ async def negotiate_budget(payload: BudgetNegotiationInput):
 
             if result and result["total_project_cost"] < payload.current_cost:
                 new_tl_days = result["timeline_days"]
+                _persist_negotiated_proposal(db, payload, result, new_tl_days)
+
                 old_weeks = timeline_days // 7
                 new_weeks = new_tl_days // 7
 

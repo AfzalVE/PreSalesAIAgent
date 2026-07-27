@@ -90,15 +90,23 @@ async def generate_demo_proposals(
     Generates two proposal options (MVP and Full Product) using AI.
     Infers missing fields if any data is not present.
     """
-    client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
-    if not client_user:
-        client_user = db.query(User).first()
-    
-    if client_user:
-        client_id = client_user.id
+    if "client_id" in payload and payload["client_id"]:
+        try:
+            client_id = uuid.UUID(payload["client_id"])
+        except ValueError:
+            user_by_email = db.query(User).filter(User.email == payload["client_id"]).first()
+            if user_by_email:
+                client_id = user_by_email.id
+            else:
+                client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
+                if not client_user:
+                    client_user = db.query(User).first()
+                client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
     else:
-        # Static UUID fallback if database is empty
-        client_id = uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
+        client_user = db.query(User).filter(User.role == UserRole.CLIENT).first()
+        if not client_user:
+            client_user = db.query(User).first()
+        client_id = client_user.id if client_user else uuid.UUID("aec18ec4-9350-4d57-91a6-0adffa952774")
 
     print(f"Generating proposals for client_id: {client_id}")
     try:
@@ -107,10 +115,25 @@ async def generate_demo_proposals(
             match_data = match_resources(payload)
             payload.update(match_data)
             
+        # Extract existing_request_id from payload so the service reuses the
+        # ProposalRequest created by extract-requirements instead of creating a duplicate.
+        existing_request_id_str = payload.pop("existing_request_id", None)
+        existing_request_id = None
+        if existing_request_id_str:
+            try:
+                existing_request_id = uuid.UUID(str(existing_request_id_str))
+            except (ValueError, AttributeError):
+                pass
+
+        kwargs = {}
+        if existing_request_id:
+            kwargs["existing_request_id"] = existing_request_id
+
         result = await generate_proposals_for_request(
             db=db,
             client_id=client_id,
-            proposal_input=payload
+            proposal_input=payload,
+            **kwargs
         )
         return result
 
@@ -161,6 +184,9 @@ async def select_proposal(
         
         # Structure payload for docx generation
         request = proposal.proposal_request
+        if request:
+            from app.models.proposal_request import ProposalRequestStatus
+            request.status = ProposalRequestStatus.COMPLETED
 
         proposal_data = create_proposal_document(
             project_name=request.project_name,

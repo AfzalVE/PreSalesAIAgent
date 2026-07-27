@@ -64,13 +64,19 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
                     navigate("/super-admin-dashboard");
                   } else if (user.role === "admin") {
                     navigate("/admin");
+                  } else if (user.role === "employee" || user.role === "developer") {
+                    navigate("/employee/profile");
                   } else {
                     navigate("/client-portal");
                   }
                 }}
                 className="bg-primary-container text-navy-accent px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-button-text shadow-sm hover:shadow-md transition-all font-semibold text-xs cursor-pointer whitespace-nowrap"
               >
-                Client Dashboard
+                {user.role === "super-admin" || user.role === "admin" 
+                  ? "Admin Portal" 
+                  : user.role === "employee" || user.role === "developer" 
+                    ? "Developer Dashboard" 
+                    : "Client Dashboard"}
               </button>
               <button
                 onClick={resetStore}
@@ -100,18 +106,24 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
           </span>
           <button
             onClick={() => {
+              setIsMobileMenuOpen(false);
               if (user.role === "super-admin" || user.emailOrPhone?.toLowerCase().includes("superadmin")) {
                 navigate("/super-admin-dashboard");
               } else if (user.role === "admin") {
                 navigate("/admin");
+              } else if (user.role === "employee" || user.role === "developer") {
+                navigate("/employee/profile");
               } else {
                 navigate("/client-portal");
               }
-              setIsMobileMenuOpen(false);
             }}
-            className="bg-primary-container text-navy-accent px-4 py-2 rounded-lg font-button-text shadow-sm hover:shadow-md transition-all font-semibold text-sm w-full text-center"
+            className="w-full text-left px-3 py-2 text-sm font-semibold text-navy-accent hover:bg-neutral-50 rounded-lg border-b border-neutral-100"
           >
-            Client Dashboard
+            {user.role === "super-admin" || user.role === "admin" 
+              ? "Admin Portal" 
+              : user.role === "employee" || user.role === "developer" 
+                ? "Developer Dashboard" 
+                : "Client Dashboard"}
           </button>
           <button
             onClick={() => {

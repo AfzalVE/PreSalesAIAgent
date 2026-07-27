@@ -18,6 +18,8 @@ from app.api.v1.proposals.proposal_router import router as proposal_router
 from app.api.v1.ai_agent.ai_agent_router import router as ai_agent_router
 from app.api.v1.admin.admin_router import router as admin_router
 from app.api.v1.chats.chat_router import router as chat_router
+from app.api.v1.employee.employee_auth_router import router as employee_auth_router
+from app.api.v1.employee.employee_profile_router import router as employee_profile_router
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -116,6 +118,8 @@ app.include_router(proposal_router, prefix="/api/v1/proposals", tags=["Proposals
 app.include_router(ai_agent_router, prefix="/api/v1/ai-agent", tags=["AI Agent"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin Studio"])
 app.include_router(chat_router, prefix="/api/v1/chats", tags=["Chats"])
+app.include_router(employee_auth_router, prefix="/api/v1/employee/auth", tags=["Employee Auth"])
+app.include_router(employee_profile_router, prefix="/api/v1/employee/profile", tags=["Employee Profile"])
 
 # Mount static folder for proposals
 import os
