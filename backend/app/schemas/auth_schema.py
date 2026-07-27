@@ -19,6 +19,7 @@ class RegisterRequest(BaseModel):
 
 class RegisterInitiatedResponse(BaseModel):
     message: str = "OTP sent to your email. Please verify to complete registration."
+    dev_otp: str | None = None
 
 
 class RegisterVerifyRequest(BaseModel):
@@ -70,6 +71,7 @@ class OTPRequiredResponse(BaseModel):
     otp_required: bool = True
     pending_token: str | None = None
     message: str | None = None
+    dev_otp: str | None = None
 
     # Fields when otp_required is False
     access_token: str | None = None

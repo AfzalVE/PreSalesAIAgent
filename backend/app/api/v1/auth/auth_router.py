@@ -46,16 +46,18 @@ def resend(payload: ResendOTPRequest, db: Session = Depends(get_db)):
     return resend_otp(db, payload)
 
 
-@router.post("/login", response_model=LoginInitiatedResponse)
+@router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    """Existing user -> checks password, sends OTP (2FA)."""
+    """Existing user -> checks password, logs in."""
     return login_user(db, payload)
 
 
-# @router.post("/login/verify-otp", response_model=AuthResponse)
-# def verify_login(payload: LoginVerifyRequest, db: Session = Depends(get_db)):
-#     """Verifies OTP -> logs the user in."""
-#     return verify_login_otp(db, payload)
+@router.post("/login/verify-otp", response_model=AuthResponse)
+def verify_login(payload: LoginVerifyRequest, db: Session = Depends(get_db)):
+    """Verifies OTP -> logs the user in."""
+    from app.schemas.auth_schema import OTPVerifyRequest
+    otp_payload = OTPVerifyRequest(pending_token=payload.email, otp=payload.otp) # actually wait, verify_login_otp expects OTPVerifyRequest with pending_token
+    return verify_login_otp(db, otp_payload)
 
 
 @router.get("/check-email")

@@ -240,7 +240,7 @@ export default function Landing({ onAdminClick }) {
     setOtpStatus("verifying");
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/user-login`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -252,7 +252,7 @@ export default function Landing({ onAdminClick }) {
         throw new Error(data.detail || "Authentication failed.");
       }
 
-      if (data.otp_required === false) {
+      if (data.access_token && data.otp_required !== true) {
         setOtpStatus("success");
         setFloatingLoader({
           active: true,
@@ -280,7 +280,7 @@ export default function Landing({ onAdminClick }) {
         return;
       }
 
-      setPendingToken(data.pending_token);
+      setPendingToken(data.pending_token || data.dev_otp || "N/A");
       setOtpPurpose("login");
       setFloatingLoader({
         active: true,
@@ -308,22 +308,43 @@ export default function Landing({ onAdminClick }) {
     setError("");
     setOtpStatus("verifying");
 
-    // Generate mock OTP for demo
-    const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: regEmail,
+            full_name: regFullName || regEmail.split("@")[0] || "User",
+            password: regPassword || "AutoPass123!",
+            company_name: regCompanyName || "",
+            phone: regPhone || "",
+          }),
+        },
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || "Registration failed.");
+      }
 
-    setPendingToken(mockOtp);
-    setOtpPurpose("demo-login");
-    setFloatingLoader({
-      active: true,
-      text: "Dispatching Security Verification Code...",
-    });
-    setTimeout(() => {
-      setFloatingLoader({ active: false, text: "" });
-      setView("otp");
+      setPendingToken(data.dev_otp || "N/A");
+      setOtpPurpose("register");
+      setFloatingLoader({
+        active: true,
+        text: "Dispatching Security Verification Code...",
+      });
+      setTimeout(() => {
+        setFloatingLoader({ active: false, text: "" });
+        setView("otp");
+        setOtpStatus("");
+        setOtpCode("");
+        startOtpResendTimer();
+      }, 400);
+    } catch (err) {
       setOtpStatus("");
-      setOtpCode("");
-      startOtpResendTimer();
-    }, 400);
+      setError(err.message);
+    }
   };
 
   const handleForgotSubmit = (e) => {
@@ -347,47 +368,21 @@ export default function Landing({ onAdminClick }) {
     setError("");
     setOtpStatus("verifying");
 
-    if (otpPurpose === "demo-login") {
-      if (otpCode !== pendingToken) {
-        setOtpStatus("error");
-        setError("Invalid OTP code. Please try again.");
-        return;
-      }
-      setOtpStatus("success");
-      setFloatingLoader({
-        active: true,
-        text: "Security Verified! Initializing Workspace...",
-      });
-      setTimeout(() => {
-        setFloatingLoader({ active: false, text: "" });
-        setUser({
-          emailOrPhone: regEmail,
-          fullName: "",
-          companyName: "Sovereign Enterprise",
-          role: "client",
-          isVerified: true,
-          accessToken: "demo-token",
-        });
-        const targetPath = regEmail?.toLowerCase().includes("superadmin")
-          ? "/super-admin-dashboard"
-          : regEmail?.toLowerCase().includes("admin")
-            ? "/admin"
-            : "/onboarding";
-        navigate(targetPath);
-      }, 500);
-      return;
-    }
-
     try {
+      let verifyUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/register/verify-otp`;
+      let reqBody = { email: regEmail, otp: otpCode };
+      
+      if (otpPurpose === "login") {
+        verifyUrl = `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login/verify-otp`;
+        reqBody = { email: email, otp: otpCode };
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/verify-otp`,
+        verifyUrl,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pending_token: pendingToken,
-            otp: otpCode,
-          }),
+          body: JSON.stringify(reqBody),
         },
       );
       const data = await response.json();
@@ -2381,7 +2376,7 @@ export default function Landing({ onAdminClick }) {
                           </span>
                           Dev Mode Hint:
                         </p>
-                        {otpPurpose === "demo-login" ? (
+                        {otpPurpose === "register" || otpPurpose === "login" ? (
                           <p className="mt-1 font-body-md text-[13px] text-amber-900 leading-normal font-bold">
                             Your OTP is: {pendingToken}
                           </p>

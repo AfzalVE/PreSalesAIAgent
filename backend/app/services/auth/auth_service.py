@@ -66,7 +66,7 @@ def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedRes
 
     otp = create_otp(db, payload.email, OTPPurpose.REGISTRATION)
     send_otp_email(payload.email, otp)
-    return RegisterInitiatedResponse()
+    return RegisterInitiatedResponse(dev_otp=otp)
 
 
 def verify_register_otp(db: Session, payload: RegisterVerifyRequest) -> AuthResponse:
@@ -114,7 +114,7 @@ def resend_otp(db: Session, payload: ResendOTPRequest) -> RegisterInitiatedRespo
 
     otp = create_otp(db, payload.email, OTPPurpose.REGISTRATION)
     send_otp_email(payload.email, otp)
-    return RegisterInitiatedResponse(message="A new OTP has been sent to your email.")
+    return RegisterInitiatedResponse(message="A new OTP has been sent to your email.", dev_otp=otp)
 
 
 # ----------------------------------------
@@ -211,7 +211,8 @@ def initiate_login(db: Session, credentials: LoginRequest, allowed_roles: list[U
     return OTPRequiredResponse(
         otp_required=True,
         pending_token=pending_token,
-        message="OTP sent to your registered email"
+        message="OTP sent to your registered email",
+        dev_otp=otp_code
     )
 
 

@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ----------------------------------
+    # OTP Configuration
+    # ----------------------------------
+    OTP_EXPIRE_MINUTES: int = 5
+    MAX_OTP_ATTEMPTS: int = 5
+
+    # ----------------------------------
     # AI Providers
     # ----------------------------------
     OPENAI_API_KEY: str | None = None
