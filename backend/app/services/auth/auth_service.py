@@ -50,8 +50,16 @@ def register_user(db: Session, payload: RegisterRequest) -> RegisterInitiatedRes
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
         if existing.is_verified:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-        # user = existing  # unverified retry: resend OTP on the same row
+            if verify_password(payload.password, existing.password_hash):
+                return _issue_auth_response(existing)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email already registered, but incorrect password.")
+        existing.password_hash = get_password_hash(payload.password)
+        existing.full_name = payload.full_name
+        if payload.company_name:
+            existing.company_name = payload.company_name
+        if payload.phone:
+            existing.phone = payload.phone
+        db.commit()
     else:
         user = User(
             full_name=payload.full_name,
@@ -95,9 +103,17 @@ def login_user(db: Session, payload: LoginRequest) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Please complete registration first.",
+        otp_code = create_otp(db, user.email, OTPPurpose.LOGIN)
+        try:
+            send_otp_email(user.email, otp_code)
+        except Exception:
+            pass
+        pending_token = create_pending_token(str(user.id))
+        return OTPRequiredResponse(
+            otp_required=True,
+            pending_token=pending_token,
+            message="Email not verified. OTP sent.",
+            dev_otp=otp_code
         )
 
     return _issue_auth_response(user)
@@ -247,6 +263,8 @@ def verify_login_otp(db: Session, payload: OTPVerifyRequest) -> AuthResponse:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No OTP found, please log in again")
 
     if otp_record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        db.delete(otp_record)
+        db.commit()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP expired, please log in again")
 
     if otp_record.attempts >= MAX_OTP_ATTEMPTS:
@@ -259,6 +277,7 @@ def verify_login_otp(db: Session, payload: OTPVerifyRequest) -> AuthResponse:
 
     otp_record.is_verified = True
     otp_record.verified_at = datetime.now(timezone.utc)
+    db.delete(otp_record) # Delete OTP after successful verification
 
     # Mark user as verified upon successful OTP confirmation
     if not user.is_verified:
