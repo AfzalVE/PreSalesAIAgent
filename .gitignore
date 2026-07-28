@@ -240,3 +240,6 @@ Thumbs.db
 
 # AI Design files
 .DESIGN-mintlify.md
+
+#proposal files
+*.docx
