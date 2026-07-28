@@ -42,7 +42,9 @@ async def list_proposal_requests(
             uid = uuid.UUID(user_id)
             query = query.filter(ProposalRequest.client_id == uid)
         except ValueError:
-            pass
+            query = query.join(User, ProposalRequest.client_id == User.id).filter(
+                func.lower(User.full_name) == func.lower(user_id.strip())
+            )
 
     requests = query.order_by(ProposalRequest.created_at.desc()).all()
     
@@ -101,10 +103,10 @@ async def get_proposal_request(request_id: str, db: Session = Depends(get_db)):
         "proposals": [
             {
                 "id": str(p.id),
-                "title": p.title,
+                "proposal_type": p.proposal_type.value if hasattr(p.proposal_type, 'value') else str(p.proposal_type),
                 "status": p.status.value if hasattr(p.status, 'value') else str(p.status),
-                "budget_estimate": float(p.budget_estimate or 0),
-                "timeline_estimate": p.timeline_estimate
+                "estimated_cost": float(p.estimated_cost or 0),
+                "estimated_duration": p.estimated_duration
             } for p in req.proposals
         ] if req.proposals else [],
         "conversations": [
@@ -113,8 +115,8 @@ async def get_proposal_request(request_id: str, db: Session = Depends(get_db)):
                 "sender": c.sender.value if hasattr(c.sender, 'value') else str(c.sender),
                 "message": c.message,
                 "message_type": c.message_type.value if hasattr(c.message_type, 'value') else str(c.message_type),
-                "created_at": c.created_at.isoformat() if c.created_at else ""
-            } for c in sorted(req.conversations, key=lambda x: x.created_at if x.created_at else "")
+                "created_at": c.timestamp.isoformat() if c.timestamp else ""
+            } for c in sorted(req.conversations, key=lambda x: x.timestamp.isoformat() if getattr(x, 'timestamp', None) else "")
         ] if req.conversations else []
     }
 
@@ -131,7 +133,10 @@ async def create_proposal_request(payload: dict, db: Session = Depends(get_db)):
             if user_by_id:
                 client_id = user_by_id.id
         except ValueError:
-            pass
+            from sqlalchemy import func
+            user_by_name = db.query(User).filter(func.lower(User.full_name) == func.lower(str(user_id).strip())).first()
+            if user_by_name:
+                client_id = user_by_name.id
             
     if not client_id and user_email:
         from sqlalchemy import func

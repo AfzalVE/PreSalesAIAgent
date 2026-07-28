@@ -1,7 +1,6 @@
 import { ShieldAlert, UserCheck, ArrowLeft, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/useAppStore";
-import JourneyStepper from "../common/JourneyStepper";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Navbar({ isAdmin = false, onToggleMode }) {
@@ -37,13 +36,6 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
             Pre Sales Platform
           </span>
         </div>
-
-        {/* Journey Stepper (Only on client journey steps) */}
-        {!isAdmin && activeStep > 0 && activeStep < 4 && !['/broker', '/onboarding'].includes(location.pathname) && (
-          <div className="hidden sm:block">
-            <JourneyStepper />
-          </div>
-        )}
 
         <div className="hidden sm:flex items-center flex-wrap gap-2 sm:gap-3 justify-end ml-auto">
           {user?.isVerified && (
@@ -137,12 +129,6 @@ export default function Navbar({ isAdmin = false, onToggleMode }) {
         </div>
       )}
 
-      {/* Mobile Journey Stepper (Visible only on mobile/tablet) */}
-      {!isAdmin && activeStep > 0 && activeStep < 4 && (
-        <div className="sm:hidden flex justify-center mt-3 pt-3 border-t border-neutral-100/50">
-          <JourneyStepper />
-        </div>
-      )}
     </header>
   );
 }
