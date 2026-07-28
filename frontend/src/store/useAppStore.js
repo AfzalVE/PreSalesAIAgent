@@ -812,5 +812,23 @@ MUST set is_gathering_info_complete = true, summary_confirmed = true, ready_for_
     }));
 
     return { success: true, text: responseText };
-  }
+  },
+
+  // Helper: set activeProposal from a pair of proposal objects fetched by the dashboard
+  // so ProposalPreviewPage can display them without re-running the full pipeline.
+  setActiveProposalForPreview: ({ mvp, full }) => {
+    const source = full || mvp;
+    set({
+      activeProposal: {
+        mvp,
+        full,
+        proposals: [mvp, full].filter(Boolean),
+        // Top-level inferred fields read by ProposalPreviewPage
+        inferred_project_name: source?.project_name || "",
+        inferred_business_domain: source?.business_domain || "",
+        inferred_project_description: source?.scope || "",
+        preferred_technology: source?.tech_stack || [],
+      },
+    });
+  },
 }));
