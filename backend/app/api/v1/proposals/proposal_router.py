@@ -51,6 +51,20 @@ async def get_proposal(proposal_id: str, db: Session = Depends(get_db)) -> Dict[
         raise HTTPException(status_code=404, detail="Proposal not found")
     return res
 
+@router.get("/{proposal_id}/poc", summary="Get full rich POC data for ProposalPreviewPage")
+async def get_proposal_poc(proposal_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Returns the complete rich proposal payload (executive_summary, key_features, 
+    deliverables, acceptance_criteria, architecture, tech_stack breakdown, development 
+    roadmap, and selected_resources) needed by ProposalPreviewPage when navigating 
+    from the dashboard View POC button.
+    """
+    from app.services.proposals.proposal_service import get_proposal_full_poc_service
+    res = get_proposal_full_poc_service(db, proposal_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return res
+
 @router.get("/{proposal_id}/export", summary="Export a proposal as a document")
 async def export_proposal(proposal_id: str, db: Session = Depends(get_db)):
     from fastapi.responses import FileResponse

@@ -200,3 +200,106 @@ def get_proposal_by_id_service(db: Session, proposal_id: str) -> Optional[Dict[s
 
     active_employees = db.query(Employee).filter(Employee.employment_status == EmploymentStatus.ACTIVE).all()
     return _format_proposal_dict(prop, active_employees)
+
+
+def get_proposal_full_poc_service(db: Session, proposal_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Returns the full rich proposal payload needed by ProposalPreviewPage.
+    Reconstructs executive_summary, key_features, deliverables, acceptance_criteria,
+    architecture, tech_stack breakdown, and development roadmap from
+    ProposalRequest.extracted_json (which stores the complete AI generation output).
+
+    Also returns sibling MVP+Full proposals so the frontend can populate both
+    toggle views on ProposalPreviewPage.
+    """
+    try:
+        pid = uuid.UUID(proposal_id)
+    except ValueError:
+        return None
+
+    prop = db.query(Proposal).options(
+        joinedload(Proposal.proposal_request).joinedload(ProposalRequest.client)
+    ).filter(Proposal.id == pid).first()
+
+    if not prop:
+        return None
+
+    req = prop.proposal_request
+    extracted = req.extracted_json if req else {}
+    if not extracted:
+        extracted = {}
+
+    # Determine which key to use for this proposal's rich data
+    prop_type_key = "mvp" if prop.proposal_type.value == "MVP" else "full"
+    sibling_type_key = "full" if prop_type_key == "mvp" else "mvp"
+
+    def build_rich_proposal(p: Proposal, type_key: str) -> Dict[str, Any]:
+        """Merge DB-stored proposal fields with AI-rich fields from extracted_json."""
+        rich = extracted.get(type_key, {})
+        selected_res = p.selected_resources if isinstance(p.selected_resources, dict) else {}
+        return {
+            "id": str(p.id),
+            "proposal_type": p.proposal_type.value,
+            "estimated_cost": float(p.estimated_cost or 0),
+            "estimated_duration": p.estimated_duration or "",
+            # Rich AI fields from extracted_json
+            "executive_summary": rich.get("executive_summary", ""),
+            "tech_stack": rich.get("tech_stack") or p.tech_stack or {},
+            "architecture": rich.get("architecture", p.scope or ""),
+            "scope": p.scope or rich.get("scope", ""),
+            "key_features": rich.get("key_features", []),
+            "deliverables": rich.get("deliverables", []),
+            "assumptions": p.assumptions or rich.get("assumptions", ""),
+            "risks": p.risks or rich.get("risks", ""),
+            "acceptance_criteria": rich.get("acceptance_criteria", []),
+            "timeline_phases": p.timeline_phases or rich.get("timeline_phases", []),
+            "selected_resources": selected_res,
+        }
+
+    # Build this proposal's rich data
+    this_rich = build_rich_proposal(prop, prop_type_key)
+
+    # Try to find sibling proposal (the other type under the same request)
+    sibling = None
+    sibling_rich = None
+    if req:
+        sibling = db.query(Proposal).filter(
+            Proposal.request_id == req.id,
+            Proposal.id != pid
+        ).first()
+        if sibling:
+            sibling_rich = build_rich_proposal(sibling, sibling_type_key)
+
+    mvp_data = this_rich if prop_type_key == "mvp" else sibling_rich
+    full_data = this_rich if prop_type_key == "full" else sibling_rich
+
+    # Top-level inferred fields (read by ProposalPreviewPage)
+    inferred_project_name = (
+        extracted.get("inferred_project_name")
+        or (req.project_name if req else None)
+        or "Project"
+    )
+    inferred_business_domain = (
+        extracted.get("inferred_business_domain")
+        or (req.business_domain if req else None)
+        or ""
+    )
+    inferred_project_description = (
+        extracted.get("inferred_project_description")
+        or (req.project_description if req else None)
+        or ""
+    )
+    preferred_technology = (
+        extracted.get("inferred_preferred_technology")
+        or (req.preferred_technology if req else None)
+        or []
+    )
+
+    return {
+        "mvp": mvp_data,
+        "full": full_data,
+        "inferred_project_name": inferred_project_name,
+        "inferred_business_domain": inferred_business_domain,
+        "inferred_project_description": inferred_project_description,
+        "preferred_technology": preferred_technology,
+    }

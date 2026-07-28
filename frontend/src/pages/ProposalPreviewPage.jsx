@@ -105,7 +105,7 @@ export default function ProposalPreviewPage() {
         <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/onboarding")}
+              onClick={() => navigate(-1)}
               className="p-2 rounded-xl border bg-white hover:bg-neutral-50"
             >
               <ArrowLeft size={16} />
