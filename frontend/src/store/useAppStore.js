@@ -61,21 +61,8 @@ export const useAppStore = create((set, get) => ({
   generatedDemos: [],
   setGeneratedDemos: (demos) => set({ generatedDemos: demos }),
 
-  activeRequestId: (() => {
-    try {
-      return localStorage.getItem("active_request_id") || null;
-    } catch { return null; }
-  })(),
-  setActiveRequestId: (id) => {
-    set({ activeRequestId: id });
-    try {
-      if (id) {
-        localStorage.setItem("active_request_id", id);
-      } else {
-        localStorage.removeItem("active_request_id");
-      }
-    } catch { /* ignore */ }
-  },
+  activeRequestId: null,
+  setActiveRequestId: (id) => set({ activeRequestId: id }),
 
   // Proposals & Stages
   proposalStages: null,

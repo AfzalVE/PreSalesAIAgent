@@ -11,6 +11,10 @@ import {
   Clock3,
   Briefcase,
   Cpu,
+  History,
+  Plus,
+  Menu,
+  X
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import { AudioRecorder, transcribeWithWhisper } from "../../utils/audioRecorder";
@@ -193,6 +197,11 @@ export default function NegotiationChat() {
   const [activeTab, setActiveTab] = useState("mvp");
   const [finalizedProposals, setFinalizedProposals] = useState({});
   const [downloadingProposalId, setDownloadingProposalId] = useState(null);
+  
+  // Chat History state
+  const [pastSessions, setPastSessions] = useState([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -280,8 +289,115 @@ export default function NegotiationChat() {
     };
 
     hydrate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, [activeRequestId, activeProposal]); // Re-run hydration when active request changes
+
+  // Fetch sessions independently when user loads or activeRequestId changes (e.g. new chat started)
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setIsLoadingSessions(true);
+      try {
+        const userIdentifier = user?.email || user?.emailOrPhone || user?.id;
+        // Don't fetch if user is not loaded yet
+        if (!userIdentifier) return;
+        
+        let queryParams = new URLSearchParams();
+        if (userIdentifier.includes('@')) {
+          queryParams.append('user_email', userIdentifier);
+        } else {
+          queryParams.append('user_id', userIdentifier);
+        }
+        
+        const res = await fetch(`${API}/api/v1/proposal-requests?${queryParams.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPastSessions(data);
+        }
+      } catch (err) {
+        console.error("[NegotiationChat] Failed to fetch past sessions:", err);
+      } finally {
+        setIsLoadingSessions(false);
+      }
+    };
+
+    fetchSessions();
+  }, [activeRequestId, user?.id, user?.user_id]);
+
+  const handleSelectSession = async (request) => {
+    if (activeRequestId === request.id) return;
+    setActiveRequestId(request.id);
+    setMessages([]);
+    setIsHydrating(true);
+    try {
+      const res = await fetch(`${API}/api/v1/proposal-requests/${request.id}`);
+      if (!res.ok) throw new Error("Failed to fetch request details");
+      const reqData = await res.json();
+
+      if (reqData.extracted_json && reqData.extracted_json.mvp && reqData.extracted_json.full) {
+        // Match IDs from the database proposals array
+        const mvpSummary = reqData.proposals?.find(p => p.title?.includes("MVP") || p.proposal_type === "MVP");
+        const fullSummary = reqData.proposals?.find(p => p.title?.includes("FULL") || p.proposal_type === "FULL");
+
+        setProposalData({
+          project_name: reqData.project_name,
+          business_domain: reqData.business_domain,
+          inferred_project_description: reqData.project_description,
+          preferred_technology: reqData.preferred_technology,
+          proposals: [
+            {
+              id: mvpSummary?.id,
+              proposal_type: "MVP",
+              ...reqData.extracted_json.mvp,
+              estimated_cost: mvpSummary?.estimated_cost || reqData.extracted_json.mvp.estimated_cost,
+              estimated_duration: mvpSummary?.estimated_duration || reqData.extracted_json.mvp.estimated_duration
+            },
+            {
+              id: fullSummary?.id,
+              proposal_type: "FULL",
+              ...reqData.extracted_json.full,
+              estimated_cost: fullSummary?.estimated_cost || reqData.extracted_json.full.estimated_cost,
+              estimated_duration: fullSummary?.estimated_duration || reqData.extracted_json.full.estimated_duration
+            }
+          ]
+        });
+
+        useAppStore.setState({
+          projectData: {
+            ...projectData,
+            name: reqData.project_name,
+            budget: reqData.budget,
+            timeline: reqData.timeline,
+            techStack: reqData.preferred_technology
+          }
+        });
+      } else {
+        setProposalData(null);
+      }
+    } catch (err) {
+      console.error("[NegotiationChat] Failed to fetch session details:", err);
+      setProposalData(null);
+    } finally {
+      setIsHydrating(false);
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const startNewSession = () => {
+    setActiveRequestId(null);
+    setProposalData(null);
+    useAppStore.setState({ 
+      activeProposal: null, 
+      projectData: {
+        name: '', domain: '', description: '', techStack: [], budget: null, timeline: '', notes: '', complexity: '', estimatedTeam: 0
+      }
+    });
+    setMessages([{
+      id: "init",
+      sender: "ai",
+      text: "Hello! I am your AI Proposal Broker. You can adjust the project budget, timeline, team structures, or technical parameters here. Try typing a request, or click one of the quick suggestions below.",
+      timestamp: "Just now",
+    }]);
+    setIsSidebarOpen(false);
+  };
 
   const audioRecorderRef = useRef(null);
 
@@ -513,8 +629,39 @@ export default function NegotiationChat() {
 
     try {
       const payload = { text };
-      if (activeRequestId) {
-        payload.request_id = activeRequestId;
+      const userIdentifier = user?.email || user?.emailOrPhone || user?.id;
+      
+      let currentRequestId = activeRequestId;
+
+      // Immediately create a draft session if this is a new chat, 
+      // so it shows up in the sidebar before the 10-second AI generation finishes.
+      if (!currentRequestId) {
+        try {
+          const initRes = await fetch(`${API}/api/v1/proposal-requests`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              client_email: userIdentifier?.includes('@') ? userIdentifier : undefined,
+              user_id: !userIdentifier?.includes('@') ? userIdentifier : undefined,
+              project_name: "Draft Project"
+            })
+          });
+          if (initRes.ok) {
+            const initData = await initRes.json();
+            currentRequestId = initData.id;
+            setActiveRequestId(currentRequestId);
+          }
+        } catch (e) {
+          console.error("Failed to pre-create draft session", e);
+        }
+      }
+
+      if (currentRequestId) {
+        payload.request_id = currentRequestId;
+      }
+      
+      if (userIdentifier) {
+        payload.client_id = userIdentifier;
       }
 
       const response = await fetch(
@@ -580,6 +727,21 @@ export default function NegotiationChat() {
           useAppStore.getState().setIsDemoReady(true);
         }
       }
+
+      // Refresh recent chats to show updated title
+      if (userIdentifier) {
+        let queryParams = new URLSearchParams();
+        if (userIdentifier.includes('@')) {
+          queryParams.append('user_email', userIdentifier);
+        } else {
+          queryParams.append('user_id', userIdentifier);
+        }
+        fetch(`${API}/api/v1/proposal-requests?${queryParams.toString()}`)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => setPastSessions(data))
+          .catch(e => console.error(e));
+      }
+
     } catch (err) {
       console.error("API error, falling back to simulation:", err);
       const result = applyNegotiationRequest(text);
@@ -605,13 +767,118 @@ export default function NegotiationChat() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch max-w-6xl mx-auto font-sans">
+    <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_350px] gap-6 items-stretch w-full max-w-[100%] px-1 lg:px-2 mx-auto font-sans relative">
+      
+      {/* Mobile Sidebar Overlay Background */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 top-[72px] bg-neutral-900/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Chat History Sidebar */}
+      <div className={`fixed top-[72px] bottom-0 left-0 z-50 w-56 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:shadow-soft lg:translate-x-0 lg:z-auto lg:border lg:border-neutral-200/80 lg:rounded-2xl p-4 flex flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:flex lg:h-[800px]"}`}>
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-100 mb-4">
+          <div className="flex items-center space-x-2">
+            <History size={16} className="text-primary" />
+            <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Recent Chats
+            </h4>
+          </div>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={startNewSession}
+              className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-primary transition-colors cursor-pointer"
+              title="Start New Negotiation"
+            >
+              <Plus size={14} />
+            </button>
+            {/* Close button for mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 transition-colors cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          {isLoadingSessions ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="p-3 rounded-xl border border-neutral-100 bg-white shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="h-3 bg-neutral-200 rounded w-2/3 animate-pulse"></div>
+                    <div className="h-2 bg-neutral-100 rounded w-8 animate-pulse"></div>
+                  </div>
+                  <div className="h-2 bg-neutral-100 rounded w-full mb-1 animate-pulse"></div>
+                  <div className="h-2 bg-neutral-100 rounded w-4/5 mb-3 animate-pulse"></div>
+                  <div className="flex space-x-2">
+                    <div className="h-3 bg-neutral-200 rounded w-12 animate-pulse"></div>
+                    <div className="h-3 bg-neutral-100 rounded w-8 animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : pastSessions.length === 0 ? (
+            <div className="text-center text-xs text-neutral-400 py-4">
+              No previous chats found.
+            </div>
+          ) : (
+            pastSessions.map((session) => (
+              <div 
+                key={session.id}
+                onClick={() => handleSelectSession(session)}
+                className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                  activeRequestId === session.id 
+                    ? "bg-primary/5 border-primary/20 shadow-sm" 
+                    : "bg-white border-neutral-100 hover:border-neutral-300 hover:bg-neutral-50"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <h5 className="text-xs font-bold text-neutral-800 line-clamp-1">
+                    {session.project_name || "Untitled Project"}
+                  </h5>
+                  <span className="text-[9px] text-neutral-400 whitespace-nowrap ml-2">
+                    {new Date(session.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-[10px] text-neutral-500 line-clamp-2 leading-relaxed">
+                  {session.project_description || "No description provided."}
+                </p>
+                <div className="mt-2 flex items-center space-x-2">
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                    session.status === "DRAFT" ? "bg-neutral-100 text-neutral-600" :
+                    session.status === "APPROVED" ? "bg-green-100 text-green-600" :
+                    "bg-blue-100 text-blue-600"
+                  }`}>
+                    {session.status}
+                  </span>
+                  <span className="text-[9px] text-neutral-400">
+                    {session.conversations_count} msgs
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* Conversation Thread */}
-      <div className="lg:col-span-8 bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between h-[600px]">
+      <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-soft flex flex-col justify-between h-[800px]">
         {/* Terminal Header */}
         <div className="flex items-center justify-between pb-6 border-b border-neutral-100">
           <div className="flex items-center space-x-2">
-            <MessageSquare size={16} className="text-primary" />
+            {/* Hamburger menu for mobile */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-1.5 -ml-1.5 mr-1 rounded-lg hover:bg-neutral-100 text-neutral-500 transition-colors"
+            >
+              <Menu size={16} />
+            </button>
+            <MessageSquare size={16} className="text-primary hidden sm:block" />
             <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               AI Negotiation Console
             </h4>
@@ -624,13 +891,13 @@ export default function NegotiationChat() {
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto my-2 space-y-4 pr-1 min-h-0">
           {/* Hydration loading indicator */}
-          {isHydrating && (
+          {isHydrating && messages.length <= 1 && (
             <div className="flex justify-center items-center py-6 text-neutral-400 text-xs gap-2">
               <RefreshCw size={13} className="animate-spin text-primary" />
               <span className="font-medium">Loading previous conversation context...</span>
             </div>
           )}
-          {!isHydrating && messages.map((msg) => {
+          {messages.map((msg) => {
             const isLatest = messages[messages.length - 1].id === msg.id;
             const shouldStream =
               msg.sender === "ai" &&
@@ -648,7 +915,7 @@ export default function NegotiationChat() {
                     <Sparkles size={12} className="animate-pulse" />
                   </div>
                 )}
-                <div className="max-w-[80%] flex flex-col">
+                <div className="max-w-[95%] flex flex-col">
                   <div
                     className={`rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm border ${msg.sender === "user"
                       ? "bg-neutral-900 text-white font-medium rounded-tr-none border-transparent"
@@ -780,7 +1047,7 @@ export default function NegotiationChat() {
       </div>
 
       {/* Evolution History & Active Scope Overview */}
-      <div className="lg:col-span-4 flex flex-col justify-between bg-neutral-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden h-[600px]">
+      <div className="flex flex-col justify-between bg-neutral-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden h-[800px]">
         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
 
         {(() => {
